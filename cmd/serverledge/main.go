@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grussorusso/serverledge/pkg/faas"
+	"github.com/grussorusso/serverledge/pkg/functions"
+	"github.com/grussorusso/serverledge/pkg/scheduling"
+	"github.com/grussorusso/serverledge/pkg/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -16,13 +18,18 @@ func getFunctions(c echo.Context) error {
 
 func invokeFunction(c echo.Context) error {
 	funcName := c.Param("fun")
-	log.Printf("New request for function `%s`", funcName)
+	function, ok := functions.GetFunction(funcName)
+	if !ok {
+		log.Printf("Request for unknown function '%s'", funcName)
+		return c.JSON(http.StatusNotFound, "")
+	}
+	r := &functions.Request{function, time.Now()}
 
-	r := &faas.Request{funcName, time.Now()}
-	if err := faas.Schedule(r); err == nil {
+	log.Printf("New request: %v", r)
+	if err := scheduling.Schedule(r); err == nil {
 		return c.JSON(http.StatusOK, "OK")
 	} else {
-		return c.JSON(http.StatusOK, "Failed")
+		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 }
 
@@ -41,5 +48,6 @@ func startAPIServer() {
 }
 
 func main() {
+	containers.InitDockerContainerFactory()
 	startAPIServer()
 }
