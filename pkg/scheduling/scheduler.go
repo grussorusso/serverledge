@@ -8,7 +8,8 @@ func Schedule (r *functions.Request) error {
 	if warm {
 		return containers.WarmStart(r, containerID)
 	} else {
-		return containers.ColdStart(r)
+		go containers.ColdStart(r)
 	}
+	return nil
 }
 

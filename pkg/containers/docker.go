@@ -30,39 +30,40 @@ func InitDockerContainerFactory() {
 func (cf *DockerFactory) Create (image string, opts *ContainerOptions) (ContainerID, error) {
 	reader, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	io.Copy(os.Stdout, reader)
+	io.Copy(os.Stdout, reader) // TODO
 
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
 		Image: image,
 		Cmd:   []string{"echo", "hello world"},
 		Tty:   false,
 	}, nil, nil, nil, "")
-	if err != nil {
-		panic(err)
+
+	return resp.ID, err
+}
+
+func (cf *DockerFactory) Start (contID ContainerID, cmd []string) error {
+	if err := cf.cli.ContainerStart(cf.ctx, contID, types.ContainerStartOptions{}); err != nil {
+		return err
 	}
 
-	// TODO: stuff below does not belong to Create()
-	if err := cf.cli.ContainerStart(cf.ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		panic(err)
-	}
-
-	statusCh, errCh := cf.cli.ContainerWait(cf.ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := cf.cli.ContainerWait(cf.ctx, contID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			panic(err)
+			return err
 		}
 	case <-statusCh:
 	}
 
-	out, err := cf.cli.ContainerLogs(cf.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
+	out, err := cf.cli.ContainerLogs(cf.ctx, contID, types.ContainerLogsOptions{ShowStdout: true})
 	if err != nil {
-		panic(err)
+		return err
 	}
+	log.Printf("Type of out: %T", out)
 
 	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-	return resp.ID, nil
+	return nil
 }
 
