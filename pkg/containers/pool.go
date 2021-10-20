@@ -24,15 +24,15 @@ func ColdStart (r *functions.Request) error {
 	log.Printf("Starting new container for %v", r.Fun)
 	// TODO: choose image based on runtime and set command and memory
 	image := "alpine"
-	contID, err := cf.Create(image, &ContainerOptions{})
+	cmd := []string{"ls", "/"}
+	contID, err := cf.Create(image, cmd, &ContainerOptions{})
 	if err != nil {
 		return err
 	}
 
-	//TODO: copy code in the container
+	//TODO: copy code (tar archive) in the container
 
-	cmd := []string{"echo", "Hello world"}
-	err = cf.Start(contID, cmd)
+	err = cf.Start(contID)
 
 	return err
 }
