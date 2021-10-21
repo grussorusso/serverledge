@@ -3,7 +3,6 @@ package containers
 import (
 	"context"
 	"io"
-	"log"
 	"os"
 
 	"github.com/docker/docker/client"
@@ -27,7 +26,7 @@ func InitDockerContainerFactory() {
 	cf = &DockerFactory{cli, ctx}
 }
 
-func (cf *DockerFactory) Create (image string, cmd []string, opts *ContainerOptions) (ContainerID, error) {
+func (cf *DockerFactory) Create (image string, opts *ContainerOptions) (ContainerID, error) {
 	reader, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
 	if err != nil {
 		return "", err
@@ -36,24 +35,19 @@ func (cf *DockerFactory) Create (image string, cmd []string, opts *ContainerOpti
 
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
 		Image: image,
-		Cmd:   cmd,
+		Cmd:   opts.Cmd,
+		Env: opts.Env,
 		Tty:   false,
 	}, nil, nil, nil, "")
 
 	return resp.ID, err
 }
 
-func (cf *DockerFactory) Start (contID ContainerID) error {
-	// TODO: test copy
-	content, ferr := os.Open("/tmp/prova.tar")
-	defer content.Close()
-	if ferr != nil {
-		log.Fatalf("Reading failed: %v", ferr)
-	}
-	if err := cf.cli.CopyToContainer(cf.ctx, contID, "/",  content, types.CopyToContainerOptions{}); err != nil {
-		log.Fatalf("Copy failed: %v", err)
-	}
+func (cf *DockerFactory) CopyToContainer (contID ContainerID, content io.Reader, destPath string)  error {
+	return cf.cli.CopyToContainer(cf.ctx, contID, destPath,  content, types.CopyToContainerOptions{})
+}
 
+func (cf *DockerFactory) Start (contID ContainerID) error {
 	if err := cf.cli.ContainerStart(cf.ctx, contID, types.ContainerStartOptions{}); err != nil {
 		return err
 	}

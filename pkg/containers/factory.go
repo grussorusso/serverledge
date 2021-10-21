@@ -1,10 +1,16 @@
 package containers
 
+import "io"
+
 type ContainerOptions struct {
+	Cmd []string
+	Env []string
+	MemoryMB int32
 }
 
 type Factory interface {
-	Create(string, []string, *ContainerOptions) (ContainerID, error)
+	Create(string, *ContainerOptions) (ContainerID, error)
+	CopyToContainer (ContainerID, io.Reader, string) error
 	Start(ContainerID)  error
 }
 
