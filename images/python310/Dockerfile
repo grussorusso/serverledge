@@ -4,3 +4,5 @@ RUN mkdir -p /app
 COPY executor /
 
 COPY entrypoint.py /
+
+CMD /executor

@@ -24,15 +24,11 @@ func WarmStart (r *functions.Request, c ContainerID) (string, error) {
 func ColdStart (r *functions.Request) (string, error) {
 	runtimeInfo := runtimeToInfo[r.Fun.Runtime]
 	image := runtimeInfo.Image
-	cmd := runtimeInfo.Command
 	log.Printf("Starting new container for %s (image: %s)", r.Fun, image)
 
 	// TODO: set memory
 
-	opts := &ContainerOptions {
-		Cmd: cmd,
-	}
-	contID, err := cf.Create(image, opts)
+	contID, err := cf.Create(image, &ContainerOptions{})
 	if err != nil {
 		log.Printf("Failed container creation: %v", err)
 		return "", err
@@ -57,6 +53,14 @@ func ColdStart (r *functions.Request) (string, error) {
 }
 
 func invoke (contID string, r *functions.Request) (string, error) {
-	//TODO: send request to executor within container
+	//TODO: send request to executor within container (command, handler,
+	//params...)
+	ipAddr, err := cf.GetIPAddress(contID)
+	if err != nil {
+		log.Printf("Failed to retrieve IP address for container: %v", err)
+		return "", err
+	}
+
+	log.Printf("Invoking function on container: %v", ipAddr)
 	return "", nil
 }

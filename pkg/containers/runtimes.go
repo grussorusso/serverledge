@@ -2,7 +2,7 @@ package containers
 
 type RuntimeInfo struct {
 	Image string
-	Command []string
+	InvocationCmd []string
 }
 
 var runtimeToInfo = map[string]RuntimeInfo{

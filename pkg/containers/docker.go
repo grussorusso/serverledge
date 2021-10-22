@@ -9,7 +9,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/pkg/stdcopy"
+//	"github.com/docker/docker/pkg/stdcopy"
 )
 
 type DockerFactory struct {
@@ -53,27 +53,35 @@ func (cf *DockerFactory) Start (contID ContainerID) error {
 		return err
 	}
 
-	statusCh, errCh := cf.cli.ContainerWait(cf.ctx, contID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
-		}
-	case <-statusCh:
-	}
-
-	// TODO: do we need logs?
-	out, err := cf.cli.ContainerLogs(cf.ctx, contID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		return err
-	}
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-
-	// TODO Remove Container
-	if errRm := cf.cli.ContainerRemove(cf.ctx, contID, types.ContainerRemoveOptions{}); errRm != nil {
-		log.Printf("Failed to remove container: %v", errRm)
-	}
+//	statusCh, errCh := cf.cli.ContainerWait(cf.ctx, contID, container.WaitConditionNotRunning)
+//	select {
+//	case err := <-errCh:
+//		if err != nil {
+//			return err
+//		}
+//	case <-statusCh:
+//	}
+//
+//	// TODO: do we need logs?
+//	out, err := cf.cli.ContainerLogs(cf.ctx, contID, types.ContainerLogsOptions{ShowStdout: true})
+//	if err != nil {
+//		return err
+//	}
+//	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+//
+//	// TODO Remove Container
+//	if errRm := cf.cli.ContainerRemove(cf.ctx, contID, types.ContainerRemoveOptions{}); errRm != nil {
+//		log.Printf("Failed to remove container: %v", errRm)
+//	}
 
 	return nil
 }
 
+func (cf *DockerFactory) GetIPAddress(contID ContainerID) (string, error) {
+	contJson, err := cf.cli.ContainerInspect(cf.ctx, contID)
+	if err != nil {
+		return "", err
+	}
+
+	return contJson.NetworkSettings.IPAddress, nil
+}
