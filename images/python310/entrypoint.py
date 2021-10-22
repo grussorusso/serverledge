@@ -5,6 +5,7 @@ import sys
 
 handler = os.environ["HANDLER"] 
 handler_dir = os.environ["HANDLER_DIR"]
+result_file = os.environ["RESULT_FILE"]
 
 if "params" in os.environ:
     params = json.loads(os.environ["PARAMS"]) 
@@ -28,7 +29,7 @@ exec(f"import {module}")
 # Call function
 exec(f"result = {module}.{func_name}(params, context)")
 
-print(result) #TODO
-with open("/result.json", "w") as of:
+#print(result)
+with open(RESULT_FILE, "w") as of:
     json.dump(result, of)
 

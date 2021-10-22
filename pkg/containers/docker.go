@@ -3,6 +3,7 @@ package containers
 import (
 	"context"
 	"io"
+	"log"
 	"os"
 
 	"github.com/docker/docker/client"
@@ -61,12 +62,18 @@ func (cf *DockerFactory) Start (contID ContainerID) error {
 	case <-statusCh:
 	}
 
+	// TODO: do we need logs?
 	out, err := cf.cli.ContainerLogs(cf.ctx, contID, types.ContainerLogsOptions{ShowStdout: true})
 	if err != nil {
 		return err
 	}
-
 	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+
+	// TODO Remove Container
+	if errRm := cf.cli.ContainerRemove(cf.ctx, contID, types.ContainerRemoveOptions{}); errRm != nil {
+		log.Printf("Failed to remove container: %v", errRm)
+	}
+
 	return nil
 }
 

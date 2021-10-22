@@ -1,5 +1,10 @@
 package containers
 
-var runtimeToImage = map[string]string{
-	"python310": "grussorusso/serverledge-python310",
+type RuntimeInfo struct {
+	Image string
+	Command []string
+}
+
+var runtimeToInfo = map[string]RuntimeInfo{
+	"python310": RuntimeInfo{"grussorusso/serverledge-python310", []string{"python","/entrypoint.py"}},
 }

@@ -26,8 +26,8 @@ func invokeFunction(c echo.Context) error {
 	r := &functions.Request{function, time.Now()}
 
 	log.Printf("New request: %v", r)
-	if err := scheduling.Schedule(r); err == nil {
-		return c.JSON(http.StatusOK, "OK")
+	if result, err := scheduling.Schedule(r); err == nil {
+		return c.JSON(http.StatusOK, result)
 	} else {
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
