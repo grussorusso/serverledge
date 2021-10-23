@@ -28,10 +28,11 @@ func invokeFunction(c echo.Context) error {
 
 	log.Printf("New request: %v", r)
 	if result, err := scheduling.Schedule(r); err == nil {
-		return c.JSON(http.StatusOK, result)
+		log.Printf("Request OK: %s", result)
+		return c.String(http.StatusOK, result)
 	} else {
 		log.Printf("Failed invocation of %s: %v", function, err)
-		return c.JSON(http.StatusServiceUnavailable, "")
+		return c.String(http.StatusServiceUnavailable, "")
 	}
 }
 

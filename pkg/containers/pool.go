@@ -2,7 +2,6 @@ package containers
 
 import (
 	"log"
-	"io/ioutil"
 	"net/http"
 	"bytes"
 	"encoding/json"
@@ -61,8 +60,6 @@ func ColdStart (r *functions.Request) (string, error) {
 func invoke (contID string, r *functions.Request) (string, error) {
 	cmd := runtimeToInfo[r.Fun.Runtime].InvocationCmd
 
-	//TODO: send request to executor within container (command, handler,
-	//params...)
 	ipAddr, err := cf.GetIPAddress(contID)
 	if err != nil {
 		log.Printf("Failed to retrieve IP address for container: %v", err)
@@ -79,18 +76,20 @@ func invoke (contID string, r *functions.Request) (string, error) {
 	}
 	postBody,_ := json.Marshal(req)
 	postBodyB := bytes.NewBuffer(postBody)
-	log.Printf("Sending request with body: %s", postBody)
-	resp, err := http.Post(fmt.Sprintf("http://%s:%d/invoke", ipAddr, executor.DEFAULT_EXECUTOR_PORT), "application/json", postBodyB)
-	//Handle Error
+	resp, err := http.Post(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
+		executor.DEFAULT_EXECUTOR_PORT), "application/json", postBodyB)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	//Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+
+	d := json.NewDecoder(resp.Body)
+	response := &executor.InvocationResult{}
+	err = d.Decode(response)
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Could not parse invocation response")
+		return "", err
 	}
-	sb := string(body)
-	return sb, nil
+
+	return response.Result, nil
 }
