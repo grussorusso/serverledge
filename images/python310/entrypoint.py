@@ -30,6 +30,6 @@ exec(f"import {module}")
 exec(f"result = {module}.{func_name}(params, context)")
 
 #print(result)
-with open(RESULT_FILE, "w") as of:
+with open(result_file, "w") as of:
     json.dump(result, of)
 

@@ -79,6 +79,7 @@ func invoke (contID string, r *functions.Request) (string, error) {
 	}
 	postBody,_ := json.Marshal(req)
 	postBodyB := bytes.NewBuffer(postBody)
+	log.Printf("Sending request with body: %s", postBody)
 	resp, err := http.Post(fmt.Sprintf("http://%s:%d/invoke", ipAddr, executor.DEFAULT_EXECUTOR_PORT), "application/json", postBodyB)
 	//Handle Error
 	if err != nil {

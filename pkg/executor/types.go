@@ -9,5 +9,5 @@ type InvocationRequest struct {
 
 type InvocationResult struct {
 	Success bool
-	Result map[string]string
+	Result string
 }
