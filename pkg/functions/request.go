@@ -5,6 +5,7 @@ import "time"
 
 type Request struct {
 	Fun *Function
+	Params map[string]string
 	Arrival time.Time
 }
 

@@ -23,12 +23,14 @@ func invokeFunction(c echo.Context) error {
 		log.Printf("Request for unknown function '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
-	r := &functions.Request{function, time.Now()}
+	// TODO: params
+	r := &functions.Request{Fun: function, Arrival: time.Now()}
 
 	log.Printf("New request: %v", r)
 	if result, err := scheduling.Schedule(r); err == nil {
 		return c.JSON(http.StatusOK, result)
 	} else {
+		log.Printf("Failed invocation of %s: %v", function, err)
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 }

@@ -3,7 +3,7 @@ package containers
 import (
 	"context"
 	"io"
-	"log"
+	//"log"
 	"os"
 
 	"github.com/docker/docker/client"

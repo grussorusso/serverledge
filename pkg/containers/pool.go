@@ -2,9 +2,15 @@ package containers
 
 import (
 	"log"
+	"io/ioutil"
+	"net/http"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/grussorusso/serverledge/pkg/functions"
+	"github.com/grussorusso/serverledge/pkg/executor"
 )
 
 type ContainerID = string
@@ -53,6 +59,8 @@ func ColdStart (r *functions.Request) (string, error) {
 }
 
 func invoke (contID string, r *functions.Request) (string, error) {
+	cmd := runtimeToInfo[r.Fun.Runtime].InvocationCmd
+
 	//TODO: send request to executor within container (command, handler,
 	//params...)
 	ipAddr, err := cf.GetIPAddress(contID)
@@ -62,5 +70,26 @@ func invoke (contID string, r *functions.Request) (string, error) {
 	}
 
 	log.Printf("Invoking function on container: %v", ipAddr)
-	return "", nil
+
+	req := executor.InvocationRequest{
+		cmd,
+		r.Params,
+		r.Fun.Handler,
+		"/app",
+	}
+	postBody,_ := json.Marshal(req)
+	postBodyB := bytes.NewBuffer(postBody)
+	resp, err := http.Post(fmt.Sprintf("http://%s:%d/invoke", ipAddr, executor.DEFAULT_EXECUTOR_PORT), "application/json", postBodyB)
+	//Handle Error
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	//Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	sb := string(body)
+	return sb, nil
 }
