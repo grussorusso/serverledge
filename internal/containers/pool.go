@@ -1,32 +1,32 @@
 package containers
 
 import (
-	"log"
-	"net/http"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
-	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/internal/executor"
+	"github.com/grussorusso/serverledge/internal/functions"
 )
 
 type ContainerID = string
 
-func GetWarmContainer (f *functions.Function) (contID ContainerID, found bool) {
+func GetWarmContainer(f *functions.Function) (contID ContainerID, found bool) {
 	found = false
 	// TODO: check if we have a warm container for f
 	// TODO: synchronization needed
 	return contID, found
 }
 
-func WarmStart (r *functions.Request, c ContainerID) (string, error) {
+func WarmStart(r *functions.Request, c ContainerID) (string, error) {
 	log.Printf("Starting warm container %v", c)
 	return invoke(c, r)
 }
 
-func ColdStart (r *functions.Request) (string, error) {
+func ColdStart(r *functions.Request) (string, error) {
 	runtimeInfo := runtimeToInfo[r.Fun.Runtime]
 	image := runtimeInfo.Image
 	log.Printf("Starting new container for %s (image: %s)", r.Fun, image)
@@ -57,13 +57,12 @@ func ColdStart (r *functions.Request) (string, error) {
 	return invoke(contID, r)
 }
 
-func invoke (contID string, r *functions.Request) (string, error) {
+func invoke(contID string, r *functions.Request) (string, error) {
 	cmd := runtimeToInfo[r.Fun.Runtime].InvocationCmd
 
 	ipAddr, err := cf.GetIPAddress(contID)
 	if err != nil {
-		log.Printf("Failed to retrieve IP address for container: %v", err)
-		return "", err
+		return "", fmt.Errorf("Failed to retrieve IP address for container: %v", err)
 	}
 
 	log.Printf("Invoking function on container: %v", ipAddr)
@@ -74,12 +73,25 @@ func invoke (contID string, r *functions.Request) (string, error) {
 		r.Fun.Handler,
 		"/app",
 	}
-	postBody,_ := json.Marshal(req)
+	response, err := _invoke(ipAddr, &req)
+	if err != nil {
+		return "", fmt.Errorf("Execution request failed: %v", err)
+	}
+
+	if !response.Success {
+		return "", fmt.Errorf("Function execution failed")
+	}
+
+	return response.Result, nil
+}
+
+func _invoke(ipAddr string, req *executor.InvocationRequest) (*executor.InvocationResult, error) {
+	postBody, _ := json.Marshal(req)
 	postBodyB := bytes.NewBuffer(postBody)
 	resp, err := http.Post(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), "application/json", postBodyB)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("Request to executor failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -87,9 +99,8 @@ func invoke (contID string, r *functions.Request) (string, error) {
 	response := &executor.InvocationResult{}
 	err = d.Decode(response)
 	if err != nil {
-		log.Printf("Could not parse invocation response")
-		return "", err
+		return nil, fmt.Errorf("Parsing executor response failed: %v", err)
 	}
 
-	return response.Result, nil
+	return response, nil
 }
