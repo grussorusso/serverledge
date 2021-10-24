@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/grussorusso/serverledge/pkg/functions"
-	"github.com/grussorusso/serverledge/pkg/executor"
+	"github.com/grussorusso/serverledge/internal/functions"
+	"github.com/grussorusso/serverledge/internal/executor"
 )
 
 type ContainerID = string

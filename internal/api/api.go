@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grussorusso/serverledge/pkg/functions"
-	"github.com/grussorusso/serverledge/pkg/scheduling"
+	"github.com/grussorusso/serverledge/internal/functions"
+	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 )
 

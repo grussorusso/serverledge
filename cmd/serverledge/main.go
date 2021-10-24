@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/grussorusso/serverledge/pkg/api"
-	"github.com/grussorusso/serverledge/pkg/containers"
+	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )

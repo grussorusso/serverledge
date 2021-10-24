@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/grussorusso/serverledge/pkg/executor"
+	"github.com/grussorusso/serverledge/internal/executor"
 )
 
 func main() {

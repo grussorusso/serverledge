@@ -1,7 +1,7 @@
 package scheduling
 
-import "github.com/grussorusso/serverledge/pkg/containers"
-import "github.com/grussorusso/serverledge/pkg/functions"
+import "github.com/grussorusso/serverledge/internal/containers"
+import "github.com/grussorusso/serverledge/internal/functions"
 
 func Schedule (r *functions.Request) (string, error) {
 	// TODO: refactor: get containerID and then invoke on container
