@@ -10,10 +10,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// GetFunctions handles a request to list the functions available in the system.
 func GetFunctions(c echo.Context) error {
+	// TODO
 	return c.JSON(http.StatusOK, "No functions in the system.")
 }
 
+// InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
 	funcName := c.Param("fun")
 	function, ok := functions.GetFunction(funcName)

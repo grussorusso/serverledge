@@ -12,8 +12,9 @@ import (
 	"github.com/grussorusso/serverledge/internal/functions"
 )
 
-type ContainerID = string
-
+//GetWarmContainer searches for a warm container for a given function.
+//A warm container is in running/paused state and has already been initialized
+//with the function code.
 func GetWarmContainer(f *functions.Function) (contID ContainerID, found bool) {
 	found = false
 	// TODO: check if we have a warm container for f
@@ -21,43 +22,40 @@ func GetWarmContainer(f *functions.Function) (contID ContainerID, found bool) {
 	return contID, found
 }
 
-func WarmStart(r *functions.Request, c ContainerID) (string, error) {
-	log.Printf("Starting warm container %v", c)
-	return invoke(c, r)
-}
-
-func ColdStart(r *functions.Request) (string, error) {
-	runtimeInfo := runtimeToInfo[r.Fun.Runtime]
-	image := runtimeInfo.Image
-	log.Printf("Starting new container for %s (image: %s)", r.Fun, image)
+//NewContainer creates and starts a new container for the given function.
+func NewContainer(fun *functions.Function) (ContainerID, error) {
+	image := runtimeToInfo[fun.Runtime].Image
+	log.Printf("Starting new container for %s (image: %s)", fun, image)
 
 	// TODO: set memory
 
+	// TODO: acquire resources with synchronization
+
 	contID, err := cf.Create(image, &ContainerOptions{})
 	if err != nil {
-		log.Printf("Failed container creation: %v", err)
 		return "", err
 	}
 
-	content, ferr := os.Open(r.Fun.SourceTarURL) // TODO: HTTP
+	content, ferr := os.Open(fun.SourceTarURL) // TODO: HTTP
 	defer content.Close()
 	if ferr != nil {
-		log.Fatalf("Reading failed: %v", ferr)
+		return "", ferr
 	}
 	err = cf.CopyToContainer(contID, content, "/app/")
 	if err != nil {
-		log.Fatalf("Copy failed: %v", err)
+		return "", ferr
 	}
 
 	err = cf.Start(contID)
 	if err != nil {
-		log.Fatalf("Starting container failed: %v", err)
+		return "", ferr
 	}
 
-	return invoke(contID, r)
+	return contID, nil
 }
 
-func invoke(contID string, r *functions.Request) (string, error) {
+//Invoke serves a request on the specified container.
+func Invoke(contID ContainerID, r *functions.Request) (string, error) {
 	cmd := runtimeToInfo[r.Fun.Runtime].InvocationCmd
 
 	ipAddr, err := cf.GetIPAddress(contID)

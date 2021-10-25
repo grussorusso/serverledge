@@ -1,10 +1,11 @@
 package containers
 
+//RuntimeInfo contains information about a supported function runtime env.
 type RuntimeInfo struct {
-	Image string
+	Image         string
 	InvocationCmd []string
 }
 
 var runtimeToInfo = map[string]RuntimeInfo{
-	"python310": RuntimeInfo{"grussorusso/serverledge-python310", []string{"python","/entrypoint.py"}},
+	"python310": RuntimeInfo{"grussorusso/serverledge-python310", []string{"python", "/entrypoint.py"}},
 }

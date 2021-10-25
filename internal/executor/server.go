@@ -2,7 +2,6 @@ package executor
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -46,50 +45,27 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		os.Setenv("PARAMS", string(paramsB))
 	}
 
-	log.Printf("Received request: %v", req)
-
 	// Exec handler process
 	cmd := req.Command
 	if cmd == nil || len(cmd) < 1 {
 		log.Printf("Invalid request!")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	//executable, lookErr := exec.LookPath(cmd[0])
-	//if lookErr != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
-	//log.Printf("Looked up executable: %s", executable)
-
 	var resp *InvocationResult
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
-	out, err := execCmd.CombinedOutput()
+	_, err = execCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+		log.Printf("cmd.Run() failed with %s\n", err)
 		resp = &InvocationResult{false, ""}
 	} else {
-		log.Printf("Handler command complete")
 		result := readExecutionResult(resultFile)
 		resp = &InvocationResult{true, result}
-		fmt.Printf("combined out:\n%s\n", string(out))
+		//fmt.Printf("combined out:\n%s\n", string(out)) // TODO: use output
 	}
 
-	//env := os.Environ()
-	//execErr := syscall.Exec(executable, cmd, env)
-	//log.Printf("Executed cmd")
-	//if execErr != nil {
-	//	log.Printf("Handler command failed")
-	//	resp = &InvocationResult{false, ""}
-	//} else {
-	//	log.Printf("Handler command complete")
-	//	result := readExecutionResult(RESULT_FILE)
-	//	resp = &InvocationResult{true, result}
-	//}
-
 	w.Header().Set("Content-Type", "application/json")
-	log.Printf("Sending response: %v", resp)
 	respBody, _ := json.Marshal(resp)
 	w.Write(respBody)
-	//json.NewEncoder(w).Encode(resp)
 }

@@ -1,15 +1,23 @@
 package scheduling
 
-import "github.com/grussorusso/serverledge/internal/containers"
-import "github.com/grussorusso/serverledge/internal/functions"
+import (
+	"fmt"
 
-func Schedule (r *functions.Request) (string, error) {
-	// TODO: refactor: get containerID and then invoke on container
-	containerID, warm := containers.GetWarmContainer(r.Fun)
-	if warm {
-		return containers.WarmStart(r, containerID)
-	} else {
-		return containers.ColdStart(r)
+	"github.com/grussorusso/serverledge/internal/containers"
+	"github.com/grussorusso/serverledge/internal/functions"
+)
+
+func Schedule(r *functions.Request) (string, error) {
+	containerID, ok := containers.GetWarmContainer(r.Fun)
+	if !ok {
+		newContainer, err := containers.NewContainer(r.Fun)
+		if err != nil {
+			// TODO: this may fail because we run out of memory/CPU
+			// handle this error differently?
+			return "", fmt.Errorf("Could not create a new container: %v", err)
+		}
+		containerID = newContainer
 	}
-}
 
+	return containers.Invoke(containerID, r)
+}
