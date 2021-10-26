@@ -2,13 +2,14 @@ package scheduling
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/grussorusso/serverledge/internal/functions"
 )
 
 func Schedule(r *functions.Request) (string, error) {
-	containerID, ok := containers.GetWarmContainer(r.Fun)
+	containerID, ok := containers.AcquireWarmContainer(r.Fun)
 	if !ok {
 		newContainer, err := containers.NewContainer(r.Fun)
 		if err != nil {
@@ -17,7 +18,11 @@ func Schedule(r *functions.Request) (string, error) {
 			return "", fmt.Errorf("Could not create a new container: %v", err)
 		}
 		containerID = newContainer
+	} else {
+		log.Printf("Using a warm container for: %v", r)
 	}
+
+	// TODO: defer marking the container as ready
 
 	return containers.Invoke(containerID, r)
 }
