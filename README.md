@@ -43,3 +43,19 @@ started.
  - Functions management relying on `etcd` (creation of new functions, ...)
  - Offloading to other servers in the Cloud
  - Auto-scaling servers in the Cloud
+
+## Organization of the Repository
+
+	├── cmd
+	│   ├── executor     # entrypoint for the Executor 
+	│   └── serverledge  # entrypoint for the server
+	├── images           # material to build runtime Docker images
+	│   └── python310
+	└── internal         # internal packages
+	    ├── api          # main server API
+	    ├── config       # configuration utilities
+	    ├── containers   # container pools, containers management
+	    ├── executor     # executor component
+	    ├── functions    # function-related stuff
+	    └── scheduling   # scheduling logic
+
