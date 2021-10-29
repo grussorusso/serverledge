@@ -1,13 +1,18 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 func startAPIServer() {
+	config.ReadConfiguration()
+
 	e := echo.New()
 	e.Use(middleware.Recover())
 
@@ -17,8 +22,9 @@ func startAPIServer() {
 	e.GET("/functions", api.GetFunctions)
 
 	// Start server
+	portNumber := config.GetInt("api.port", 1323)
 	e.HideBanner = true
-	e.Logger.Fatal(e.Start(":1323"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", portNumber)))
 }
 
 func main() {
