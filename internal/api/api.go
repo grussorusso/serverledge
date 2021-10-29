@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -24,8 +26,14 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Request for unknown function '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
-	// TODO: params
-	r := &functions.Request{Fun: function, Arrival: time.Now()}
+	params_map := make(map[string]string)
+	err := json.NewDecoder(c.Request().Body).Decode(&params_map)
+	if err != nil && err != io.EOF {
+		log.Printf("Could not parse request params: %v", err)
+		return err
+	}
+
+	r := &functions.Request{Fun: function, Params: params_map, Arrival: time.Now()}
 
 	log.Printf("New request: %v", r)
 	if result, err := scheduling.Schedule(r); err == nil {

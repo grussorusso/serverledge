@@ -7,7 +7,7 @@ handler = os.environ["HANDLER"]
 handler_dir = os.environ["HANDLER_DIR"]
 result_file = os.environ["RESULT_FILE"]
 
-if "params" in os.environ:
+if "PARAMS" in os.environ:
     params = json.loads(os.environ["PARAMS"]) 
 else:
     params = {}

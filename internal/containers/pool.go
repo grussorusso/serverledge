@@ -23,10 +23,6 @@ type functionPool struct {
 var funToPool map[string]*functionPool = make(map[string]*functionPool)
 var functionPoolsMutex sync.Mutex
 
-//type containerInfo struct {
-//	contID ContainerID
-//}
-
 //getFunctionPool retrieves (or creates) the container pool for a function.
 func getFunctionPool(f *functions.Function) *functionPool {
 	functionPoolsMutex.Lock()
@@ -162,6 +158,8 @@ func Invoke(contID ContainerID, r *functions.Request) (string, error) {
 	return response.Result, nil
 }
 
+// _invoke interacts with the Executor running in the container to invoke the
+// function through a HTTP request.
 func _invoke(ipAddr string, req *executor.InvocationRequest) (*executor.InvocationResult, error) {
 	postBody, _ := json.Marshal(req)
 	postBodyB := bytes.NewBuffer(postBody)
