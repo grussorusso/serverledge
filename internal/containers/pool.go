@@ -3,7 +3,7 @@ package containers
 import (
 	"container/list"
 	"log"
-	"os"
+	"net/http"
 	"sync"
 
 	"github.com/grussorusso/serverledge/internal/functions"
@@ -82,6 +82,8 @@ func ReleaseContainer(contID ContainerID, f *functions.Function) {
 	defer fp.Unlock()
 
 	fp.putReadyContainer(contID)
+
+	//TODO: timer for container destruction should start now
 }
 
 //NewContainer creates and starts a new container for the given function.
@@ -93,26 +95,31 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 
 	// TODO: set memory
 
-	// TODO: acquire resources with synchronization
+	// TODO: check if we have enough resources before creating new
+	// containers
 
 	contID, err := cf.Create(image, &ContainerOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	content, ferr := os.Open(fun.SourceTarURL) // TODO: HTTP
-	defer content.Close()
-	if ferr != nil {
-		return "", ferr
-	}
-	err = cf.CopyToContainer(contID, content, "/app/")
+	resp, err := http.Get(fun.SourceTarURL)
 	if err != nil {
-		return "", ferr
+		return "", err
+	}
+	defer resp.Body.Close()
+	//f, err := os.Create("/tmp/prova.tar")
+	//defer f.Close()
+	//_, err = io.Copy(f, resp.Body)
+
+	err = cf.CopyToContainer(contID, resp.Body, "/app/")
+	if err != nil {
+		return "", err
 	}
 
 	err = cf.Start(contID)
 	if err != nil {
-		return "", ferr
+		return "", err
 	}
 
 	fp := getFunctionPool(fun)

@@ -13,7 +13,7 @@ type Function struct {
 func GetFunction(name string) (*Function, bool) {
 	//TODO: info should be retrieved from the DB (or possibly through a
 	//local cache)
-	return &Function{"prova", "python310", 256, "function.handler", "/home/gabriele/function.tar"}, true
+	return &Function{"prova", "python310", 256, "function.handler", "http://www.ce.uniroma2.it/~russorusso/python310.tar"}, true
 }
 
 func (f *Function) String() string {
