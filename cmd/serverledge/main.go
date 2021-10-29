@@ -11,8 +11,6 @@ import (
 )
 
 func startAPIServer() {
-	config.ReadConfiguration()
-
 	e := echo.New()
 	e.Use(middleware.Recover())
 
@@ -28,6 +26,9 @@ func startAPIServer() {
 }
 
 func main() {
+	config.ReadConfiguration()
+
 	containers.InitDockerContainerFactory()
+
 	startAPIServer()
 }
