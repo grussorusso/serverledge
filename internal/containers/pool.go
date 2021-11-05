@@ -3,7 +3,7 @@ package containers
 import (
 	"container/list"
 	"log"
-	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/grussorusso/serverledge/internal/functions"
@@ -103,7 +103,7 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 		return "", err
 	}
 
-	resp, err := http.Get(fun.SourceTarURL)
+	/*resp, err := http.Get(fun.SourceTarURL)
 	if err != nil {
 		return "", err
 	}
@@ -112,7 +112,9 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 	//defer f.Close()
 	//_, err = io.Copy(f, resp.Body)
 
-	err = cf.CopyToContainer(contID, resp.Body, "/app/")
+	err = cf.CopyToContainer(contID, resp.Body, "/app/")*/
+
+	err = cf.CopyToContainer(contID, strings.NewReader(fun.FunctionCode), "/app/")
 	if err != nil {
 		return "", err
 	}
