@@ -114,7 +114,7 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 
 	err = cf.CopyToContainer(contID, resp.Body, "/app/")*/
 
-	err = cf.CopyToContainer(contID, strings.NewReader(fun.FunctionCode), "/app/")
+	err = cf.CopyToContainer(contID, strings.NewReader(fun.TarFunctionCode), "/app/")
 	if err != nil {
 		return "", err
 	}

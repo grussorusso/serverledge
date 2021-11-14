@@ -41,7 +41,7 @@ func main() {
 	cli.Put(ctx, "app2", string(jsonStr))
 
 	// test: getting back the application code
-	getresp, err := cli.Get(ctx, "app2")
+	getresp, err := cli.Get(ctx, "func")
 
 	print(string(getresp.Kvs[0].Value))
 	// use the response
