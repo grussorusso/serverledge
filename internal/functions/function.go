@@ -3,11 +3,11 @@ package functions
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"github.com/grussorusso/serverledge/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
+	"log"
 	"strconv"
 	"time"
 )
@@ -16,7 +16,7 @@ import (
 type Function struct {
 	Name            string
 	Runtime         string // example: python310
-	Memory          int
+	MemoryMB        int64  // MB
 	Handler         string // example: "module.function_name"
 	TarFunctionCode string // input is .tar
 }
@@ -27,7 +27,7 @@ func GetFunction(name string) (*Function, bool) {
 	val, found := getFromCache(name)
 	if !found {
 		// cache miss
-		fmt.Println("Cache miss!")
+		log.Println("Cache miss!")
 		f, response := getFromEtcd(name)
 		if !response {
 			return nil, false
@@ -38,7 +38,7 @@ func GetFunction(name string) (*Function, bool) {
 	}
 
 	//cache hit
-	fmt.Println("Cache Hit")
+	log.Println("Cache Hit")
 	return val, true
 
 	//return &Function{"prova", "python310", 256, "function.handler", "http://www.ce.uniroma2.it/~russorusso/python310.tar"}, true
@@ -55,7 +55,9 @@ func getFromCache(name string) (*Function, bool) {
 		return nil, false
 	}
 	//cache hit
-	return f.(*Function), true
+	//return a safe copy of the function previously obtained
+	function := *f.(*Function)
+	return &function, true
 
 }
 
@@ -84,5 +86,5 @@ func getFromEtcd(name string) (*Function, bool) {
 	decoded, _ := base64.StdEncoding.DecodeString(jsonMap["code"])
 	memory, _ := strconv.Atoi(jsonMap["memory"])
 
-	return &Function{name, jsonMap["runtime"], memory, jsonMap["handler"], string(decoded)}, true
+	return &Function{name, jsonMap["runtime"], int64(memory), jsonMap["handler"], string(decoded)}, true
 }

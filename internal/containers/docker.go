@@ -47,7 +47,9 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		Cmd:   opts.Cmd,
 		Env:   opts.Env,
 		Tty:   false,
-	}, nil, nil, nil, "")
+	}, &container.HostConfig{
+		Resources: container.Resources{Memory: opts.MemoryMB * 1048576}, // convert to bytes
+	}, nil, nil, "")
 
 	return resp.ID, err
 }
@@ -85,6 +87,13 @@ func (cf *DockerFactory) GetIPAddress(contID ContainerID) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return contJson.NetworkSettings.IPAddress, nil
+}
+
+func (cf *DockerFactory) GetMemoryMB(contID ContainerID) (int64, error) {
+	contJson, err := cf.cli.ContainerInspect(cf.ctx, contID)
+	if err != nil {
+		return -1, err
+	}
+	return contJson.HostConfig.Memory / 1048576, nil
 }

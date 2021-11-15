@@ -27,6 +27,8 @@ func startAPIServer() {
 }
 
 func cacheSetup() {
+	//todo fix default values
+
 	// setup cache space
 	cache.Size = config.GetInt("cache.size", 10)
 
@@ -50,7 +52,13 @@ func main() {
 	//setting up cache parameters
 	cacheSetup()
 
+	//setup memory MB
+	containers.TotalMemoryMB = int64(config.GetInt("containers.memory", 1024))
+
 	containers.InitDockerContainerFactory()
+
+	//janitor periodically remove expired warm container
+	containers.GetJanitorInstance()
 
 	startAPIServer()
 }

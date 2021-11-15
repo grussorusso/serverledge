@@ -33,15 +33,15 @@ func main() {
 	}
 	encoded := base64.StdEncoding.EncodeToString(b)
 	// store all the info  as a json string
-	fieldMap := map[string]string{"runtime": "python310", "memory": "256", "handler": "function.handler", "code": encoded}
+	fieldMap := map[string]string{"runtime": "python310", "memory": "768", "handler": "function.handler", "code": encoded}
 	jsonStr, _ := json.Marshal(fieldMap)
 
 	json.Unmarshal(jsonStr, &raw)
 	//insert a code (value) inside the etcd store associated with his name ( key )
-	cli.Put(ctx, "app2", string(jsonStr))
+	cli.Put(ctx, "app", string(jsonStr))
 
 	// test: getting back the application code
-	getresp, err := cli.Get(ctx, "func")
+	getresp, err := cli.Get(ctx, "app")
 
 	print(string(getresp.Kvs[0].Value))
 	// use the response

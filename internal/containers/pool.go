@@ -2,9 +2,12 @@ package containers
 
 import (
 	"container/list"
+	"errors"
+	"github.com/grussorusso/serverledge/internal/config"
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/grussorusso/serverledge/internal/functions"
 )
@@ -12,11 +15,20 @@ import (
 type functionPool struct {
 	sync.Mutex
 	busy  *list.List
-	ready *list.List
+	ready *list.List //warm containers
 }
 
-var funToPool map[string]*functionPool = make(map[string]*functionPool)
+type warmContainer struct {
+	Expiration int64
+	contID     ContainerID
+}
+
+var funToPool = make(map[string]*functionPool)
 var functionPoolsMutex sync.Mutex
+
+var usedMemoryMB int64 = 0 // MB
+var memoryMutex sync.Mutex
+var TotalMemoryMB int64
 
 //getFunctionPool retrieves (or creates) the container pool for a function.
 func getFunctionPool(f *functions.Function) *functionPool {
@@ -39,7 +51,7 @@ func (fp *functionPool) acquireReadyContainer() (ContainerID, bool) {
 	}
 
 	fp.ready.Remove(elem)
-	contID := elem.Value.(ContainerID)
+	contID := elem.Value.(warmContainer).contID
 	fp.putBusyContainer(contID)
 
 	return contID, true
@@ -49,8 +61,11 @@ func (fp *functionPool) putBusyContainer(contID ContainerID) {
 	fp.busy.PushBack(contID)
 }
 
-func (fp *functionPool) putReadyContainer(contID ContainerID) {
-	fp.ready.PushBack(contID)
+func (fp *functionPool) putReadyContainer(contID ContainerID, expiration int64) {
+	fp.ready.PushBack(warmContainer{
+		contID:     contID,
+		Expiration: expiration,
+	})
 }
 
 func newFunctionPool(f *functions.Function) *functionPool {
@@ -76,14 +91,27 @@ func AcquireWarmContainer(f *functions.Function) (contID ContainerID, found bool
 
 // ReleaseContainer puts a container in the ready pool for a function.
 func ReleaseContainer(contID ContainerID, f *functions.Function) {
+	//time.Sleep(15 * time.Second)
 	log.Printf("Container released for %v: %v", f, contID)
 	fp := getFunctionPool(f)
 	fp.Lock()
 	defer fp.Unlock()
 
-	fp.putReadyContainer(contID)
+	// setup Expiration as time duration from now
+	//todo adjust default value
+	d := time.Duration(config.GetInt("container.expiration", 30)) * time.Second
+	fp.putReadyContainer(contID, time.Now().Add(d).UnixNano())
 
-	//TODO: timer for container destruction should start now
+	// we must update the busy list by removing this element
+	elem := fp.busy.Front()
+	for ok := elem != nil; ok; ok = elem != nil {
+		if elem.Value.(ContainerID) == contID {
+			fp.busy.Remove(elem) // delete the element from the busy list
+			break
+		}
+		elem.Next()
+	}
+
 }
 
 //NewContainer creates and starts a new container for the given function.
@@ -93,26 +121,26 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 	image := runtimeToInfo[fun.Runtime].Image
 	log.Printf("Starting new container for %s (image: %s)", fun, image)
 
-	// TODO: set memory
+	memoryMutex.Lock()
+	//memory check
+	if TotalMemoryMB-usedMemoryMB < fun.MemoryMB {
+		enoughMem, _ := dismissContainer(fun.MemoryMB)
+		if !enoughMem {
+			memoryMutex.Unlock()
+			//todo do offloading to the cloud
+			return "", errors.New("unable to create container: memory not available")
+		}
+	}
 
-	// TODO: check if we have enough resources before creating new
-	// containers
+	usedMemoryMB += fun.MemoryMB
+	memoryMutex.Unlock()
 
-	contID, err := cf.Create(image, &ContainerOptions{})
+	contID, err := cf.Create(image, &ContainerOptions{
+		MemoryMB: fun.MemoryMB,
+	})
 	if err != nil {
 		return "", err
 	}
-
-	/*resp, err := http.Get(fun.SourceTarURL)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	//f, err := os.Create("/tmp/prova.tar")
-	//defer f.Close()
-	//_, err = io.Copy(f, resp.Body)
-
-	err = cf.CopyToContainer(contID, resp.Body, "/app/")*/
 
 	err = cf.CopyToContainer(contID, strings.NewReader(fun.TarFunctionCode), "/app/")
 	if err != nil {
@@ -130,4 +158,110 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 	fp.putBusyContainer(contID) // We immediately mark it as busy
 
 	return contID, nil
+}
+
+type itemToDismiss struct {
+	contID ContainerID
+	pool   *functionPool
+	elem   *list.Element
+	memory int64
+}
+
+// dismissContainer ... this function is used to get free memory used for a new container
+// 2-phases: first, we find ready containers and collect them as a slice, second (cleanup phase) we delete the containers only and only if
+// the sum of their memory is >= requiredMemoryMB is
+func dismissContainer(requiredMemoryMB int64) (bool, error) {
+	functionPoolsMutex.Lock()
+	defer functionPoolsMutex.Unlock()
+
+	var cleanedMB int64 = 0
+	var containerToDismiss []itemToDismiss
+	var toUnlock []*functionPool
+	res := false
+
+	//first phase, research
+	for _, funPool := range funToPool {
+		funPool.Lock()
+		if funPool.ready.Len() > 0 {
+			toUnlock = append(toUnlock, funPool)
+			// every container into the funPool has the same memory (same function)
+			//so it is not important which one you destroy
+			elem := funPool.ready.Front()
+			for ok := true; ok; ok = elem != nil {
+				contID := elem.Value.(warmContainer).contID
+				memory, _ := cf.GetMemoryMB(contID)
+				containerToDismiss = append(containerToDismiss,
+					itemToDismiss{contID: contID, pool: funPool, elem: elem, memory: memory})
+
+				cleanedMB += memory
+				if cleanedMB >= requiredMemoryMB {
+					goto cleanup
+				}
+				//go on to the next one
+				elem = elem.Next()
+			}
+		} else {
+			// ready list is empty
+			funPool.Unlock()
+		}
+	}
+
+cleanup: // second phase, cleanup
+	// memory check
+	if cleanedMB >= requiredMemoryMB {
+		for _, item := range containerToDismiss {
+			item.pool.ready.Remove(item.elem) // remove the container from the funPool
+			err := cf.Destroy(item.contID)    // destroy the container
+			if err != nil {
+				res = false
+				goto unlock
+			}
+			usedMemoryMB -= item.memory
+		}
+
+		res = true
+	}
+
+unlock:
+	for _, elem := range toUnlock {
+		elem.Unlock()
+	}
+
+	return res, nil
+}
+
+// DeleteExpiredContainer is called by the container janitor
+// Deletes expired warm containers
+func DeleteExpiredContainer() {
+	now := time.Now().UnixNano()
+
+	functionPoolsMutex.Lock()
+	defer functionPoolsMutex.Unlock()
+
+	for _, pool := range funToPool {
+		pool.Lock()
+
+		elem := pool.ready.Front()
+		for ok := elem != nil; ok; ok = elem != nil {
+			warmed := elem.Value.(warmContainer)
+			if now > warmed.Expiration {
+				temp := elem
+				elem = elem.Next()
+				log.Printf("janitor: Removing container with ID %s\n", warmed.contID)
+				pool.ready.Remove(temp) // remove the expired element
+
+				memoryMutex.Lock()
+				memory, _ := cf.GetMemoryMB(warmed.contID)
+				cf.Destroy(warmed.contID)
+				usedMemoryMB -= memory
+				memoryMutex.Unlock()
+
+			} else {
+				elem = elem.Next()
+			}
+		}
+
+		pool.Unlock()
+	}
+
 }
