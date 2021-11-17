@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"time"
 )
 
 func startAPIServer() {
@@ -25,10 +26,39 @@ func startAPIServer() {
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", portNumber)))
 }
 
+func cacheSetup() {
+	//todo fix default values
+
+	// setup cache space
+	cache.Size = config.GetInt("cache.size", 10)
+
+	//setup cleanup interval
+	d := config.GetInt("cache.cleanup", 60)
+	interval := time.Duration(d)
+	cache.CleanupInterval = interval * time.Second
+
+	//setup default expiration time
+	d = config.GetInt("cache.expiration", 60)
+	expirationInterval := time.Duration(d)
+	cache.DefaultExp = expirationInterval * time.Second
+
+	//cache first creation
+	cache.GetCacheInstance()
+}
+
 func main() {
 	config.ReadConfiguration()
 
+	//setting up cache parameters
+	cacheSetup()
+
+	//setup memory MB
+	containers.TotalMemoryMB = int64(config.GetInt("containers.memory", 1024))
+
 	containers.InitDockerContainerFactory()
+
+	//janitor periodically remove expired warm container
+	containers.GetJanitorInstance()
 
 	startAPIServer()
 }

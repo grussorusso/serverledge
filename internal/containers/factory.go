@@ -10,13 +10,14 @@ type Factory interface {
 	Destroy(ContainerID) error
 	HasImage(string) bool
 	GetIPAddress(ContainerID) (string, error)
+	GetMemoryMB(id ContainerID) (int64, error)
 }
 
 //ContainerOptions contains options for container creation.
 type ContainerOptions struct {
 	Cmd      []string
 	Env      []string
-	MemoryMB int32
+	MemoryMB int64
 }
 
 type ContainerID = string
