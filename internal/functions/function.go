@@ -3,7 +3,7 @@ package functions
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/grussorusso/serverledge/cache"
+	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"

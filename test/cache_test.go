@@ -1,17 +1,18 @@
-package cache
+package test
 
 import (
+	"github.com/grussorusso/serverledge/internal/cache"
 	"strconv"
 	"testing"
 	"time"
 )
 
 func TestCache(t *testing.T) {
-	tc := New(DefaultExpiration, 1*time.Second, 2)
+	tc := cache.New(cache.DefaultExpiration, 1*time.Second, 2)
 
-	tc.Set("a", 1, DefaultExpiration)
-	tc.Set("b", 2, DefaultExpiration)
-	tc.Set("c", 3, DefaultExpiration)
+	tc.Set("a", 1, cache.DefaultExpiration)
+	tc.Set("b", 2, cache.DefaultExpiration)
+	tc.Set("c", 3, cache.DefaultExpiration)
 
 	x, found := tc.Get("a")
 	if !found {

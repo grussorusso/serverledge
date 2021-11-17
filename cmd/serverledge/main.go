@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/cache"
 	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
