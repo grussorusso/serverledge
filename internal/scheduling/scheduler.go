@@ -8,14 +8,14 @@ import (
 	"github.com/grussorusso/serverledge/internal/functions"
 )
 
-func Schedule(r *functions.Request) (string, error) {
+func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
 	containerID, ok := containers.AcquireWarmContainer(r.Fun)
 	if !ok {
 		newContainer, err := containers.NewContainer(r.Fun)
 		if err != nil {
 			// TODO: this may fail because we run out of memory/CPU
 			// handle this error differently?
-			return "", fmt.Errorf("Could not create a new container: %v", err)
+			return nil, fmt.Errorf("Could not create a new container: %v", err)
 		}
 		containerID = newContainer
 	} else {
@@ -24,5 +24,11 @@ func Schedule(r *functions.Request) (string, error) {
 
 	// TODO: defer marking the container as ready
 
-	return containers.Invoke(containerID, r)
+	result, err := containers.Invoke(containerID, r)
+	if err != nil {
+		report := &functions.ExecutionReport{Success: err != nil, Output: result}
+		return report, nil
+	} else {
+		return nil, err
+	}
 }

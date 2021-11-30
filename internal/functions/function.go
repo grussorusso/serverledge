@@ -3,13 +3,14 @@ package functions
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
-	"log"
-	"strconv"
-	"time"
 )
 
 //A serverless Function.
@@ -74,7 +75,7 @@ func getFromEtcd(name string) (*Function, bool) {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	// retrieve the application from etcd by using his name as a key
 	getResponse, err := cli.Get(ctx, name)
-	if err != nil {
+	if err != nil || len(getResponse.Kvs) < 1 {
 		return nil, false
 	}
 	// function properties : returned value (json format)

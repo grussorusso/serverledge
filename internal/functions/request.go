@@ -12,6 +12,11 @@ type Request struct {
 	Arrival time.Time
 }
 
+type ExecutionReport struct {
+	Success bool
+	Output  string
+}
+
 func (r *Request) String() string {
 	return fmt.Sprintf("Req-%s", r.Fun.Name)
 }

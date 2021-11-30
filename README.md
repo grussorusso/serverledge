@@ -36,14 +36,6 @@ chosen format, the file name will be `serverledge-conf.yaml` or
 in the user `$HOME` directory, or in the working directory where the server is
 started.
 
-## Roadmap
-
- - Management of the container pool (timeouts, container termination, resource
-   limits enforcement, ...)
- - Functions management relying on `etcd` (creation of new functions, ...)
- - Offloading to other servers in the Cloud
- - Auto-scaling servers in the Cloud
-
 ## Organization of the Repository
 
 	├── cmd
