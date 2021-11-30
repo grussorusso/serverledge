@@ -1,4 +1,4 @@
-# ServerlEdge #
+![ServerlEdge](docs/logo.png)
 
 ServerlEdge is a Function-as-a-Service (FaaS) platform specifically designed to
 work in Edge/Fog environments.
@@ -49,5 +49,7 @@ started.
 	    ├── containers   # container pools, containers management
 	    ├── executor     # executor component
 	    ├── functions    # function-related stuff
-	    └── scheduling   # scheduling logic
+	    ├── scheduling   # scheduling logic
+	    └── ...   
+	    
 
