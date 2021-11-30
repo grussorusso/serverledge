@@ -3,12 +3,14 @@ package scheduling
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/grussorusso/serverledge/internal/functions"
 )
 
 func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
+	schedArrivalT := time.Now()
 	containerID, ok := containers.AcquireWarmContainer(r.Fun)
 	if !ok {
 		newContainer, err := containers.NewContainer(r.Fun)
@@ -22,13 +24,8 @@ func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
 		log.Printf("Using a warm container for: %v", r)
 	}
 
-	// TODO: defer marking the container as ready
+	initTime := time.Now().Sub(schedArrivalT).Seconds()
+	r.Report = &functions.ExecutionReport{InitTime: initTime}
 
-	result, err := containers.Invoke(containerID, r)
-	if err != nil {
-		report := &functions.ExecutionReport{Success: err != nil, Output: result}
-		return report, nil
-	} else {
-		return nil, err
-	}
+	return containers.Invoke(containerID, r)
 }

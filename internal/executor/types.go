@@ -8,6 +8,7 @@ type InvocationRequest struct {
 }
 
 type InvocationResult struct {
-	Success bool
-	Result  string
+	Success  bool
+	Result   string
+	Duration float64
 }

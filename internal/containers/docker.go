@@ -39,7 +39,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		if err != nil {
 			return "", err
 		}
-		//io.Copy(os.Stdout, reader)
+		refreshedImages[image] = true
 	}
 
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
@@ -77,6 +77,12 @@ func (cf *DockerFactory) HasImage(image string) bool {
 	cmd := fmt.Sprintf("docker images %s | grep -vF REPOSITORY", image)
 	_, err := exec.Command("bash", "-c", cmd).Output()
 	if err != nil {
+		return false
+	}
+
+	// We have the image, but we may need to refresh it
+	refreshed, ok := refreshedImages[image]
+	if !ok || !refreshed {
 		return false
 	}
 	return true

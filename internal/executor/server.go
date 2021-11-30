@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 
 	"io/ioutil"
 )
@@ -54,15 +55,18 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	t0 := time.Now()
+
 	var resp *InvocationResult
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		log.Printf("cmd.Run() failed with %s\n", err)
-		resp = &InvocationResult{false, ""}
+		resp = &InvocationResult{Success: false}
 	} else {
 		result := readExecutionResult(resultFile)
-		resp = &InvocationResult{true, result}
+		duration := time.Now().Sub(t0).Seconds()
+		resp = &InvocationResult{true, result, duration}
 		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: use output
 	}
 

@@ -13,12 +13,12 @@ import (
 )
 
 //Invoke serves a request on the specified container.
-func Invoke(contID ContainerID, r *functions.Request) (string, error) {
+func Invoke(contID ContainerID, r *functions.Request) (*functions.ExecutionReport, error) {
 	defer ReleaseContainer(contID, r.Fun)
 
 	ipAddr, err := cf.GetIPAddress(contID)
 	if err != nil {
-		return "", fmt.Errorf("Failed to retrieve IP address for container: %v", err)
+		return nil, fmt.Errorf("Failed to retrieve IP address for container: %v", err)
 	}
 
 	log.Printf("Invoking function on container: %v", ipAddr)
@@ -32,14 +32,17 @@ func Invoke(contID ContainerID, r *functions.Request) (string, error) {
 	}
 	response, err := _invoke(ipAddr, &req)
 	if err != nil {
-		return "", fmt.Errorf("Execution request failed: %v", err)
+		return nil, fmt.Errorf("Execution request failed: %v", err)
 	}
 
 	if !response.Success {
-		return "", fmt.Errorf("Function execution failed")
+		return nil, fmt.Errorf("Function execution failed")
 	}
 
-	return response.Result, nil
+	r.Report.Result = response.Result
+	r.Report.Duration = response.Duration
+	r.Report.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
+	return r.Report, nil
 }
 
 // _invoke interacts with the Executor running in the container to invoke the
