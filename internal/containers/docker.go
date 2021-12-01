@@ -7,8 +7,6 @@ import (
 	"log"
 	"os/exec"
 
-	//"log"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -37,9 +35,12 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		log.Printf("Pulling image: %s", image)
 		_, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
 		if err != nil {
-			return "", err
+			log.Printf("Could not pull image: %s", image)
+			// we do not return here, as a stale copy of the image
+			// could still be available locally
+		} else {
+			refreshedImages[image] = true
 		}
-		refreshedImages[image] = true
 	}
 
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{

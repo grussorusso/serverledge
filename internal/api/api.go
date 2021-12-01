@@ -23,7 +23,7 @@ func InvokeFunction(c echo.Context) error {
 	funcName := c.Param("fun")
 	function, ok := functions.GetFunction(funcName)
 	if !ok {
-		log.Printf("Request for unknown function '%s'", funcName)
+		log.Printf("Dropping request for unknown function '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
 	params_map := make(map[string]string)
