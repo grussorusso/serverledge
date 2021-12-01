@@ -11,4 +11,5 @@ type InvocationResult struct {
 	Success  bool
 	Result   string
 	Duration float64
+	CPUTime  float64
 }

@@ -18,6 +18,7 @@ type ExecutionReport struct {
 	ResponseTime float64
 	InitTime     float64
 	Duration     float64
+	CPUTime      float64
 }
 
 func (r *Request) String() string {

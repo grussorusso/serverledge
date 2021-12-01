@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"syscall"
 	"time"
 
 	"io/ioutil"
@@ -56,6 +57,8 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t0 := time.Now()
+	usage0 := new(syscall.Rusage)
+	syscall.Getrusage(syscall.RUSAGE_CHILDREN, usage0)
 
 	var resp *InvocationResult
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
@@ -66,8 +69,15 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		result := readExecutionResult(resultFile)
 		duration := time.Now().Sub(t0).Seconds()
-		resp = &InvocationResult{true, result, duration}
-		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: use output
+
+		// get additional stats
+		usage := new(syscall.Rusage)
+		syscall.Getrusage(syscall.RUSAGE_CHILDREN, usage)
+		cpuTimeNs := usage.Utime.Nano() + usage.Stime.Nano() - usage0.Utime.Nano() - usage0.Stime.Nano()
+		cpuTime := float64(cpuTimeNs) / 1000000000.0
+
+		resp = &InvocationResult{true, result, duration, cpuTime}
+		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
 	}
 
 	w.Header().Set("Content-Type", "application/json")
