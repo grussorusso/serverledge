@@ -95,11 +95,15 @@ func create() {
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	funcName := createCmd.String("function", "", "name of the function")
 	runtime := createCmd.String("runtime", "python38", "runtime for the function")
+	handler := createCmd.String("handler", "", "function handler")
 	memory := createCmd.Int("memory", 128, "max memory in MB for the function")
 	src := createCmd.String("src", "", "source the function (single file, directory or TAR archive)")
 	createCmd.Parse(os.Args[2:])
 
 	// TODO: create base64-encoded source Tar
+	// 1) Check whether src is a TAR archive, a directory or a generic file
+	// 2) TAR archive: just encode
+	// 3) file/directory: create TAR and execute step 2)
 
 	request := api.FunctionCreationRequest{Name: *funcName, Runtime: *runtime, Memory: *memory, SourceTarBase64: *src}
 	requestBody, err := json.Marshal(request)

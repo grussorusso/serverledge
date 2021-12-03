@@ -5,4 +5,5 @@ type FunctionCreationRequest struct {
 	Runtime         string
 	Memory          int
 	SourceTarBase64 string
+	Handler         string
 }
