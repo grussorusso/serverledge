@@ -8,6 +8,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"os"
 	"time"
 )
 
@@ -47,7 +48,11 @@ func cacheSetup() {
 }
 
 func main() {
-	config.ReadConfiguration()
+	configFileName := ""
+	if len(os.Args) > 1 {
+		configFileName = os.Args[1]
+	}
+	config.ReadConfiguration(configFileName)
 
 	//setting up cache parameters
 	cacheSetup()

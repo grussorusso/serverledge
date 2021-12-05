@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-//A serverless Function.
+// A serverless Function.
 type Function struct {
 	Name            string
 	Runtime         string // example: python310
@@ -42,7 +42,6 @@ func GetFunction(name string) (*Function, bool) {
 	log.Println("Cache Hit")
 	return val, true
 
-	//return &Function{"prova", "python310", 256, "function.handler", "http://www.ce.uniroma2.it/~russorusso/python310.tar"}, true
 }
 
 func (f *Function) String() string {

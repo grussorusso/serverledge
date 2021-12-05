@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/grussorusso/serverledge/internal/config"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -20,6 +22,7 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
+	offloading := config.GetBool("offloading", false)
 	funcName := c.Param("fun")
 	function, ok := functions.GetFunction(funcName)
 	if !ok {
@@ -37,10 +40,20 @@ func InvokeFunction(c echo.Context) error {
 
 	log.Printf("New request: %v", r)
 	if result, err := scheduling.Schedule(r); err == nil {
-		log.Printf("Request OK: %v", result)
-		return c.JSON(http.StatusOK, result)
-	} else {
-		log.Printf("Failed invocation of %s: %v", function, err)
-		return c.String(http.StatusServiceUnavailable, "")
+		log.Printf("Request OK: %v", result.Result)
+		return c.JSON(http.StatusOK, result.Result)
+	} else if offloading {
+		// offloading to handle missing resource status
+		res, err := scheduling.Offload(r)
+		defer res.Body.Close()
+		if err == nil {
+			body, _ := ioutil.ReadAll(res.Body)
+			log.Printf("Offloading Request status OK: %s", string(body))
+			return c.JSON(http.StatusOK, string(body))
+		}
 	}
+
+	log.Printf("Failed invocation of %s: %v", function, err)
+	return c.String(http.StatusServiceUnavailable, "")
+
 }

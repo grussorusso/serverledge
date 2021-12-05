@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var DefaultConfigFileName = "serverledge-conf"
+
 //Get returns the configured value for a given key or the specified default.
 func Get(key string, defaultValue interface{}) interface{} {
 	if viper.IsSet(key) {
@@ -40,13 +42,17 @@ func GetBool(key string, defaultValue bool) bool {
 }
 
 //ReadConfiguration reads a configuration file stored in one of the predefined paths.
-func ReadConfiguration() {
-	viper.SetConfigName("serverledge-conf") // name of config file (without extension)
+func ReadConfiguration(fileName string) {
+	viper.SetConfigName(DefaultConfigFileName) // default name of config file (without extension)
+	if fileName != "" {
+		viper.SetConfigName(fileName) //custom name of config file (without extension)
+	}
 
 	// paths where the config file can be placed
 	viper.AddConfigPath("/etc/serverledge/")
 	viper.AddConfigPath("$HOME/")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("../serverledge/internal/config")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

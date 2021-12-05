@@ -119,7 +119,6 @@ func ReleaseContainer(contID ContainerID, f *functions.Function) {
 //in the busy pool.
 func NewContainer(fun *functions.Function) (ContainerID, error) {
 	image := runtimeToInfo[fun.Runtime].Image
-	log.Printf("Starting new container for %s (image: %s)", fun, image)
 
 	memoryMutex.Lock()
 	//memory check
@@ -127,14 +126,13 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
 			memoryMutex.Unlock()
-			//todo do offloading to the cloud
 			return "", errors.New("unable to create container: memory not available")
 		}
 	}
 
 	usedMemoryMB += fun.MemoryMB
 	memoryMutex.Unlock()
-
+	log.Printf("Starting new container for %s (image: %s)", fun, image)
 	contID, err := cf.Create(image, &ContainerOptions{
 		MemoryMB: fun.MemoryMB,
 	})
@@ -187,9 +185,10 @@ func dismissContainer(requiredMemoryMB int64) (bool, error) {
 			// every container into the funPool has the same memory (same function)
 			//so it is not important which one you destroy
 			elem := funPool.ready.Front()
+			contID := elem.Value.(warmContainer).contID
+			// containers in the same pool need same memory
+			memory, _ := cf.GetMemoryMB(contID)
 			for ok := true; ok; ok = elem != nil {
-				contID := elem.Value.(warmContainer).contID
-				memory, _ := cf.GetMemoryMB(contID)
 				containerToDismiss = append(containerToDismiss,
 					itemToDismiss{contID: contID, pool: funPool, elem: elem, memory: memory})
 
