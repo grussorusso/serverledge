@@ -91,6 +91,22 @@ func invoke() {
 	printJsonResponse(resp.Body)
 }
 
+func getSourcesTarFile(srcPath string) (*os.File, error) {
+	fileInfo, err := os.Stat(srcPath)
+	if err != nil {
+		return nil, fmt.Errorf("Missing source file")
+	}
+
+	if fileInfo.IsDir() || strings.HasSuffix(srcPath, ".tar") {
+		// TODO: create a tar archive
+	} else {
+		// this is a tar file
+		// TODO: just return it
+	}
+
+	return nil, nil // TODO
+}
+
 func create() {
 	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
 	funcName := createCmd.String("function", "", "name of the function")
@@ -104,8 +120,13 @@ func create() {
 	// 1) Check whether src is a TAR archive, a directory or a generic file
 	// 2) TAR archive: just encode
 	// 3) file/directory: create TAR and execute step 2)
+	_, err := getSourcesTarFile(*src)
+	if err != nil {
+		fmt.Printf("%v", err)
+		os.Exit(3)
+	}
 
-	request := api.FunctionCreationRequest{Name: *funcName, Runtime: *runtime, Memory: *memory, SourceTarBase64: *src}
+	request := api.FunctionCreationRequest{Name: *funcName, Handler: *handler, Runtime: *runtime, Memory: *memory, SourceTarBase64: *src}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		exitWithUsage()

@@ -1,13 +1,14 @@
-package main
+package utils
 
 import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"golang.org/x/net/context"
 	"io/ioutil"
 	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"golang.org/x/net/context"
 )
 
 /**

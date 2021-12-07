@@ -11,6 +11,9 @@ serverledge-cli:
 executor:
 	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/executor.go
 
-.PHONY: serverledge serverledge-cli executor
+test:
+	go test -v ./...
+
+.PHONY: serverledge serverledge-cli executor test
 
 	
