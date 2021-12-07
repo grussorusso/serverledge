@@ -9,20 +9,17 @@ import (
 	"strings"
 )
 
-// Tar takes a source and variable writers and walks 'source' writing each file
-// found to the tar writer; the purpose for accepting multiple writers is to allow
-// for multiple outputs (for example a file, or md5 hash)
-func Tar(src string, outFile string) error {
+func Tar(src string, of *os.File) error {
 
 	if _, err := os.Stat(src); err != nil {
 		return fmt.Errorf("Unable to tar files - %v", err.Error())
 	}
 
-	of, err := os.Create(outFile)
-	if err != nil {
-		return fmt.Errorf("Could not create tarball file '%s', got error '%s'", outFile, err.Error())
-	}
-	defer of.Close()
+	//of, err := os.Create(outFile)
+	//if err != nil {
+	//	return fmt.Errorf("Could not create tarball file '%s', got error '%s'", outFile, err.Error())
+	//}
+	//defer of.Close()
 
 	tw := tar.NewWriter(of)
 	defer tw.Close()

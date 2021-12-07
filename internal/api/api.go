@@ -44,3 +44,22 @@ func InvokeFunction(c echo.Context) error {
 		return c.String(http.StatusServiceUnavailable, "")
 	}
 }
+
+// CreateFunction handles a function creation request.
+func CreateFunction(c echo.Context) error {
+	var request FunctionCreationRequest
+	err := json.NewDecoder(c.Request().Body).Decode(&request)
+	if err != nil && err != io.EOF {
+		log.Printf("Could not parse request: %v", err)
+		return err
+	}
+
+	_, ok := functions.GetFunction(request.Name) // TODO: we would need a system-wide lock here...
+	if ok {
+		log.Printf("Dropping request for already existing function '%s'", request.Name)
+		return c.JSON(http.StatusConflict, "")
+	}
+
+	log.Printf("New request: %v", request)
+	return c.JSON(http.StatusOK, "")
+}

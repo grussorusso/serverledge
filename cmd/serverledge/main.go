@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"time"
 )
 
 func startAPIServer() {
@@ -17,7 +18,7 @@ func startAPIServer() {
 
 	// Routes
 	e.POST("/invoke/:fun", api.InvokeFunction)
-	//e.GET("/users/:id", getUser)
+	e.POST("/create", api.CreateFunction)
 	e.GET("/functions", api.GetFunctions)
 
 	// Start server

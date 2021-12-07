@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/utils"
 )
 
 var serverConfig config.RemoteServerConf
@@ -91,20 +93,30 @@ func invoke() {
 	printJsonResponse(resp.Body)
 }
 
-func getSourcesTarFile(srcPath string) (*os.File, error) {
+func readSourcesAsTar(srcPath string) ([]byte, error) {
 	fileInfo, err := os.Stat(srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("Missing source file")
 	}
 
+	var tarFileName string
+
 	if fileInfo.IsDir() || strings.HasSuffix(srcPath, ".tar") {
-		// TODO: create a tar archive
+		file, err := ioutil.TempFile("/tmp", "serverledgesource")
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(file.Name())
+
+		utils.Tar(srcPath, file)
+		fmt.Printf("Created temporary archive: %s", file.Name)
+		tarFileName = file.Name()
 	} else {
-		// this is a tar file
-		// TODO: just return it
+		// this is already a tar file
+		tarFileName = srcPath
 	}
 
-	return nil, nil // TODO
+	return ioutil.ReadFile(tarFileName)
 }
 
 func create() {
@@ -116,23 +128,20 @@ func create() {
 	src := createCmd.String("src", "", "source the function (single file, directory or TAR archive)")
 	createCmd.Parse(os.Args[2:])
 
-	// TODO: create base64-encoded source Tar
-	// 1) Check whether src is a TAR archive, a directory or a generic file
-	// 2) TAR archive: just encode
-	// 3) file/directory: create TAR and execute step 2)
-	_, err := getSourcesTarFile(*src)
+	srcContent, err := readSourcesAsTar(*src)
 	if err != nil {
 		fmt.Printf("%v", err)
 		os.Exit(3)
 	}
+	encoded := base64.StdEncoding.EncodeToString(srcContent)
 
-	request := api.FunctionCreationRequest{Name: *funcName, Handler: *handler, Runtime: *runtime, Memory: *memory, SourceTarBase64: *src}
+	request := api.FunctionCreationRequest{Name: *funcName, Handler: *handler, Runtime: *runtime, Memory: *memory, SourceTarBase64: encoded}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		exitWithUsage()
 	}
 
-	url := fmt.Sprintf("http://%s:%d/create/%s", serverConfig.Host, serverConfig.Port, *funcName)
+	url := fmt.Sprintf("http://%s:%d/create", serverConfig.Host, serverConfig.Port)
 	resp, err := postJson(url, requestBody)
 	if err != nil {
 		fmt.Printf("Creation request failed: %v", err)
