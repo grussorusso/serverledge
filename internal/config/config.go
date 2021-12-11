@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -43,16 +44,22 @@ func GetBool(key string, defaultValue bool) bool {
 
 //ReadConfiguration reads a configuration file stored in one of the predefined paths.
 func ReadConfiguration(fileName string) {
-	viper.SetConfigName(DefaultConfigFileName) // default name of config file (without extension)
-	if fileName != "" {
-		viper.SetConfigName(fileName) //custom name of config file (without extension)
-	}
-
 	// paths where the config file can be placed
 	viper.AddConfigPath("/etc/serverledge/")
 	viper.AddConfigPath("$HOME/")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("../serverledge/internal/config")
+
+	if fileName != "" {
+		parentDir := filepath.Dir(fileName)
+		baseName := filepath.Base(fileName)
+		extension := filepath.Ext(baseName)
+		baseNameNoExt := baseName[0 : len(baseName)-len(extension)]
+
+		viper.SetConfigName(baseNameNoExt) //custom name of config file (without extension)
+		viper.AddConfigPath(parentDir)
+	} else {
+		viper.SetConfigName(DefaultConfigFileName) // default name of config file (without extension)
+	}
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
