@@ -33,7 +33,7 @@ func main() {
 	}
 	encoded := base64.StdEncoding.EncodeToString(b)
 	// store all the info  as a json string
-	fieldMap := map[string]string{"runtime": "python310", "memory": "768", "handler": "function.handler", "code": encoded}
+	fieldMap := map[string]string{"runtime": "python310", "memory": "1100", "handler": "function.handler", "code": encoded}
 	jsonStr, _ := json.Marshal(fieldMap)
 
 	json.Unmarshal(jsonStr, &raw)

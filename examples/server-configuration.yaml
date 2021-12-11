@@ -1,0 +1,15 @@
+
+---
+# cache parameters
+cache.expiration: 90
+cache.cleanup: 40
+cache.size: 20
+
+# server api parameters
+api.port: 1324
+etcd.address: "localhost:2379"
+
+# container management
+containers.memory: 2048
+container.expiration: 60
+janitor.interval: 30
