@@ -25,7 +25,7 @@ func exitWithUsage() {
 }
 
 func main() {
-	config.ReadConfiguration()
+	config.ReadConfiguration("")
 
 	// Set defaults
 	serverConfig.Host = "127.0.0.1"

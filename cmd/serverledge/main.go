@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/api"
@@ -48,7 +49,11 @@ func cacheSetup() {
 }
 
 func main() {
-	config.ReadConfiguration()
+	configFileName := ""
+	if len(os.Args) > 1 {
+		configFileName = os.Args[1]
+	}
+	config.ReadConfiguration(configFileName)
 
 	//setting up cache parameters
 	cacheSetup()

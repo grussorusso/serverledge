@@ -1,8 +1,12 @@
 package scheduling
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/containers"
@@ -28,4 +32,23 @@ func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
 	r.Report = &functions.ExecutionReport{InitTime: initTime}
 
 	return containers.Invoke(containerID, r)
+}
+
+func Offload(r *functions.Request) (*http.Response, error) {
+	serverUrl := config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
+	jsonData, err := json.Marshal(r.Params)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	resp, err := http.Post(serverUrl+r.Fun.Name, "application/json",
+		bytes.NewBuffer(jsonData))
+
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return resp, nil
 }
