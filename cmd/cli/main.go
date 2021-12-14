@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/utils"
 )
 
@@ -101,7 +101,7 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 
 	var tarFileName string
 
-	if fileInfo.IsDir() || strings.HasSuffix(srcPath, ".tar") {
+	if fileInfo.IsDir() && !strings.HasSuffix(srcPath, ".tar") {
 		file, err := ioutil.TempFile("/tmp", "serverledgesource")
 		if err != nil {
 			return nil, err
@@ -135,7 +135,7 @@ func create() {
 	}
 	encoded := base64.StdEncoding.EncodeToString(srcContent)
 
-	request := api.FunctionCreationRequest{Name: *funcName, Handler: *handler, Runtime: *runtime, Memory: *memory, SourceTarBase64: encoded}
+	request := functions.Function{Name: *funcName, Handler: *handler, Runtime: *runtime, MemoryMB: int64(*memory), TarFunctionCode: encoded}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		exitWithUsage()
@@ -144,7 +144,8 @@ func create() {
 	url := fmt.Sprintf("http://%s:%d/create", serverConfig.Host, serverConfig.Port)
 	resp, err := postJson(url, requestBody)
 	if err != nil {
-		fmt.Printf("Creation request failed: %v", err)
+		// TODO: check returned error code
+		fmt.Printf("Creation request failed: %v\n", err)
 		os.Exit(2)
 	}
 	printJsonResponse(resp.Body)

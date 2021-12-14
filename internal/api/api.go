@@ -2,12 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/grussorusso/serverledge/internal/config"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
 
 	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/internal/scheduling"
@@ -60,19 +61,25 @@ func InvokeFunction(c echo.Context) error {
 
 // CreateFunction handles a function creation request.
 func CreateFunction(c echo.Context) error {
-	var request FunctionCreationRequest
-	err := json.NewDecoder(c.Request().Body).Decode(&request)
+	var f functions.Function
+	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
 		return err
 	}
 
-	_, ok := functions.GetFunction(request.Name) // TODO: we would need a system-wide lock here...
+	_, ok := functions.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if ok {
-		log.Printf("Dropping request for already existing function '%s'", request.Name)
+		log.Printf("Dropping request for already existing function '%s'", f.Name)
 		return c.JSON(http.StatusConflict, "")
 	}
 
-	log.Printf("New request: %v", request)
-	return c.JSON(http.StatusOK, "")
+	log.Printf("New request: creation of %s", f.Name)
+	err = f.SaveToEtcd()
+	if err != nil {
+		log.Printf("Failed creation: %v", err)
+		return c.JSON(http.StatusServiceUnavailable, "")
+	}
+	response := struct{ Created string }{f.Name}
+	return c.JSON(http.StatusOK, response)
 }

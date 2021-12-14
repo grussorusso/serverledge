@@ -1,13 +1,15 @@
 package containers
 
 import (
+	"bytes"
 	"container/list"
+	"encoding/base64"
 	"errors"
-	"github.com/grussorusso/serverledge/internal/config"
 	"log"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
 
 	"github.com/grussorusso/serverledge/internal/functions"
 )
@@ -140,7 +142,8 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 		return "", err
 	}
 
-	err = cf.CopyToContainer(contID, strings.NewReader(fun.TarFunctionCode), "/app/")
+	decodedCode, _ := base64.StdEncoding.DecodeString(fun.TarFunctionCode)
+	err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 	if err != nil {
 		return "", err
 	}

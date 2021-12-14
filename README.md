@@ -14,42 +14,36 @@ parameters. The Executor response will contain the invocation result.
 
 *... to be expanded ...*
 
-## Building and Running
+## Compilation
 
 Build the project from sources:
 
 	$ make
 
+## Usage
+
 Start the server:
 
 	$ bin/serverledge
 
-Invoke a function for testing:
+Create a function `func` from example code:
 
-	$ curl -d '{"key1":"value1", "key2":"value2"}' -H "Content-Type: application/json" -X POST 127.0.0.1:1323/invoke/func
+	$ bin/serverledge-cli create -function func -memory 128 -src examples/hello.py -runtime python310 -handler "hello.handler"
+
+Invoke a function `func` with parameters `a=2` and `b=3`:
+
+	$ bin/serverledge-cli invoke -name func -param "a:2" -param "b:3" 
 
 ## Configuration
 
 You can provide a configuration file using YAML or TOML syntax. Depending on the
-chosen format, the file name will be `serverledge-conf.yaml` or
+chosen format, the default file name will be `serverledge-conf.yaml` or
 `serverledge-conf.toml`. The file can be either placed in `/etc/serverledge`,
 in the user `$HOME` directory, or in the working directory where the server is
 started.
 
-## Organization of the Repository
+Alternatively, you can indicate a specific configuration file when starting the 
+server:
 
-	├── cmd
-	│   ├── executor     # entrypoint for the Executor 
-	│   └── serverledge  # entrypoint for the server
-	├── images           # material to build runtime Docker images
-	│   └── python310
-	└── internal         # internal packages
-	    ├── api          # main server API
-	    ├── config       # configuration utilities
-	    ├── containers   # container pools, containers management
-	    ├── executor     # executor component
-	    ├── functions    # function-related stuff
-	    ├── scheduling   # scheduling logic
-	    └── ...   
-	    
+	$ bin/serverledge <config file>
 
