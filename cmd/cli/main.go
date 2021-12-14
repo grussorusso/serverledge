@@ -20,7 +20,7 @@ import (
 var serverConfig config.RemoteServerConf
 
 func exitWithUsage() {
-	fmt.Println("expected 'invoke' or 'create' subcommands")
+	fmt.Println("expected a subcommanda: 'invoke', 'create', 'list'")
 	os.Exit(1)
 }
 
@@ -46,6 +46,8 @@ func main() {
 		invoke()
 	case "create":
 		create()
+	case "list":
+		list()
 	default:
 		exitWithUsage()
 	}
@@ -170,4 +172,14 @@ func printJsonResponse(resp io.ReadCloser) {
 	var out bytes.Buffer
 	json.Indent(&out, body, "", "\t")
 	out.WriteTo(os.Stdout)
+}
+
+func list() {
+	url := fmt.Sprintf("http://%s:%d/functions", serverConfig.Host, serverConfig.Port)
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Printf("List request failed: %v\n", err)
+		os.Exit(2)
+	}
+	printJsonResponse(resp.Body)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/utils"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
 )
 
@@ -103,4 +104,24 @@ func (f *Function) SaveToEtcd() error {
 	cache.GetCacheInstance().Set(f.Name, f, cache.DefaultExp)
 
 	return nil
+}
+
+func GetAll() ([]string, error) {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.TODO()
+
+	resp, err := cli.Get(ctx, "/functions", clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	functions := make([]string, len(resp.Kvs))
+	for i, s := range resp.Kvs {
+		functions[i] = string(s.Key)[len("/functions/"):]
+	}
+
+	return functions, nil
 }

@@ -17,8 +17,11 @@ import (
 
 // GetFunctions handles a request to list the functions available in the system.
 func GetFunctions(c echo.Context) error {
-	// TODO
-	return c.JSON(http.StatusOK, "No functions in the system.")
+	functions, err := functions.GetAll()
+	if err != nil {
+		return c.String(http.StatusServiceUnavailable, "")
+	}
+	return c.JSON(http.StatusOK, functions)
 }
 
 // InvokeFunction handles a function invocation request.
