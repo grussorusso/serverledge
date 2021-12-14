@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,11 +18,11 @@ import (
 
 // GetFunctions handles a request to list the functions available in the system.
 func GetFunctions(c echo.Context) error {
-	functions, err := functions.GetAll()
+	list, err := functions.GetAll()
 	if err != nil {
 		return c.String(http.StatusServiceUnavailable, "")
 	}
-	return c.JSON(http.StatusOK, functions)
+	return c.JSON(http.StatusOK, list)
 }
 
 // InvokeFunction handles a function invocation request.
@@ -33,17 +34,20 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Dropping request for unknown function '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
-	params_map := make(map[string]string)
-	err := json.NewDecoder(c.Request().Body).Decode(&params_map)
+
+	var invocationRequest FunctionInvocationRequest
+	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request params: %v", err)
-		return err
+		return fmt.Errorf("Could not parse request: %v", err)
 	}
 
-	r := &functions.Request{Fun: function, Params: params_map, Arrival: time.Now()}
+	r := &functions.Request{Fun: function, Params: invocationRequest.Params, Arrival: time.Now()}
+	r.Class = invocationRequest.QoSClass
+	r.MaxRespT = invocationRequest.QoSMaxRespT
 
-	log.Printf("New request: %v", r)
-	if result, err := scheduling.Schedule(r); err == nil {
+	log.Printf("New request for function '%s' (class: %d, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
+	result, err := scheduling.Schedule(r)
+	if err == nil {
 		log.Printf("Request OK: %v", result.Result)
 		return c.JSON(http.StatusOK, result.Result)
 	} else if offloading {

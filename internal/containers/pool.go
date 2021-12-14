@@ -139,12 +139,14 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 		MemoryMB: fun.MemoryMB,
 	})
 	if err != nil {
+		log.Printf("Failed container creation")
 		return "", err
 	}
 
 	decodedCode, _ := base64.StdEncoding.DecodeString(fun.TarFunctionCode)
 	err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 	if err != nil {
+		log.Printf("Failed code copy")
 		return "", err
 	}
 

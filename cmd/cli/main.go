@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/utils"
@@ -73,6 +74,8 @@ func invoke() {
 
 	invokeCmd := flag.NewFlagSet("invoke", flag.ExitOnError)
 	funcName := invokeCmd.String("function", "", "name of the function")
+	qosClass := invokeCmd.String("qosclass", "", "QoS class (optional)")
+	qosMaxRespT := invokeCmd.Float64("qosrespt", -1.0, "Max. response time (optional)")
 	invokeCmd.Var(&params, "param", "Function parameter: <name>:<value>")
 	invokeCmd.Parse(os.Args[2:])
 
@@ -80,7 +83,10 @@ func invoke() {
 		fmt.Printf("Invalid function name.\n")
 		exitWithUsage()
 	}
-	invocationBody, err := json.Marshal(params)
+
+	// Prepare request
+	request := api.FunctionInvocationRequest{params, *qosClass, *qosMaxRespT}
+	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		exitWithUsage()
 	}
@@ -111,7 +117,7 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 		defer os.Remove(file.Name())
 
 		utils.Tar(srcPath, file)
-		fmt.Printf("Created temporary archive: %s", file.Name)
+		fmt.Printf("Created temporary archive: %s", file.Name())
 		tarFileName = file.Name()
 	} else {
 		// this is already a tar file

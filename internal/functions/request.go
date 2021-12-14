@@ -11,6 +11,12 @@ type Request struct {
 	Params  map[string]string
 	Arrival time.Time
 	Report  *ExecutionReport
+	RequestQoS
+}
+
+type RequestQoS struct {
+	Class    string
+	MaxRespT float64
 }
 
 type ExecutionReport struct {
