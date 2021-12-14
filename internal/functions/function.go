@@ -1,14 +1,12 @@
 package functions
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"log"
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/cache"
-	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/utils"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
 )
@@ -22,13 +20,20 @@ type Function struct {
 	TarFunctionCode string // input is .tar
 }
 
+func (f Function) getEtcdKey() string {
+	return getEtcdKey(f.Name)
+}
+
+func getEtcdKey(funcName string) string {
+	return fmt.Sprintf("/functions/%s", funcName)
+}
+
 //GetFunction retrieves a Function given its name.
 func GetFunction(name string) (*Function, bool) {
 
 	val, found := getFromCache(name)
 	if !found {
 		// cache miss
-		log.Println("Cache miss!")
 		f, response := getFromEtcd(name)
 		if !response {
 			return nil, false
@@ -38,8 +43,6 @@ func GetFunction(name string) (*Function, bool) {
 		return f, true
 	}
 
-	//cache hit
-	log.Println("Cache Hit")
 	return val, true
 
 }
@@ -62,29 +65,63 @@ func getFromCache(name string) (*Function, bool) {
 }
 
 func getFromEtcd(name string) (*Function, bool) {
-	//etcd v3 client
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{config.GetString("etcd.address", "localhost:2379")},
-		DialTimeout: 5 * time.Second,
-	})
+	cli, err := utils.GetEtcdClient()
 	if err != nil {
 		return nil, false
 	}
-	defer cli.Close()
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	// retrieve the application from etcd by using his name as a key
-	getResponse, err := cli.Get(ctx, name)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	getResponse, err := cli.Get(ctx, getEtcdKey(name))
 	if err != nil || len(getResponse.Kvs) < 1 {
 		return nil, false
 	}
-	// function properties : returned value (json format)
-	var jsonMap map[string]string
-	err = json.Unmarshal(getResponse.Kvs[0].Value, &jsonMap)
+
+	var f Function
+	err = json.Unmarshal(getResponse.Kvs[0].Value, &f)
 	if err != nil {
 		return nil, false
 	}
-	decoded, _ := base64.StdEncoding.DecodeString(jsonMap["code"])
-	memory, _ := strconv.Atoi(jsonMap["memory"])
 
-	return &Function{name, jsonMap["runtime"], int64(memory), jsonMap["handler"], string(decoded)}, true
+	return &f, true
+}
+
+func (f *Function) SaveToEtcd() error {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return err
+	}
+	ctx := context.TODO()
+
+	payload, err := json.Marshal(*f)
+	if err != nil {
+		return fmt.Errorf("Could not marshal function: %v", err)
+	}
+	_, err = cli.Put(ctx, f.getEtcdKey(), string(payload))
+	if err != nil {
+		return fmt.Errorf("Failed Put: %v", err)
+	}
+
+	// Add the function to the local cache
+	cache.GetCacheInstance().Set(f.Name, f, cache.DefaultExp)
+
+	return nil
+}
+
+func GetAll() ([]string, error) {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.TODO()
+
+	resp, err := cli.Get(ctx, "/functions", clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	functions := make([]string, len(resp.Kvs))
+	for i, s := range resp.Kvs {
+		functions[i] = string(s.Key)[len("/functions/"):]
+	}
+
+	return functions, nil
 }

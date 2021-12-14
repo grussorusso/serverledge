@@ -2,12 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/grussorusso/serverledge/internal/config"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
 
 	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/internal/scheduling"
@@ -16,8 +17,11 @@ import (
 
 // GetFunctions handles a request to list the functions available in the system.
 func GetFunctions(c echo.Context) error {
-	// TODO
-	return c.JSON(http.StatusOK, "No functions in the system.")
+	functions, err := functions.GetAll()
+	if err != nil {
+		return c.String(http.StatusServiceUnavailable, "")
+	}
+	return c.JSON(http.StatusOK, functions)
 }
 
 // InvokeFunction handles a function invocation request.
@@ -56,4 +60,29 @@ func InvokeFunction(c echo.Context) error {
 	log.Printf("Failed invocation of %s: %v", function, err)
 	return c.String(http.StatusServiceUnavailable, "")
 
+}
+
+// CreateFunction handles a function creation request.
+func CreateFunction(c echo.Context) error {
+	var f functions.Function
+	err := json.NewDecoder(c.Request().Body).Decode(&f)
+	if err != nil && err != io.EOF {
+		log.Printf("Could not parse request: %v", err)
+		return err
+	}
+
+	_, ok := functions.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
+	if ok {
+		log.Printf("Dropping request for already existing function '%s'", f.Name)
+		return c.JSON(http.StatusConflict, "")
+	}
+
+	log.Printf("New request: creation of %s", f.Name)
+	err = f.SaveToEtcd()
+	if err != nil {
+		log.Printf("Failed creation: %v", err)
+		return c.JSON(http.StatusServiceUnavailable, "")
+	}
+	response := struct{ Created string }{f.Name}
+	return c.JSON(http.StatusOK, response)
 }
