@@ -103,7 +103,7 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 
 	var tarFileName string
 
-	if fileInfo.IsDir() && !strings.HasSuffix(srcPath, ".tar") {
+	if fileInfo.IsDir() || !strings.HasSuffix(srcPath, ".tar") {
 		file, err := ioutil.TempFile("/tmp", "serverledgesource")
 		if err != nil {
 			return nil, err
