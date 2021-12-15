@@ -45,7 +45,7 @@ func InvokeFunction(c echo.Context) error {
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 
-	log.Printf("New request for function '%s' (class: %d, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
+	log.Printf("New request for function '%s' (class: %s, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
 	result, err := scheduling.Schedule(r)
 	if err == nil {
 		log.Printf("Request OK: %v", result.Result)

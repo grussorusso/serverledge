@@ -34,6 +34,11 @@ Invoke a function `func` with parameters `a=2` and `b=3`:
 
 	$ bin/serverledge-cli invoke -name func -param "a:2" -param "b:3" 
 
+You can optionally specify a QoS class name and a maximum requested response
+time:
+
+	$ bin/serverledge-cli invoke -name func -param ... -qosclass <class> -qosrespt <respt>
+
 ## Configuration
 
 You can provide a configuration file using YAML or TOML syntax. Depending on the
