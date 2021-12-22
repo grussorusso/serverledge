@@ -48,8 +48,8 @@ func InvokeFunction(c echo.Context) error {
 	log.Printf("New request for function '%s' (class: %s, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
 	result, err := scheduling.Schedule(r)
 	if err == nil {
-		log.Printf("Request OK: %v", result.Result)
-		return c.JSON(http.StatusOK, result.Result)
+		log.Printf("Request OK: %v", result)
+		return c.JSON(http.StatusOK, result)
 	} else if offloading {
 		// offloading to handle missing resource status
 		res, err := scheduling.Offload(r)

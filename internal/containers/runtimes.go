@@ -10,4 +10,5 @@ var refreshedImages = map[string]bool{}
 
 var runtimeToInfo = map[string]RuntimeInfo{
 	"python310": RuntimeInfo{"grussorusso/serverledge-python310", []string{"python", "/entrypoint.py"}},
+	"nodejs17":  RuntimeInfo{"grussorusso/serverledge-nodejs17", []string{"node", "/entrypoint.js"}},
 }

@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -120,7 +121,11 @@ func ReleaseContainer(contID ContainerID, f *functions.Function) {
 //The container can be directly used to schedule a request, as it is already
 //in the busy pool.
 func NewContainer(fun *functions.Function) (ContainerID, error) {
-	image := runtimeToInfo[fun.Runtime].Image
+	runtime, ok := runtimeToInfo[fun.Runtime]
+	if !ok {
+		return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
+	}
+	image := runtime.Image
 
 	memoryMutex.Lock()
 	//memory check

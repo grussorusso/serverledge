@@ -65,6 +65,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		log.Printf("cmd.Run() failed with %s\n", err)
+		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
 		resp = &InvocationResult{Success: false}
 	} else {
 		result := readExecutionResult(resultFile)
