@@ -90,3 +90,28 @@ func CreateFunction(c echo.Context) error {
 	response := struct{ Created string }{f.Name}
 	return c.JSON(http.StatusOK, response)
 }
+
+// DeleteFunction handles a function deletion request.
+func DeleteFunction(c echo.Context) error {
+	var f functions.Function
+	err := json.NewDecoder(c.Request().Body).Decode(&f)
+	if err != nil && err != io.EOF {
+		log.Printf("Could not parse request: %v", err)
+		return err
+	}
+
+	_, ok := functions.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
+	if !ok {
+		log.Printf("Dropping request for non existing function '%s'", f.Name)
+		return c.JSON(http.StatusNotFound, "")
+	}
+
+	log.Printf("New request: deleting %s", f.Name)
+	err = f.Delete()
+	if err != nil {
+		log.Printf("Failed deletion: %v", err)
+		return c.JSON(http.StatusServiceUnavailable, "")
+	}
+	response := struct{ Deleted string }{f.Name}
+	return c.JSON(http.StatusOK, response)
+}

@@ -20,6 +20,7 @@ func startAPIServer() {
 	// Routes
 	e.POST("/invoke/:fun", api.InvokeFunction)
 	e.POST("/create", api.CreateFunction)
+	e.POST("/delete", api.DeleteFunction)
 	e.GET("/functions", api.GetFunctions)
 
 	// Start server

@@ -1,3 +1,4 @@
+// This has been adapted from github.com/patrickmn/go-cache
 package cache
 
 import (

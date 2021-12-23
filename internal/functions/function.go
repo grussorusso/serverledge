@@ -106,6 +106,27 @@ func (f *Function) SaveToEtcd() error {
 	return nil
 }
 
+// Delete removes a function from Etcd and the local cache.
+func (f *Function) Delete() error {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return err
+	}
+	ctx := context.TODO()
+
+	_, err = cli.Delete(ctx, f.getEtcdKey())
+	if err != nil {
+		return fmt.Errorf("Failed Delete: %v", err)
+	}
+
+	// Remove the function from the local cache
+	cache.GetCacheInstance().Delete(f.Name)
+
+	// TODO: remove all existing WARM containers
+
+	return nil
+}
+
 func GetAll() ([]string, error) {
 	cli, err := utils.GetEtcdClient()
 	if err != nil {
