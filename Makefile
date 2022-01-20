@@ -11,9 +11,15 @@ serverledge-cli:
 executor:
 	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/executor.go
 
+DOCKERHUB_USER=grussorusso
+images:
+	docker build -t $(DOCKERHUB_USER)/serverledge-python310 -f images/python310/Dockerfile .
+	docker build -t $(DOCKERHUB_USER)/serverledge-nodejs17 -f images/nodejs17/Dockerfile .
+
+
 test:
 	go test -v ./...
 
-.PHONY: serverledge serverledge-cli executor test
+.PHONY: serverledge serverledge-cli executor test images
 
 	

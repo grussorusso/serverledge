@@ -1,8 +1,8 @@
 FROM python:3.10-alpine3.14
 
 RUN mkdir -p /app
-COPY executor /
+COPY bin/executor /
 
-COPY entrypoint.py /
+COPY images/python310/entrypoint.py /
 
 CMD /executor

@@ -1,8 +1,8 @@
 FROM node:17-alpine
 
 RUN mkdir -p /app
-COPY executor /
+COPY bin/executor /
 
-COPY entrypoint.js /
+COPY images/nodejs17/entrypoint.js /
 
 CMD /executor
