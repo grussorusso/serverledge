@@ -22,6 +22,11 @@ Build the project from sources:
 
 ## Usage
 
+You need an **etcd** server to be up and running. To quickly start a local
+server:
+
+	$ ./scripts/start-etcd.sh
+
 Start the server:
 
 	$ bin/serverledge
@@ -38,6 +43,10 @@ You can optionally specify a QoS class name and a maximum requested response
 time:
 
 	$ bin/serverledge-cli invoke -name func -param ... -qosclass <class> -qosrespt <respt>
+
+To shutdown the etcd server:
+
+	$ ./scripts/stop-etcd.sh
 
 ## Configuration
 
