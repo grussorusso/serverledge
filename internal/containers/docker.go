@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os/exec"
 
@@ -33,12 +34,16 @@ func InitDockerContainerFactory() *DockerFactory {
 func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (ContainerID, error) {
 	if !cf.HasImage(image) {
 		log.Printf("Pulling image: %s", image)
-		_, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
+		pullResp, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
+		defer pullResp.Close()
 		if err != nil {
 			log.Printf("Could not pull image: %s", image)
 			// we do not return here, as a stale copy of the image
 			// could still be available locally
 		} else {
+			// This seems to be necessary to wait for the image to be pulled:
+			io.Copy(ioutil.Discard, pullResp)
+			log.Printf("Pulled image: %s", image)
 			refreshedImages[image] = true
 		}
 	}
