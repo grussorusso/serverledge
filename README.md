@@ -20,7 +20,7 @@ Build the project from sources:
 
 	$ make
 
-## Usage
+## Running locally
 
 You need an **etcd** server to be up and running. To quickly start a local
 server:
@@ -60,6 +60,12 @@ Alternatively, you can indicate a specific configuration file when starting the
 server:
 
 	$ bin/serverledge <config file>
+
+## Using the CLI with a remote server
+
+You can append the options `-host HOST` and `-port PORT` to specify the server
+host and port. Alternatively, you can set the environment variables
+`SERVERLEDGE_HOST` and/or `SERVERLEDGE_PORT`, which are read by the client.
 
 
 ## Writing functions
