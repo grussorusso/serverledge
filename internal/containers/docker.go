@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/grussorusso/serverledge/internal/config"
 	//	"github.com/docker/docker/pkg/stdcopy"
 )
 
@@ -87,9 +88,10 @@ func (cf *DockerFactory) HasImage(image string) bool {
 	}
 
 	// We have the image, but we may need to refresh it
-	refreshed, ok := refreshedImages[image]
-	if !ok || !refreshed {
-		return false
+	if config.GetBool(config.FACTORY_REFRESH_IMAGES, false) {
+		if refreshed, ok := refreshedImages[image]; !ok || !refreshed {
+			return false
+		}
 	}
 	return true
 }
