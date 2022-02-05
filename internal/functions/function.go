@@ -14,10 +14,11 @@ import (
 // A serverless Function.
 type Function struct {
 	Name            string
-	Runtime         string // example: python310
-	MemoryMB        int64  // MB
-	Handler         string // example: "module.function_name"
-	TarFunctionCode string // input is .tar
+	Runtime         string  // example: python310
+	MemoryMB        int64   // MB
+	CPUDemand       float64 // 1.0 -> 1 core
+	Handler         string  // example: "module.function_name"
+	TarFunctionCode string  // input is .tar
 }
 
 func (f Function) getEtcdKey() string {
