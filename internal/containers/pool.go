@@ -274,3 +274,43 @@ func DeleteExpiredContainer() {
 	}
 
 }
+
+// Destroys all containers (usually on termination)
+func ShutdownAll() {
+	functionPoolsMutex.Lock()
+	defer functionPoolsMutex.Unlock()
+	memoryMutex.Lock()
+	defer memoryMutex.Unlock()
+
+	for _, pool := range funToPool {
+		pool.Lock()
+
+		elem := pool.ready.Front()
+		for ok := elem != nil; ok; ok = elem != nil {
+			warmed := elem.Value.(warmContainer)
+			temp := elem
+			elem = elem.Next()
+			log.Printf("Removing container with ID %s\n", warmed.contID)
+			pool.ready.Remove(temp)
+
+			memory, _ := cf.GetMemoryMB(warmed.contID)
+			cf.Destroy(warmed.contID)
+			usedMemoryMB -= memory
+		}
+
+		elem = pool.busy.Front()
+		for ok := elem != nil; ok; ok = elem != nil {
+			contID := elem.Value.(ContainerID)
+			temp := elem
+			elem = elem.Next()
+			log.Printf("Removing container with ID %s\n", contID)
+			pool.ready.Remove(temp)
+
+			memory, _ := cf.GetMemoryMB(contID)
+			cf.Destroy(contID)
+			usedMemoryMB -= memory
+		}
+
+		pool.Unlock()
+	}
+}

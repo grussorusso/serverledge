@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/api"
@@ -49,6 +50,20 @@ func cacheSetup() {
 	cache.GetCacheInstance()
 }
 
+func registerTerminationHandler() {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		select {
+		case sig := <-c:
+			fmt.Printf("Got %s signal. Terminating...\n", sig)
+			containers.ShutdownAll()
+			os.Exit(0)
+		}
+	}()
+}
+
 func main() {
 	configFileName := ""
 	if len(os.Args) > 1 {
@@ -66,6 +81,9 @@ func main() {
 
 	//janitor periodically remove expired warm container
 	containers.GetJanitorInstance()
+
+	// Register a signal handler to cleanup things on termination
+	registerTerminationHandler()
 
 	startAPIServer()
 }
