@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -69,18 +70,14 @@ func main() {
 	if len(os.Args) > 1 {
 		configFileName = os.Args[1]
 	}
+	log.Printf("Reading configuration from file: %s", configFileName)
 	config.ReadConfiguration(configFileName)
 
 	//setting up cache parameters
 	cacheSetup()
 
-	//setup memory MB
-	containers.TotalMemoryMB = int64(config.GetInt("containers.memory", 1024))
-
-	containers.InitDockerContainerFactory()
-
-	//janitor periodically remove expired warm container
-	containers.GetJanitorInstance()
+	// initialize container pool
+	containers.Initialize()
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler()

@@ -26,6 +26,14 @@ func GetInt(key string, defaultValue int) int {
 	}
 }
 
+func GetFloat(key string, defaultValue float64) float64 {
+	if viper.IsSet(key) {
+		return viper.GetFloat64(key)
+	} else {
+		return defaultValue
+	}
+}
+
 func GetString(key string, defaultValue string) string {
 	if viper.IsSet(key) {
 		return viper.GetString(key)
