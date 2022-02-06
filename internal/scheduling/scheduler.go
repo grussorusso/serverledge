@@ -3,6 +3,7 @@ package scheduling
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,17 +17,22 @@ import (
 
 func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
 	schedArrivalT := time.Now()
-	containerID, ok := containers.AcquireWarmContainer(r.Fun)
-	if !ok {
+	containerID, err := containers.AcquireWarmContainer(r.Fun)
+	if err == nil {
+		log.Printf("Using a warm container for: %v", r)
+	} else if errors.Is(err, containers.OutOfResourcesErr) {
+		log.Printf("Not enough resources on the node.")
+		return nil, err
+	} else if errors.Is(err, containers.NoWarmFoundErr) {
 		newContainer, err := containers.NewContainer(r.Fun)
-		if err != nil {
-			// TODO: this may fail because we run out of memory/CPU
-			// handle this error differently?
+		if errors.Is(err, containers.OutOfResourcesErr) {
+			return nil, err
+		} else if err != nil {
 			return nil, fmt.Errorf("Could not create a new container: %v", err)
 		}
 		containerID = newContainer
 	} else {
-		log.Printf("Using a warm container for: %v", r)
+		return nil, err
 	}
 
 	initTime := time.Now().Sub(schedArrivalT).Seconds()

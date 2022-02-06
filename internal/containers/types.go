@@ -2,6 +2,7 @@ package containers
 
 import (
 	"container/list"
+	"errors"
 	"sync"
 )
 
@@ -21,3 +22,6 @@ type NodeResources struct {
 	AvailableMemMB int64
 	AvailableCPUs  float64
 }
+
+var OutOfResourcesErr = errors.New("Not enough resources for function execution")
+var NoWarmFoundErr = errors.New("No warm container is available.")

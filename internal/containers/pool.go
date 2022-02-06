@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/list"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -80,26 +79,34 @@ func newFunctionPool(f *functions.Function) *functionPool {
 	return fp
 }
 
-//AcquireWarmContainer acquires a warm container for a given function (if any).
-//A warm container is in running/paused state and has already been initialized
-//with the function code.
-//The acquired container is already in the busy pool.
-func AcquireWarmContainer(f *functions.Function) (contID ContainerID, found bool) {
+// AcquireWarmContainer acquires a warm container for a given function (if any).
+// A warm container is in running/paused state and has already been initialized
+// with the function code.
+// The acquired container is already in the busy pool.
+// The function returns an error if either:
+// (i) the warm container does not exist
+// (ii) there are not enough resources to start the container
+func AcquireWarmContainer(f *functions.Function) (ContainerID, error) {
+	nodeRes.Lock()
+	defer nodeRes.Unlock()
+
+	if nodeRes.AvailableCPUs < f.CPUDemand {
+		log.Printf("Not enough CPU to start a warm container for %s", f)
+		return "", OutOfResourcesErr
+	}
+
 	fp := getFunctionPool(f)
 	fp.Lock()
 	defer fp.Unlock()
 
-	contID, found = fp.acquireReadyContainer()
-
-	// update node resources
+	contID, found := fp.acquireReadyContainer()
 	if found {
-		nodeRes.Lock()
-		defer nodeRes.Unlock()
 		nodeRes.AvailableCPUs -= f.CPUDemand
 		log.Printf("Acquired resources for warm container. Now: %v", nodeRes)
+		return contID, nil
 	}
 
-	return contID, found
+	return "", NoWarmFoundErr
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
@@ -149,12 +156,14 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
 			nodeRes.Unlock()
-			return "", errors.New("unable to create container: memory not available")
+			log.Printf("Not enough memory for the new container.")
+			return "", OutOfResourcesErr
 		}
 	}
 	if nodeRes.AvailableCPUs < fun.CPUDemand {
 		nodeRes.Unlock()
-		return "", errors.New("unable to create container: CPU not available")
+		log.Printf("Not enough CPU for the new container.")
+		return "", OutOfResourcesErr
 	}
 
 	nodeRes.AvailableMemMB -= fun.MemoryMB
