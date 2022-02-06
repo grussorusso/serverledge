@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/api"
@@ -71,21 +70,14 @@ func main() {
 	if len(os.Args) > 1 {
 		configFileName = os.Args[1]
 	}
+	log.Printf("Reading configuration from file: %s", configFileName)
 	config.ReadConfiguration(configFileName)
 
 	//setting up cache parameters
 	cacheSetup()
 
-	// initialize node resources
-	availableCores := runtime.NumCPU()
-	log.Printf("Cores: %d", availableCores)
-	containers.NodeRes.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
-	containers.NodeRes.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
-
-	containers.InitDockerContainerFactory()
-
-	//janitor periodically remove expired warm container
-	containers.GetJanitorInstance()
+	// initialize container pool
+	containers.Initialize()
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler()

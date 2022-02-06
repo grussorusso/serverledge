@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -18,7 +19,20 @@ import (
 var funToPool = make(map[string]*functionPool)
 var functionPoolsMutex sync.Mutex
 
-var NodeRes NodeResources
+var nodeRes NodeResources
+
+func Initialize() {
+	// initialize node resources
+	availableCores := runtime.NumCPU()
+	nodeRes.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
+	nodeRes.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
+	log.Printf("Current node resources: %v", nodeRes)
+
+	InitDockerContainerFactory()
+
+	//janitor periodically remove expired warm container
+	GetJanitorInstance()
+}
 
 //getFunctionPool retrieves (or creates) the container pool for a function.
 func getFunctionPool(f *functions.Function) *functionPool {
@@ -76,7 +90,16 @@ func AcquireWarmContainer(f *functions.Function) (contID ContainerID, found bool
 	defer fp.Unlock()
 
 	contID, found = fp.acquireReadyContainer()
-	return
+
+	// update node resources
+	if found {
+		nodeRes.Lock()
+		defer nodeRes.Unlock()
+		nodeRes.AvailableCPUs -= f.CPUDemand
+		log.Printf("Acquired resources for warm container. Now: %v", nodeRes)
+	}
+
+	return contID, found
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
@@ -102,10 +125,12 @@ func ReleaseContainer(contID ContainerID, f *functions.Function) {
 		elem.Next()
 	}
 
-	NodeRes.Lock()
-	defer NodeRes.Unlock()
+	nodeRes.Lock()
+	defer nodeRes.Unlock()
 
-	NodeRes.AvailableCPUs -= f.CPUDemand
+	nodeRes.AvailableCPUs += f.CPUDemand
+
+	log.Printf("Released resources. Now: %v", nodeRes)
 }
 
 //NewContainer creates and starts a new container for the given function.
@@ -118,23 +143,25 @@ func NewContainer(fun *functions.Function) (ContainerID, error) {
 	}
 	image := runtime.Image
 
-	NodeRes.Lock()
+	nodeRes.Lock()
 	// check resources
-	if NodeRes.AvailableMemMB < fun.MemoryMB {
+	if nodeRes.AvailableMemMB < fun.MemoryMB {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
-			NodeRes.Unlock()
+			nodeRes.Unlock()
 			return "", errors.New("unable to create container: memory not available")
 		}
 	}
-	if NodeRes.AvailableCPUs < fun.CPUDemand {
-		NodeRes.Unlock()
+	if nodeRes.AvailableCPUs < fun.CPUDemand {
+		nodeRes.Unlock()
 		return "", errors.New("unable to create container: CPU not available")
 	}
 
-	NodeRes.AvailableMemMB -= fun.MemoryMB
-	NodeRes.AvailableCPUs -= fun.CPUDemand
-	NodeRes.Unlock()
+	nodeRes.AvailableMemMB -= fun.MemoryMB
+	nodeRes.AvailableCPUs -= fun.CPUDemand
+	nodeRes.Unlock()
+
+	log.Printf("Acquired resources for new container. Now: %v", nodeRes)
 
 	log.Printf("Starting new container for %s (image: %s)", fun, image)
 	contID, err := cf.Create(image, &ContainerOptions{
@@ -222,10 +249,11 @@ cleanup: // second phase, cleanup
 				res = false
 				goto unlock
 			}
-			NodeRes.AvailableMemMB += item.memory
+			nodeRes.AvailableMemMB += item.memory
 		}
 
 		res = true
+		log.Printf("Released resources. Now: %v", nodeRes)
 	}
 
 unlock:
@@ -256,11 +284,12 @@ func DeleteExpiredContainer() {
 				log.Printf("janitor: Removing container with ID %s\n", warmed.contID)
 				pool.ready.Remove(temp) // remove the expired element
 
-				NodeRes.Lock()
+				nodeRes.Lock()
 				memory, _ := cf.GetMemoryMB(warmed.contID)
 				cf.Destroy(warmed.contID)
-				NodeRes.AvailableMemMB += memory
-				NodeRes.Unlock()
+				nodeRes.AvailableMemMB += memory
+				nodeRes.Unlock()
+				log.Printf("Released resources. Now: %v", nodeRes)
 
 			} else {
 				elem = elem.Next()
@@ -276,8 +305,8 @@ func DeleteExpiredContainer() {
 func ShutdownAll() {
 	functionPoolsMutex.Lock()
 	defer functionPoolsMutex.Unlock()
-	NodeRes.Lock()
-	defer NodeRes.Unlock()
+	nodeRes.Lock()
+	defer nodeRes.Unlock()
 
 	for fun, pool := range funToPool {
 		pool.Lock()
@@ -292,7 +321,7 @@ func ShutdownAll() {
 
 			memory, _ := cf.GetMemoryMB(warmed.contID)
 			cf.Destroy(warmed.contID)
-			NodeRes.AvailableMemMB += memory
+			nodeRes.AvailableMemMB += memory
 		}
 
 		function, _ := functions.GetFunction(fun)
@@ -307,8 +336,8 @@ func ShutdownAll() {
 
 			memory, _ := cf.GetMemoryMB(contID)
 			cf.Destroy(contID)
-			NodeRes.AvailableMemMB += memory
-			NodeRes.AvailableCPUs += function.CPUDemand
+			nodeRes.AvailableMemMB += memory
+			nodeRes.AvailableCPUs += function.CPUDemand
 		}
 
 		pool.Unlock()

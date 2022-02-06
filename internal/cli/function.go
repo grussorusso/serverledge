@@ -20,6 +20,7 @@ func Create() {
 	runtime := createCmd.String("runtime", "python38", "runtime for the function")
 	handler := createCmd.String("handler", "", "function handler")
 	memory := createCmd.Int("memory", 128, "max memory in MB for the function")
+	cpuDemand := createCmd.Float64("cpu", 0.0, "estimated CPU demand for the function (e.g., 1.0 = 1 core)")
 	src := createCmd.String("src", "", "source the function (single file, directory or TAR archive)")
 	createCmd.Parse(os.Args[2:])
 
@@ -34,7 +35,9 @@ func Create() {
 	}
 	encoded := base64.StdEncoding.EncodeToString(srcContent)
 
-	request := functions.Function{Name: *funcName, Handler: *handler, Runtime: *runtime, MemoryMB: int64(*memory), TarFunctionCode: encoded}
+	request := functions.Function{Name: *funcName, Handler: *handler,
+		Runtime: *runtime, MemoryMB: int64(*memory),
+		CPUDemand: *cpuDemand, TarFunctionCode: encoded}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()
