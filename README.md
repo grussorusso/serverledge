@@ -61,6 +61,8 @@ server:
 
 	$ bin/serverledge <config file>
 
+Supported configuration keys are defined in `internal/config/keys.go`.
+
 ## Using the CLI with a remote server
 
 You can append the options `-host HOST` and `-port PORT` to specify the server
