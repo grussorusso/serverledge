@@ -15,30 +15,60 @@ import (
 	"github.com/grussorusso/serverledge/internal/functions"
 )
 
-func Schedule(r *functions.Request) (*functions.ExecutionReport, error) {
+var SchedRequests chan *functions.Request
+var SchedCompletions chan *functions.ExecutionReport
+
+func Run() {
+	SchedRequests = make(chan *functions.Request)
+	SchedCompletions = make(chan *functions.ExecutionReport)
+
+	log.Println("Scheduler started.")
+
+	var r *functions.Request
+
+	for {
+		select {
+		case r = <-SchedRequests:
+			handleRequest(r)
+		case <-SchedCompletions:
+			fmt.Println("completion")
+			return
+		}
+	}
+
+}
+
+func handleRequest(r *functions.Request) {
 	schedArrivalT := time.Now()
 	containerID, err := containers.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 	} else if errors.Is(err, containers.OutOfResourcesErr) {
 		log.Printf("Not enough resources on the node.")
-		return nil, err
+		r.Sched <- SchedDecision{Decision: DROP}
+		return
 	} else if errors.Is(err, containers.NoWarmFoundErr) {
 		newContainer, err := containers.NewContainer(r.Fun)
 		if errors.Is(err, containers.OutOfResourcesErr) {
-			return nil, err
+			r.Sched <- SchedDecision{Decision: DROP}
+			return
 		} else if err != nil {
-			return nil, fmt.Errorf("Could not create a new container: %v", err)
+			log.Printf("Could not create a new container: %v", err)
+			r.Sched <- SchedDecision{Decision: DROP}
+			return
 		}
 		containerID = newContainer
 	} else {
-		return nil, err
+		r.Sched <- SchedDecision{Decision: DROP}
+		return
 	}
 
 	initTime := time.Now().Sub(schedArrivalT).Seconds()
 	r.Report = &functions.ExecutionReport{InitTime: initTime}
 
-	return containers.Invoke(containerID, r)
+	// return decision
+	decision := SchedDecision{Decision: EXEC_LOCAL, ContID: containerID}
+	r.Sched <- decision
 }
 
 func Offload(r *functions.Request) (*http.Response, error) {

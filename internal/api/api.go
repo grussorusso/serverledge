@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/config"
-
+	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
@@ -27,7 +25,6 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
-	offloading := config.GetBool("offloading", false)
 	funcName := c.Param("fun")
 	function, ok := functions.GetFunction(funcName)
 	if !ok {
@@ -46,20 +43,43 @@ func InvokeFunction(c echo.Context) error {
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 
 	log.Printf("New request for function '%s' (class: %s, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
-	result, err := scheduling.Schedule(r)
-	if err == nil {
+
+	r.Sched = make(chan interface{}, 1)
+	scheduling.SchedRequests <- r
+
+	// wait on channel for scheduling decision
+	schedDecision, ok := (<-r.Sched).(scheduling.SchedDecision)
+	if !ok {
+		log.Fatalf("Received invalid scheduler decision!")
+	}
+	log.Printf("Sched decision: %v", schedDecision)
+
+	if schedDecision.Decision == scheduling.DROP {
+		log.Printf("Dropping request")
+		return c.String(http.StatusTooManyRequests, "")
+	} else {
+		result, err := containers.Invoke(schedDecision.ContID, r)
+		if err != nil {
+			return c.String(http.StatusServiceUnavailable, "")
+		}
 		log.Printf("Request OK: %v", result)
 		return c.JSON(http.StatusOK, result)
-	} else if offloading {
-		// offloading to handle missing resource status
-		res, err := scheduling.Offload(r)
-		defer res.Body.Close()
-		if err == nil {
-			body, _ := ioutil.ReadAll(res.Body)
-			log.Printf("Offloading Request status OK: %s", string(body))
-			return c.JSON(http.StatusOK, string(body))
-		}
 	}
+
+	//result, err := scheduling.Schedule(r)
+	//if err == nil {
+	//	log.Printf("Request OK: %v", result)
+	//	return c.JSON(http.StatusOK, result)
+	//} else if offloading {
+	//	// offloading to handle missing resource status
+	//	res, err := scheduling.Offload(r)
+	//	defer res.Body.Close()
+	//	if err == nil {
+	//		body, _ := ioutil.ReadAll(res.Body)
+	//		log.Printf("Offloading Request status OK: %s", string(body))
+	//		return c.JSON(http.StatusOK, string(body))
+	//	}
+	//}
 
 	log.Printf("Failed invocation of %s: %v", function, err)
 	return c.String(http.StatusServiceUnavailable, "")

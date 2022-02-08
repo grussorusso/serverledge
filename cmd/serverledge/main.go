@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/containers"
+	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -70,7 +70,6 @@ func main() {
 	if len(os.Args) > 1 {
 		configFileName = os.Args[1]
 	}
-	log.Printf("Reading configuration from file: %s", configFileName)
 	config.ReadConfiguration(configFileName)
 
 	//setting up cache parameters
@@ -81,6 +80,8 @@ func main() {
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler()
+
+	go scheduling.Run()
 
 	startAPIServer()
 }
