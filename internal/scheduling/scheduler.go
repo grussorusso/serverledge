@@ -38,6 +38,23 @@ func Run() {
 
 }
 
+func handleColdStart(r *functions.Request, schedArrivalT time.Time) {
+	newContainer, err := containers.NewContainer(r.Fun)
+	if errors.Is(err, containers.OutOfResourcesErr) {
+		r.Sched <- SchedDecision{Decision: DROP}
+	} else if err != nil {
+		log.Printf("Could not create a new container: %v", err)
+		r.Sched <- SchedDecision{Decision: DROP}
+	} else {
+		initTime := time.Now().Sub(schedArrivalT).Seconds()
+		r.Report = &functions.ExecutionReport{InitTime: initTime}
+
+		// return decision
+		decision := SchedDecision{Decision: EXEC_LOCAL, ContID: newContainer}
+		r.Sched <- decision
+	}
+}
+
 func handleRequest(r *functions.Request) {
 	schedArrivalT := time.Now()
 	containerID, err := containers.AcquireWarmContainer(r.Fun)
@@ -48,16 +65,9 @@ func handleRequest(r *functions.Request) {
 		r.Sched <- SchedDecision{Decision: DROP}
 		return
 	} else if errors.Is(err, containers.NoWarmFoundErr) {
-		newContainer, err := containers.NewContainer(r.Fun)
-		if errors.Is(err, containers.OutOfResourcesErr) {
-			r.Sched <- SchedDecision{Decision: DROP}
-			return
-		} else if err != nil {
-			log.Printf("Could not create a new container: %v", err)
-			r.Sched <- SchedDecision{Decision: DROP}
-			return
-		}
-		containerID = newContainer
+		// Cold Start (handles asynchronously)
+		go handleColdStart(r, schedArrivalT)
+		return
 	} else {
 		r.Sched <- SchedDecision{Decision: DROP}
 		return
