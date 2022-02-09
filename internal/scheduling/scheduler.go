@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -16,7 +15,7 @@ import (
 )
 
 var SchedRequests chan *functions.Request
-var SchedCompletions chan *functions.ExecutionReport
+var SchedCompletions chan *functions.Request
 
 func Run() {
 	SchedRequests = make(chan *functions.Request)
@@ -29,56 +28,55 @@ func Run() {
 	for {
 		select {
 		case r = <-SchedRequests:
-			handleRequest(r)
+			scheduleOnArrival(r)
 		case <-SchedCompletions:
-			fmt.Println("completion")
+			// TODO: scheduleOnCompletion()
+			log.Printf("Scheduler notified about completion.")
 			return
 		}
 	}
 
 }
 
-func handleColdStart(r *functions.Request, schedArrivalT time.Time) {
+func handleColdStart(r *functions.Request) {
 	newContainer, err := containers.NewContainer(r.Fun)
 	if errors.Is(err, containers.OutOfResourcesErr) {
-		r.Sched <- SchedDecision{Decision: DROP}
+		dropRequest(r)
 	} else if err != nil {
 		log.Printf("Could not create a new container: %v", err)
-		r.Sched <- SchedDecision{Decision: DROP}
+		dropRequest(r)
 	} else {
-		initTime := time.Now().Sub(schedArrivalT).Seconds()
-		r.Report = &functions.ExecutionReport{InitTime: initTime}
-
-		// return decision
-		decision := SchedDecision{Decision: EXEC_LOCAL, ContID: newContainer}
-		r.Sched <- decision
+		execLocally(r, newContainer)
 	}
 }
 
-func handleRequest(r *functions.Request) {
-	schedArrivalT := time.Now()
+func dropRequest(r *functions.Request) {
+	r.Sched <- SchedDecision{Decision: DROP}
+}
+
+func execLocally(r *functions.Request, c containers.ContainerID) {
+	initTime := time.Now().Sub(r.Arrival).Seconds()
+	r.Report = &functions.ExecutionReport{InitTime: initTime}
+
+	decision := SchedDecision{Decision: EXEC_LOCAL, ContID: c}
+	r.Sched <- decision
+}
+
+func scheduleOnArrival(r *functions.Request) {
 	containerID, err := containers.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
-	} else if errors.Is(err, containers.OutOfResourcesErr) {
-		log.Printf("Not enough resources on the node.")
-		r.Sched <- SchedDecision{Decision: DROP}
-		return
+		execLocally(r, containerID)
 	} else if errors.Is(err, containers.NoWarmFoundErr) {
 		// Cold Start (handles asynchronously)
-		go handleColdStart(r, schedArrivalT)
-		return
+		go handleColdStart(r)
+	} else if errors.Is(err, containers.OutOfResourcesErr) {
+		log.Printf("Not enough resources on the node.")
+		dropRequest(r)
 	} else {
-		r.Sched <- SchedDecision{Decision: DROP}
-		return
+		// other error
+		dropRequest(r)
 	}
-
-	initTime := time.Now().Sub(schedArrivalT).Seconds()
-	r.Report = &functions.ExecutionReport{InitTime: initTime}
-
-	// return decision
-	decision := SchedDecision{Decision: EXEC_LOCAL, ContID: containerID}
-	r.Sched <- decision
 }
 
 func Offload(r *functions.Request) (*http.Response, error) {

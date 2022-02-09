@@ -43,6 +43,10 @@ func Invoke(contID ContainerID, r *functions.Request) (*functions.ExecutionRepor
 	r.Report.Duration = response.Duration
 	r.Report.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 	r.Report.CPUTime = response.CPUTime
+
+	// notify scheduler
+	//scheduling.SchedCompletions <- r
+
 	return r.Report, nil
 }
 
