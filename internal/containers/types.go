@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type functionPool struct {
+type containerPool struct {
 	sync.Mutex
 	busy  *list.List // list of ContainerID
 	ready *list.List // list of warmContainer
@@ -21,6 +21,7 @@ type NodeResources struct {
 	sync.Mutex
 	AvailableMemMB int64
 	AvailableCPUs  float64
+	containerPools map[string]*containerPool
 }
 
 var OutOfResourcesErr = errors.New("Not enough resources for function execution")

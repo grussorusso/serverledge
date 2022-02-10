@@ -19,7 +19,7 @@ var SchedCompletions chan *functions.Request
 
 func Run() {
 	SchedRequests = make(chan *functions.Request)
-	SchedCompletions = make(chan *functions.ExecutionReport)
+	SchedCompletions = make(chan *functions.Request)
 
 	log.Println("Scheduler started.")
 
