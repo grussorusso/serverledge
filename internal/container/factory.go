@@ -1,8 +1,8 @@
-package containers
+package container
 
 import "io"
 
-//A Factory to create and manage containers.
+//A Factory to create and manage container.
 type Factory interface {
 	Create(string, *ContainerOptions) (ContainerID, error)
 	CopyToContainer(ContainerID, io.Reader, string) error

@@ -1,4 +1,4 @@
-package functions
+package function
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ type Request struct {
 	Arrival time.Time
 	Report  *ExecutionReport
 	RequestQoS
-	Sched chan interface{}
 }
 
 type RequestQoS struct {

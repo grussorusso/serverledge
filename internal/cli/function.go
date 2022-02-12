@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grussorusso/serverledge/internal/functions"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
 )
 
@@ -35,7 +35,7 @@ func Create() {
 	}
 	encoded := base64.StdEncoding.EncodeToString(srcContent)
 
-	request := functions.Function{Name: *funcName, Handler: *handler,
+	request := function.Function{Name: *funcName, Handler: *handler,
 		Runtime: *runtime, MemoryMB: int64(*memory),
 		CPUDemand: *cpuDemand, TarFunctionCode: encoded}
 	requestBody, err := json.Marshal(request)
@@ -83,7 +83,7 @@ func Delete() {
 	funcName := deleteCmd.String("function", "", "name of the function")
 	deleteCmd.Parse(os.Args[2:])
 
-	request := functions.Function{Name: *funcName}
+	request := function.Function{Name: *funcName}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()
@@ -99,7 +99,7 @@ func Delete() {
 }
 
 func List() {
-	url := fmt.Sprintf("http://%s:%d/functions", ServerConfig.Host, ServerConfig.Port)
+	url := fmt.Sprintf("http://%s:%d/function", ServerConfig.Host, ServerConfig.Port)
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Printf("List request failed: %v\n", err)

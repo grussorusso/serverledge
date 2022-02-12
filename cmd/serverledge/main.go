@@ -9,7 +9,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/containers"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -23,7 +22,7 @@ func startAPIServer() {
 	e.POST("/invoke/:fun", api.InvokeFunction)
 	e.POST("/create", api.CreateFunction)
 	e.POST("/delete", api.DeleteFunction)
-	e.GET("/functions", api.GetFunctions)
+	e.GET("/function", api.GetFunctions)
 
 	// Start server
 	portNumber := config.GetInt("api.port", 1323)
@@ -59,7 +58,7 @@ func registerTerminationHandler() {
 		select {
 		case sig := <-c:
 			fmt.Printf("Got %s signal. Terminating...\n", sig)
-			containers.ShutdownAll()
+			scheduling.ShutdownAll()
 			os.Exit(0)
 		}
 	}()
@@ -74,9 +73,6 @@ func main() {
 
 	//setting up cache parameters
 	cacheSetup()
-
-	// initialize container pool
-	containers.Initialize()
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler()
