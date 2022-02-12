@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"io"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 )
@@ -26,9 +26,9 @@ func GetFunctions(c echo.Context) error {
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
 	funcName := c.Param("fun")
-	function, ok := function.GetFunction(funcName)
+	fun, ok := function.GetFunction(funcName)
 	if !ok {
-		log.Printf("Dropping request for unknown function '%s'", funcName)
+		log.Printf("Dropping request for unknown fun '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
 
@@ -38,7 +38,7 @@ func InvokeFunction(c echo.Context) error {
 		return fmt.Errorf("Could not parse request: %v", err)
 	}
 
-	r := &function.Request{Fun: function, Params: invocationRequest.Params, Arrival: time.Now()}
+	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 
