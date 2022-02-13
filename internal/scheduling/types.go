@@ -29,25 +29,25 @@ type NodeResources struct {
 var OutOfResourcesErr = errors.New("Not enough resources for function execution")
 var NoWarmFoundErr = errors.New("No warm container is available.")
 
-// ScheduledRequest represents a Request within the scheduling subsystem
-type ScheduledRequest struct {
+// scheduledRequest represents a Request within the scheduling subsystem
+type scheduledRequest struct {
 	*function.Request
-	decisionChannel chan SchedDecision
+	decisionChannel chan schedDecision
 }
 
-// SchedDecision wraps a decision made by the scheduler.
+// schedDecision wraps a action made by the scheduler.
 // Possible decisions are 1) drop, 2) execute locally or 3) execute on a remote
 // node (offloading).
-type SchedDecision struct {
-	Decision   Action
-	ContID     container.ContainerID
-	RemoteHost string
+type schedDecision struct {
+	action     action
+	contID     container.ContainerID
+	remoteHost string
 }
 
-type Action int64
+type action int64
 
 const (
-	DROP        Action = 0
+	DROP        action = 0
 	EXEC_LOCAL         = 1
 	EXEC_REMOTE        = 2
 )

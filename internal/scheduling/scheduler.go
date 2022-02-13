@@ -16,12 +16,13 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
-var requests chan *ScheduledRequest
-var completions chan *ScheduledRequest
+var policy Policy
+var requests chan *scheduledRequest
+var completions chan *scheduledRequest
 
 func Run() {
-	requests = make(chan *ScheduledRequest)
-	completions = make(chan *ScheduledRequest)
+	requests = make(chan *scheduledRequest)
+	completions = make(chan *scheduledRequest)
 
 	// initialize node resources
 	availableCores := runtime.NumCPU()
@@ -32,21 +33,22 @@ func Run() {
 
 	container.InitDockerContainerFactory()
 
+	// TODO: use a policy factory
+	policy = &defaultLocalPolicy{}
+
 	//janitor periodically remove expired warm container
 	GetJanitorInstance()
 
 	log.Println("Scheduler started.")
 
-	var r *ScheduledRequest
+	var r *scheduledRequest
 
 	for {
 		select {
 		case r = <-requests:
-			log.Printf("Scheduler notified about arrival.")
-			scheduleOnArrival(r)
-		case <-completions:
-			// TODO: scheduleOnCompletion()
-			log.Printf("Scheduler notified about completion.")
+			policy.OnArrival(r)
+		case r = <-completions:
+			policy.OnCompletion(r)
 		}
 	}
 
@@ -56,21 +58,21 @@ func Run() {
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	log.Printf("New request for '%s' (class: %s, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
 
-	schedRequest := ScheduledRequest{r, make(chan SchedDecision, 1)}
+	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
 	requests <- &schedRequest
 
-	// wait on channel for scheduling decision
+	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
 		return nil, fmt.Errorf("Could not schedule the request!")
 	}
-	log.Printf("Sched decision: %v", schedDecision)
+	log.Printf("Sched action: %v", schedDecision)
 
-	if schedDecision.Decision == DROP {
+	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
 		return nil, OutOfResourcesErr
 	} else {
-		result, err := Execute(schedDecision.ContID, &schedRequest)
+		result, err := Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +80,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	}
 }
 
-func handleColdStart(r *ScheduledRequest) {
+func handleColdStart(r *scheduledRequest) {
 	newContainer, err := newContainer(r.Fun)
 	if errors.Is(err, OutOfResourcesErr) {
 		dropRequest(r)
@@ -90,36 +92,19 @@ func handleColdStart(r *ScheduledRequest) {
 	}
 }
 
-func dropRequest(r *ScheduledRequest) {
-	r.decisionChannel <- SchedDecision{Decision: DROP}
+func dropRequest(r *scheduledRequest) {
+	r.decisionChannel <- schedDecision{action: DROP}
 }
 
-func execLocally(r *ScheduledRequest, c container.ContainerID) {
+func execLocally(r *scheduledRequest, c container.ContainerID) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
 	r.Report = &function.ExecutionReport{InitTime: initTime}
 
-	decision := SchedDecision{Decision: EXEC_LOCAL, ContID: c}
+	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
 }
 
-func scheduleOnArrival(r *ScheduledRequest) {
-	containerID, err := acquireWarmContainer(r.Fun)
-	if err == nil {
-		log.Printf("Using a warm container for: %v", r)
-		execLocally(r, containerID)
-	} else if errors.Is(err, NoWarmFoundErr) {
-		// Cold Start (handles asynchronously)
-		go handleColdStart(r)
-	} else if errors.Is(err, OutOfResourcesErr) {
-		log.Printf("Not enough resources on the node.")
-		dropRequest(r)
-	} else {
-		// other error
-		dropRequest(r)
-	}
-}
-
-func Offload(r *ScheduledRequest) (*http.Response, error) {
+func Offload(r *scheduledRequest) (*http.Response, error) {
 	serverUrl := config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
 	jsonData, err := json.Marshal(r.Params)
 	if err != nil {

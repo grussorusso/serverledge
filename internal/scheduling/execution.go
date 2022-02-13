@@ -10,7 +10,7 @@ import (
 )
 
 // Execute serves a request on the specified container.
-func Execute(contID container.ContainerID, r *ScheduledRequest) (*function.ExecutionReport, error) {
+func Execute(contID container.ContainerID, r *scheduledRequest) (*function.ExecutionReport, error) {
 	defer releaseContainer(contID, r.Fun)
 
 	log.Printf("Invoking function on container: %v", contID)
