@@ -77,7 +77,13 @@ func main() {
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler()
 
-	go scheduling.Run()
+	schedulingPolicy := createSchedulingPolicy()
+	go scheduling.Run(schedulingPolicy)
 
 	startAPIServer()
+}
+
+func createSchedulingPolicy() scheduling.Policy {
+	//TODO
+	return &scheduling.DefaultLocalPolicy{}
 }

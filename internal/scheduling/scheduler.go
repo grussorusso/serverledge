@@ -16,11 +16,10 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
-var policy Policy
 var requests chan *scheduledRequest
 var completions chan *scheduledRequest
 
-func Run() {
+func Run(p Policy) {
 	requests = make(chan *scheduledRequest)
 	completions = make(chan *scheduledRequest)
 
@@ -33,22 +32,21 @@ func Run() {
 
 	container.InitDockerContainerFactory()
 
-	// TODO: use a policy factory
-	policy = &defaultLocalPolicy{}
-
 	//janitor periodically remove expired warm container
 	GetJanitorInstance()
+
+	// initialize scheduling policy
+	p.Init()
 
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest
-
 	for {
 		select {
 		case r = <-requests:
-			policy.OnArrival(r)
+			p.OnArrival(r)
 		case r = <-completions:
-			policy.OnCompletion(r)
+			p.OnCompletion(r)
 		}
 	}
 

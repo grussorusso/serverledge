@@ -6,17 +6,22 @@ import (
 )
 
 type Policy interface {
+	Init()
 	OnCompletion(request *scheduledRequest)
 	OnArrival(request *scheduledRequest)
 }
 
-type defaultLocalPolicy struct{}
+type DefaultLocalPolicy struct{}
 
-func (p *defaultLocalPolicy) OnCompletion(r *scheduledRequest) {
+func (p *DefaultLocalPolicy) Init() {
 
 }
 
-func (p *defaultLocalPolicy) OnArrival(r *scheduledRequest) {
+func (p *DefaultLocalPolicy) OnCompletion(r *scheduledRequest) {
+
+}
+
+func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 	containerID, err := acquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
