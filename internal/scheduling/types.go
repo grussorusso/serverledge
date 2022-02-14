@@ -3,9 +3,10 @@ package scheduling
 import (
 	"container/list"
 	"errors"
+	"sync"
+
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
-	"sync"
 )
 
 type containerPool struct {

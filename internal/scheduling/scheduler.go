@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/logging"
 
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -40,6 +41,7 @@ func Run(p Policy) {
 
 	log.Println("Scheduler started.")
 
+	// TODO: run policy asynchronously with "go ..."
 	var r *scheduledRequest
 	for {
 		select {
@@ -66,15 +68,28 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	}
 	log.Printf("Sched action: %v", schedDecision)
 
+	logger := logging.GetLogger()
+	if !logger.Exists(r.Fun.Name) {
+		logger.InsertNewLog(r.Fun.Name)
+	}
+
 	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
 		return nil, OutOfResourcesErr
 	} else {
-		result, err := Execute(schedDecision.contID, &schedRequest)
+		report, err := Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
 			return nil, err
 		}
-		return result, nil
+
+		// TODO: SendReport also for dropped requests:
+		// Pass "schedDecision" to SendReport to check for drops
+		err = logger.SendReport(report, r.Fun.Name)
+		if err != nil {
+			log.Printf("unable to update log")
+		}
+
+		return report, nil
 	}
 }
 
@@ -86,7 +101,7 @@ func handleColdStart(r *scheduledRequest) {
 		log.Printf("Could not create a new container: %v", err)
 		dropRequest(r)
 	} else {
-		execLocally(r, newContainer)
+		execLocally(r, newContainer, false)
 	}
 }
 
@@ -94,15 +109,15 @@ func dropRequest(r *scheduledRequest) {
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 
-func execLocally(r *scheduledRequest, c container.ContainerID) {
+func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.Report = &function.ExecutionReport{InitTime: initTime}
+	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart}
 
 	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
 }
 
-func Offload(r *scheduledRequest) (*http.Response, error) {
+func offload(r *scheduledRequest) (*http.Response, error) {
 	serverUrl := config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
 	jsonData, err := json.Marshal(r.Params)
 	if err != nil {

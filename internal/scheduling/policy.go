@@ -25,7 +25,7 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 	containerID, err := acquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
-		execLocally(r, containerID)
+		execLocally(r, containerID, true)
 	} else if errors.Is(err, NoWarmFoundErr) {
 		// Cold Start (handles asynchronously)
 		go handleColdStart(r)
