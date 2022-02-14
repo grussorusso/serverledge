@@ -2,23 +2,21 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/config"
-
-	"github.com/grussorusso/serverledge/internal/functions"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 )
 
-// GetFunctions handles a request to list the functions available in the system.
+// GetFunctions handles a request to list the function available in the system.
 func GetFunctions(c echo.Context) error {
-	list, err := functions.GetAll()
+	list, err := function.GetAll()
 	if err != nil {
 		return c.String(http.StatusServiceUnavailable, "")
 	}
@@ -27,11 +25,10 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
-	offloading := config.GetBool("offloading", false)
 	funcName := c.Param("fun")
-	function, ok := functions.GetFunction(funcName)
+	fun, ok := function.GetFunction(funcName)
 	if !ok {
-		log.Printf("Dropping request for unknown function '%s'", funcName)
+		log.Printf("Dropping request for unknown fun '%s'", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
 
@@ -41,41 +38,45 @@ func InvokeFunction(c echo.Context) error {
 		return fmt.Errorf("Could not parse request: %v", err)
 	}
 
-	r := &functions.Request{Fun: function, Params: invocationRequest.Params, Arrival: time.Now()}
+	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 
-	log.Printf("New request for function '%s' (class: %s, Max RespT: %f)", function, invocationRequest.QoSClass, invocationRequest.QoSMaxRespT)
-	result, err := scheduling.Schedule(r)
-	if err == nil {
-		log.Printf("Request OK: %v", result)
-		return c.JSON(http.StatusOK, result)
-	} else if offloading {
-		// offloading to handle missing resource status
-		res, err := scheduling.Offload(r)
-		defer res.Body.Close()
-		if err == nil {
-			body, _ := ioutil.ReadAll(res.Body)
-			log.Printf("Offloading Request status OK: %s", string(body))
-			return c.JSON(http.StatusOK, string(body))
-		}
+	report, err := scheduling.SubmitRequest(r)
+	if errors.Is(err, scheduling.OutOfResourcesErr) {
+		return c.String(http.StatusTooManyRequests, "")
+	} else if err != nil {
+		return c.String(http.StatusInternalServerError, "")
+	} else {
+		return c.JSON(http.StatusOK, report)
 	}
 
-	log.Printf("Failed invocation of %s: %v", function, err)
-	return c.String(http.StatusServiceUnavailable, "")
-
+	//result, err := scheduling.Schedule(r)
+	//if err == nil {
+	//	log.Printf("Request OK: %v", result)
+	//	return c.JSON(http.StatusOK, result)
+	//} else if offloading {
+	//	// offloading to handle missing resource status
+	//	res, err := scheduling.Offload(r)
+	//	defer res.Body.Close()
+	//	if err == nil {
+	//		body, _ := ioutil.ReadAll(res.Body)
+	//		log.Printf("Offloading Request status OK: %s", string(body))
+	//		return c.JSON(http.StatusOK, string(body))
+	//	}
+	//}
 }
 
 // CreateFunction handles a function creation request.
 func CreateFunction(c echo.Context) error {
-	var f functions.Function
+	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
 		return err
 	}
 
-	_, ok := functions.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
+	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if ok {
 		log.Printf("Dropping request for already existing function '%s'", f.Name)
 		return c.JSON(http.StatusConflict, "")
@@ -93,14 +94,14 @@ func CreateFunction(c echo.Context) error {
 
 // DeleteFunction handles a function deletion request.
 func DeleteFunction(c echo.Context) error {
-	var f functions.Function
+	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
 		return err
 	}
 
-	_, ok := functions.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
+	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if !ok {
 		log.Printf("Dropping request for non existing function '%s'", f.Name)
 		return c.JSON(http.StatusNotFound, "")

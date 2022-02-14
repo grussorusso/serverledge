@@ -1,4 +1,4 @@
-package functions
+package function
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ func (f Function) getEtcdKey() string {
 }
 
 func getEtcdKey(funcName string) string {
-	return fmt.Sprintf("/functions/%s", funcName)
+	return fmt.Sprintf("/function/%s", funcName)
 }
 
 //GetFunction retrieves a Function given its name.
@@ -123,7 +123,7 @@ func (f *Function) Delete() error {
 	// Remove the function from the local cache
 	cache.GetCacheInstance().Delete(f.Name)
 
-	// TODO: remove all existing WARM containers
+	// TODO: remove all existing WARM container
 
 	return nil
 }
@@ -135,14 +135,14 @@ func GetAll() ([]string, error) {
 	}
 	ctx := context.TODO()
 
-	resp, err := cli.Get(ctx, "/functions", clientv3.WithPrefix())
+	resp, err := cli.Get(ctx, "/function", clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
 	functions := make([]string, len(resp.Kvs))
 	for i, s := range resp.Kvs {
-		functions[i] = string(s.Key)[len("/functions/"):]
+		functions[i] = string(s.Key)[len("/function/"):]
 	}
 
 	return functions, nil

@@ -1,4 +1,4 @@
-package containers
+package container
 
 import (
 	"context"
@@ -74,7 +74,7 @@ func (cf *DockerFactory) Start(contID ContainerID) error {
 }
 
 func (cf *DockerFactory) Destroy(contID ContainerID) error {
-	// force set to true causes running containers to be killed (and then
+	// force set to true causes running container to be killed (and then
 	// removed)
 	return cf.cli.ContainerRemove(cf.ctx, contID, types.ContainerRemoveOptions{Force: true})
 }

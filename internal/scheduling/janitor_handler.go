@@ -1,4 +1,4 @@
-package containers
+package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
