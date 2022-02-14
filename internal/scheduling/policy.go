@@ -28,7 +28,7 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 		execLocally(r, containerID, true)
 	} else if errors.Is(err, NoWarmFoundErr) {
 		// Cold Start (handles asynchronously)
-		go handleColdStart(r)
+		go handleColdStart(r, false)
 	} else if errors.Is(err, OutOfResourcesErr) {
 		log.Printf("Not enough resources on the node.")
 		dropRequest(r)

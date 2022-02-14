@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
@@ -73,33 +74,43 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		logger.InsertNewLog(r.Fun.Name)
 	}
 
+	var report *function.ExecutionReport
+	var err error
 	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
 		return nil, OutOfResourcesErr
-	} else {
-		report, err := Execute(schedDecision.contID, &schedRequest)
+	} else if schedDecision.action == EXEC_REMOTE {
+		log.Printf("Offloading request")
+		report, err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO: SendReport also for dropped requests:
-		// Pass "schedDecision" to SendReport to check for drops
-		err = logger.SendReport(report, r.Fun.Name)
+	} else {
+		report, err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
-			log.Printf("unable to update log")
+			return nil, err
 		}
-
-		return report, nil
 	}
+
+	// TODO: SendReport also for dropped requests:
+	// Pass "schedDecision" to SendReport to check for drops
+	err = logger.SendReport(report, r.Fun.Name)
+	if err != nil {
+		log.Printf("unable to update log")
+	}
+	return report, nil
 }
 
-func handleColdStart(r *scheduledRequest) {
+func handleColdStart(r *scheduledRequest, doOffload bool) {
+	log.Printf("Cold start procedure for: %v", r)
 	newContainer, err := newContainer(r.Fun)
-	if errors.Is(err, OutOfResourcesErr) {
-		dropRequest(r)
-	} else if err != nil {
+	if errors.Is(err, OutOfResourcesErr) || err != nil {
 		log.Printf("Could not create a new container: %v", err)
-		dropRequest(r)
+		if doOffload {
+			handleOffload(r)
+		} else {
+			dropRequest(r)
+		}
 	} else {
 		execLocally(r, newContainer, false)
 	}
@@ -111,27 +122,47 @@ func dropRequest(r *scheduledRequest) {
 
 func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart}
+	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart, Arrival: r.Arrival}
 
 	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
 }
 
-func offload(r *scheduledRequest) (*http.Response, error) {
-	serverUrl := config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
-	jsonData, err := json.Marshal(r.Params)
+func handleOffload(r *scheduledRequest) {
+	r.decisionChannel <- schedDecision{
+		action:     EXEC_REMOTE,
+		contID:     "",
+		remoteHost: config.GetString("server_url", "http://127.0.0.1:1324/invoke/"),
+	}
+}
+
+func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {
+	// Prepare request
+	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
+	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
-
+	sendingTime := time.Now() // used to compute latency later on
 	resp, err := http.Post(serverUrl+r.Fun.Name, "application/json",
-		bytes.NewBuffer(jsonData))
+		bytes.NewBuffer(invocationBody))
 
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
+	defer resp.Body.Close()
+	var report function.ExecutionReport
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &report)
 
-	return resp, nil
+	report.OffloadLatency = report.Arrival.Sub(sendingTime).Seconds()
+	log.Printf("%v", report)
+
+	err = logging.GetLogger().SendReport(&report, r.Fun.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
 }

@@ -25,6 +25,8 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
+	//handle missing parameters with default ones
+	maxRespTime := function.MaxRespTime // default maxRespTime
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
@@ -32,15 +34,24 @@ func InvokeFunction(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "")
 	}
 
-	var invocationRequest FunctionInvocationRequest
-	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
+	var invocationRequest function.InvocationRequest
+	var incomingRequest function.IncomingRequest
+	err := json.NewDecoder(c.Request().Body).Decode(&incomingRequest)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("Could not parse request: %v", err)
+		return fmt.Errorf("could not parse request: %v", err)
 	}
 
+	invocationRequest = function.InvocationRequest{
+		Params:      incomingRequest.Params,
+		QoSClass:    decodePriority(incomingRequest.QoSClass),
+		QoSMaxRespT: incomingRequest.QoSMaxRespT}
+	//update QoS parameters if any
+	if invocationRequest.QoSMaxRespT != -1 {
+		maxRespTime = invocationRequest.QoSMaxRespT
+	}
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
-	r.MaxRespT = invocationRequest.QoSMaxRespT
+	r.MaxRespT = maxRespTime
 
 	report, err := scheduling.SubmitRequest(r)
 	if errors.Is(err, scheduling.OutOfResourcesErr) {
@@ -115,4 +126,16 @@ func DeleteFunction(c echo.Context) error {
 	}
 	response := struct{ Deleted string }{f.Name}
 	return c.JSON(http.StatusOK, response)
+}
+
+func decodePriority(priority string) (p function.Priority) {
+	if priority == "low" {
+		return function.LOW
+	} else if priority == "performance" {
+		return function.HIGH_PERFORMANCE
+	} else if priority == "availability" {
+		return function.HIGH_AVAILABILITY
+	} else {
+		return function.LOW
+	}
 }
