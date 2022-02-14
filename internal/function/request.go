@@ -20,11 +20,13 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
-	Result       string
-	ResponseTime float64
-	InitTime     float64
-	Duration     float64
-	CPUTime      float64
+	Result         string
+	ResponseTime   float64
+	IsWarmStart    bool
+	InitTime       float64
+	OffloadLatency float64
+	Duration       float64
+	CPUTime        float64
 }
 
 func (r *Request) String() string {

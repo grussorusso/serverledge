@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"os"
 	"os/signal"
 	"time"
@@ -9,13 +10,16 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/logging"
+	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
+	"github.com/grussorusso/serverledge/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 )
 
-func startAPIServer() {
-	e := echo.New()
+func startAPIServer(e *echo.Echo) {
 	e.Use(middleware.Recover())
 
 	// Routes
@@ -50,7 +54,7 @@ func cacheSetup() {
 	cache.GetCacheInstance()
 }
 
-func registerTerminationHandler() {
+func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt)
 
@@ -59,6 +63,22 @@ func registerTerminationHandler() {
 		case sig := <-c:
 			fmt.Printf("Got %s signal. Terminating...\n", sig)
 			scheduling.ShutdownAll()
+
+			// deregister from etcd; server should be unreachable
+			err := r.Deregister()
+			if err != nil {
+				log.Error(err)
+			}
+
+			//logging cleanup; stop all associated threads
+			logging.GetLogger().CleanUpLog()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := e.Shutdown(ctx); err != nil {
+				e.Logger.Fatal(err)
+			}
+
 			os.Exit(0)
 		}
 	}()
@@ -74,13 +94,30 @@ func main() {
 	//setting up cache parameters
 	cacheSetup()
 
+	// register to etcd, this way server is visible to the others under a given local area
+	r := new(registration.Registry)
+	r.Area = config.GetString("registry.area", "ROME")
+	// before register checkout other servers into the local area
+	//todo use this info later on
+	_, err := r.GetAll()
+	if err != nil {
+		return
+	}
+	err = r.RegisterToEtcd(utils.GetIpAddress().String())
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+
+	e := echo.New()
+
 	// Register a signal handler to cleanup things on termination
-	registerTerminationHandler()
+	registerTerminationHandler(r, e)
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
-	startAPIServer()
+	startAPIServer(e)
 }
 
 func createSchedulingPolicy() scheduling.Policy {
