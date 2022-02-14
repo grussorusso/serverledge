@@ -43,7 +43,7 @@ func InvokeFunction(c echo.Context) error {
 
 	invocationRequest = function.InvocationRequest{
 		Params:      incomingRequest.Params,
-		QoSClass:    decodePriority(incomingRequest.QoSClass),
+		QoSClass:    DecodePriority(incomingRequest.QoSClass),
 		QoSMaxRespT: incomingRequest.QoSMaxRespT}
 	//update QoS parameters if any
 	if invocationRequest.QoSMaxRespT != -1 {
@@ -128,7 +128,7 @@ func DeleteFunction(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func decodePriority(priority string) (p function.Priority) {
+func DecodePriority(priority string) (p function.Priority) {
 	if priority == "low" {
 		return function.LOW
 	} else if priority == "performance" {
