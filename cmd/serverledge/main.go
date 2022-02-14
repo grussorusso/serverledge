@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"os"
 	"os/signal"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/grussorusso/serverledge/utils"
@@ -17,8 +19,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func startAPIServer() {
-	e := echo.New()
+func startAPIServer(e *echo.Echo) {
 	e.Use(middleware.Recover())
 
 	// Routes
@@ -53,7 +54,7 @@ func cacheSetup() {
 	cache.GetCacheInstance()
 }
 
-func registerTerminationHandler(r *registration.Registry) {
+func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt)
 
@@ -67,6 +68,15 @@ func registerTerminationHandler(r *registration.Registry) {
 			err := r.Deregister()
 			if err != nil {
 				log.Error(err)
+			}
+
+			//logging cleanup; stop all associated threads
+			logging.GetLogger().CleanUpLog()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := e.Shutdown(ctx); err != nil {
+				e.Logger.Fatal(err)
 			}
 
 			os.Exit(0)
@@ -99,13 +109,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	e := echo.New()
+
 	// Register a signal handler to cleanup things on termination
-	registerTerminationHandler(r)
+	registerTerminationHandler(r, e)
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
-	startAPIServer()
+	startAPIServer(e)
 }
 
 func createSchedulingPolicy() scheduling.Policy {
