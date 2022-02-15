@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-var dropCountPtr = new(int64)
 var expirationInterval = time.Duration(config.GetInt("policy.drop.expiration", 30))
 
 type GreedyPolicy struct {
@@ -45,7 +44,7 @@ func (p *GreedyPolicy) OnArrival(r *scheduledRequest) {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
 	} else if errors.Is(err, NoWarmFoundErr) && offloading {
-		act := takeSchedulingDecision(r)
+		act := p.takeSchedulingDecision(r)
 		switch act {
 		case SCHED_BASIC:
 			handleColdStart(r, true)
@@ -70,7 +69,7 @@ func (p *GreedyPolicy) OnArrival(r *scheduledRequest) {
 	}
 }
 
-func takeSchedulingDecision(r *scheduledRequest) (act schedulingDecision) {
+func (p *GreedyPolicy) takeSchedulingDecision(r *scheduledRequest) (act schedulingDecision) {
 	var timeLocal, timeOffload float64
 	logger := logging.GetLogger()
 	localStatus, _ := logger.GetLocalLogStatus(r.Fun.Name)
@@ -91,10 +90,10 @@ func takeSchedulingDecision(r *scheduledRequest) (act schedulingDecision) {
 			return SCHED_DROP
 		}
 	}
-	return decision(timeOffload, timeLocal, r)
+	return p.decision(timeOffload, timeLocal, r)
 }
 
-func decision(timeOffload float64, timeLocal float64, r *scheduledRequest) (act schedulingDecision) {
+func (p *GreedyPolicy) decision(timeOffload float64, timeLocal float64, r *scheduledRequest) (act schedulingDecision) {
 	if timeLocal > r.RequestQoS.MaxRespT && timeOffload <= r.RequestQoS.MaxRespT {
 		return SCHED_REMOTE
 	} else if timeLocal <= r.RequestQoS.MaxRespT && timeOffload > r.RequestQoS.MaxRespT {
@@ -107,7 +106,7 @@ func decision(timeOffload float64, timeLocal float64, r *scheduledRequest) (act 
 	switch r.Class {
 	case function.LOW:
 		// a request has been dropped recently -> do offload in a conservative fashion
-		if *dropCountPtr > 0 {
+		if p.dropManager.dropCount > 0 {
 			return SCHED_REMOTE
 		} else {
 			return SCHED_LOCAL
