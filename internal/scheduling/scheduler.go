@@ -47,9 +47,9 @@ func Run(p Policy) {
 	for {
 		select {
 		case r = <-requests:
-			p.OnArrival(r)
+			go p.OnArrival(r)
 		case r = <-completions:
-			p.OnCompletion(r)
+			go p.OnCompletion(r)
 		}
 	}
 
@@ -58,6 +58,11 @@ func Run(p Policy) {
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	log.Printf("New request for '%s' (class: %s, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
+
+	logger := logging.GetLogger()
+	if !logger.Exists(r.Fun.Name) {
+		logger.InsertNewLog(r.Fun.Name)
+	}
 
 	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
 	requests <- &schedRequest
@@ -68,11 +73,6 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		return nil, fmt.Errorf("Could not schedule the request!")
 	}
 	log.Printf("Sched action: %v", schedDecision)
-
-	logger := logging.GetLogger()
-	if !logger.Exists(r.Fun.Name) {
-		logger.InsertNewLog(r.Fun.Name)
-	}
 
 	var report *function.ExecutionReport
 	var err error
@@ -158,11 +158,5 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 	json.Unmarshal(body, &report)
 
 	report.OffloadLatency = report.Arrival.Sub(sendingTime).Seconds()
-	log.Printf("%v", report)
-
-	err = logging.GetLogger().SendReport(&report, r.Fun.Name)
-	if err != nil {
-		return nil, err
-	}
 	return &report, nil
 }

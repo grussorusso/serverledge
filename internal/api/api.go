@@ -35,16 +35,15 @@ func InvokeFunction(c echo.Context) error {
 	}
 
 	var invocationRequest function.InvocationRequest
-	var incomingRequest function.IncomingRequest
-	err := json.NewDecoder(c.Request().Body).Decode(&incomingRequest)
+	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
 	invocationRequest = function.InvocationRequest{
-		Params:      incomingRequest.Params,
-		QoSClass:    DecodePriority(incomingRequest.QoSClass),
-		QoSMaxRespT: incomingRequest.QoSMaxRespT}
+		Params:      invocationRequest.Params,
+		QoSClass:    invocationRequest.QoSClass,
+		QoSMaxRespT: invocationRequest.QoSMaxRespT}
 	//update QoS parameters if any
 	if invocationRequest.QoSMaxRespT != -1 {
 		maxRespTime = invocationRequest.QoSMaxRespT

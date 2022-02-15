@@ -43,7 +43,7 @@ func Invoke() {
 	}
 
 	// Prepare request
-	request := function.InvocationRequest{params, api.DecodePriority(*qosClass), *qosMaxRespT}
+	request := function.InvocationRequest{Params: params, QoSClass: api.DecodePriority(*qosClass), QoSMaxRespT: *qosMaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()

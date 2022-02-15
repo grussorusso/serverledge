@@ -21,7 +21,7 @@ type warmContainer struct {
 }
 
 type NodeResources struct {
-	sync.Mutex
+	sync.RWMutex
 	AvailableMemMB int64
 	AvailableCPUs  float64
 	containerPools map[string]*containerPool

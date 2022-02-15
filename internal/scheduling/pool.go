@@ -179,8 +179,6 @@ type itemToDismiss struct {
 // 2-phases: first, we find ready container and collect them as a slice, second (cleanup phase) we delete the container only and only if
 // the sum of their memory is >= requiredMemoryMB is
 func dismissContainer(requiredMemoryMB int64) (bool, error) {
-	node.Lock()
-	defer node.Unlock()
 
 	var cleanedMB int64 = 0
 	var containerToDismiss []itemToDismiss

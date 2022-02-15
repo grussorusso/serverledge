@@ -50,9 +50,3 @@ type InvocationRequest struct {
 	QoSClass    Priority
 	QoSMaxRespT float64
 }
-
-type IncomingRequest struct {
-	Params      map[string]string
-	QoSClass    string
-	QoSMaxRespT float64
-}

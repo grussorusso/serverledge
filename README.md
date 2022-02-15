@@ -37,12 +37,12 @@ Create a function `func` from example code:
 
 Invoke a function `func` with parameters `a=2` and `b=3`:
 
-	$ bin/serverledge-cli invoke -name func -param "a:2" -param "b:3" 
+	$ bin/serverledge-cli invoke -function func -param "a:2" -param "b:3" 
 
 You can optionally specify a QoS class name and a maximum requested response
 time:
 
-	$ bin/serverledge-cli invoke -name func -param ... -qosclass <class> -qosrespt <respt>
+	$ bin/serverledge-cli invoke -function func -param ... -qosclass <class> -qosrespt <respt>
 
 To shutdown the etcd server:
 

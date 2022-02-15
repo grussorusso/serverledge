@@ -72,6 +72,8 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 
 			//logging cleanup; stop all associated threads
 			logging.GetLogger().CleanUpLog()
+			//stop container janitor
+			scheduling.StopJanitor()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -122,5 +124,6 @@ func main() {
 
 func createSchedulingPolicy() scheduling.Policy {
 	//TODO
-	return &scheduling.DefaultLocalPolicy{}
+	//return &scheduling.DefaultLocalPolicy{}
+	return &scheduling.GreedyPolicy{}
 }
