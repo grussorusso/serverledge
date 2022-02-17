@@ -16,7 +16,7 @@ type Request struct {
 }
 
 type RequestQoS struct {
-	Class    Priority
+	Class    ServiceClass
 	MaxRespT float64
 }
 
@@ -35,18 +35,19 @@ func (r *Request) String() string {
 	return fmt.Sprintf("Req-%s", r.Fun.Name)
 }
 
+// MaxRespTime todo adjust response time -> Second default unit
 var MaxRespTime = config.GetFloat("max.response.time", 200)
 
-type Priority int64
+type ServiceClass int64
 
 const (
-	LOW               Priority = 0
-	HIGH_PERFORMANCE           = 1
-	HIGH_AVAILABILITY          = 2
+	LOW               ServiceClass = 0
+	HIGH_PERFORMANCE               = 1
+	HIGH_AVAILABILITY              = 2
 )
 
 type InvocationRequest struct {
 	Params      map[string]string
-	QoSClass    Priority
+	QoSClass    ServiceClass
 	QoSMaxRespT float64
 }

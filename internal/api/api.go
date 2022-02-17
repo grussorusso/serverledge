@@ -127,7 +127,7 @@ func DeleteFunction(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func DecodePriority(priority string) (p function.Priority) {
+func DecodePriority(priority string) (p function.ServiceClass) {
 	if priority == "low" {
 		return function.LOW
 	} else if priority == "performance" {

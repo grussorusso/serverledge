@@ -144,7 +144,7 @@ func (d *DropManager) dropRun() {
 			atomic.AddInt64(&d.dropCount, 1)
 		case <-ticker.C:
 			if time.Now().UnixNano() >= d.expiration {
-				log.Printf("drop expiration timer exceded")
+				//log.Printf("drop expiration timer exceeded")
 				atomic.StoreInt64(&d.dropCount, 0)
 			}
 		}

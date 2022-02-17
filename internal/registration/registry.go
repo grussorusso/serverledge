@@ -12,13 +12,6 @@ import (
 	"time"
 )
 
-var BASEDIR = "registry"
-
-type Registry struct {
-	Area string
-	id   string
-}
-
 // getEtcdKey append to a given unique id the logical path depending on the Area.
 // If it is called with  an empty string  it returns the base path for the current local Area.
 func (r *Registry) getEtcdKey(id string) (key string) {
@@ -29,32 +22,56 @@ func (r *Registry) getEtcdKey(id string) (key string) {
 func (r *Registry) RegisterToEtcd(url string) (e error) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
-		log.Fatal("etcd client unavailable.")
-		return err
+		log.Fatal(UnavailableClientErr)
+		return UnavailableClientErr
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.id = id
-	// save couple (id, url) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.getEtcdKey(r.id), url)
+
+	resp, err := etcdClient.Grant(ctx, 10)
 	if err != nil {
-		log.Fatal("etcd error: could not complete the registration.")
+		log.Fatal(err)
 		return err
 	}
+
+	log.Printf("Registration key: %s\n", r.getEtcdKey(r.id))
+	// save couple (id, url) to the correct Area-dir on etcd
+	_, err = etcdClient.Put(ctx, r.getEtcdKey(r.id), url, clientv3.WithLease(resp.ID))
+	if err != nil {
+		log.Fatal(IdRegistrationErr)
+		return IdRegistrationErr
+	}
+
+	cancelCtx, _ := context.WithCancel(etcdClient.Ctx())
+
+	// the key id will be kept alive until a fault will occur
+	keepAliveCh, err := etcdClient.KeepAlive(cancelCtx, resp.ID)
+	if err != nil || keepAliveCh == nil {
+		log.Fatal(KeepAliveErr)
+		return KeepAliveErr
+	}
+
+	go func() {
+		for alive := range keepAliveCh {
+			// eat messages until keep alive channel closes
+			log.Println(alive.ID)
+		}
+	}()
 
 	return nil
 }
 
 //GetAll is used to obtain the list of  other server's addresses under a specific local Area
-func (r *Registry) GetAll() ([]string, error) {
+func (r *Registry) GetAll() ([]ServerInformation, error) {
 	baseDir := r.getEtcdKey("")
 	ctx := context.TODO()
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
-		log.Fatal("etcd client unavailable.")
-		return nil, err
+		log.Fatal(UnavailableClientErr)
+		return nil, UnavailableClientErr
 	}
 	//retrieve all url of the other servers under my Area
 	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
@@ -62,9 +79,10 @@ func (r *Registry) GetAll() ([]string, error) {
 		return nil, err
 	}
 
-	servers := make([]string, len(resp.Kvs))
+	servers := make([]ServerInformation, len(resp.Kvs))
 	for i, s := range resp.Kvs {
-		servers[i] = string(s.Value)
+		servers[i].ipv4 = string(s.Value)
+		servers[i].id = string(s.Key)
 		//audit todo delete the next line
 		log.Printf("found edge server at: %s", servers[i])
 	}
@@ -76,8 +94,8 @@ func (r *Registry) GetAll() ([]string, error) {
 func (r *Registry) Deregister() (e error) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
-		log.Fatal("etcd client unavailable.")
-		return err
+		log.Fatal(UnavailableClientErr)
+		return UnavailableClientErr
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
