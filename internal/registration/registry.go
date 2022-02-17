@@ -31,7 +31,7 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.id = id
 
-	resp, err := etcdClient.Grant(ctx, 10)
+	resp, err := etcdClient.Grant(ctx, int64(TTL))
 	if err != nil {
 		log.Fatal(err)
 		return err
