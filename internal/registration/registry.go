@@ -55,9 +55,9 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	}
 
 	go func() {
-		for alive := range keepAliveCh {
+		for range keepAliveCh {
 			// eat messages until keep alive channel closes
-			log.Println(alive.ID)
+			//log.Println(alive.ID)
 		}
 	}()
 
