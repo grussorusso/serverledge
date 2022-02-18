@@ -33,7 +33,7 @@ Start the server:
 
 Create a function `func` from example code:
 
-	$ bin/serverledge-cli create -function func -memory 128 -src examples/hello.py -runtime python310 -handler "hello.handler"
+	$ bin/serverledge-cli create -function func7 -memory 728 -src examples/hello.py -runtime python310 -handler "hello.handler"
 
 Invoke a function `func` with parameters `a=2` and `b=3`:
 
@@ -43,6 +43,11 @@ You can optionally specify a QoS class name and a maximum requested response
 time:
 
 	$ bin/serverledge-cli invoke -function func -param ... -qosclass <class> -qosrespt <respt>
+
+Get Server Status:
+ 
+    $ bin/serverledge-cli status -host {host ip-address} -port {specific port}
+
 
 To shutdown the etcd server:
 

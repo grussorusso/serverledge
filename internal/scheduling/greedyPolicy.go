@@ -81,9 +81,9 @@ func (p *GreedyPolicy) takeSchedulingDecision(r *scheduledRequest) (act scheduli
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
-	node.RLock()
-	defer node.RUnlock()
-	if node.AvailableMemMB < r.Fun.MemoryMB { //not enough memory
+	Node.RLock()
+	defer Node.RUnlock()
+	if Node.AvailableMemMB < r.Fun.MemoryMB { //not enough memory
 		if r.RequestQoS.MaxRespT <= timeOffload {
 			return SCHED_REMOTE
 		} else { //not enough memory and offloading takes too long
@@ -141,11 +141,12 @@ func (d *DropManager) dropRun() {
 			log.Printf("drop occurred")
 			//update expiration
 			d.expiration = tick.Add(expirationInterval * time.Second).UnixNano()
-			atomic.AddInt64(&d.dropCount, 1)
+			d.dropCount++
+			atomic.StoreInt64(&Node.DropCount, d.dropCount)
 		case <-ticker.C:
 			if time.Now().UnixNano() >= d.expiration {
-				//log.Printf("drop expiration timer exceeded")
-				atomic.StoreInt64(&d.dropCount, 0)
+				d.dropCount = 0
+				atomic.StoreInt64(&Node.DropCount, d.dropCount)
 			}
 		}
 	}

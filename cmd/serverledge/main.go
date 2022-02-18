@@ -27,6 +27,7 @@ func startAPIServer(e *echo.Echo) {
 	e.POST("/create", api.CreateFunction)
 	e.POST("/delete", api.DeleteFunction)
 	e.GET("/function", api.GetFunctions)
+	e.GET("/status", api.GetServerStatus)
 
 	// Start server
 	portNumber := config.GetInt("api.port", 1323)

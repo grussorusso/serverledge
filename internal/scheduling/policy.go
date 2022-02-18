@@ -30,7 +30,7 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 		// Cold Start (handles asynchronously)
 		go handleColdStart(r, false)
 	} else if errors.Is(err, OutOfResourcesErr) {
-		log.Printf("Not enough resources on the node.")
+		log.Printf("Not enough resources on the Node.")
 		dropRequest(r)
 	} else {
 		// other error

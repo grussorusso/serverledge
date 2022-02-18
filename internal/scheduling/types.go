@@ -3,10 +3,10 @@ package scheduling
 import (
 	"container/list"
 	"errors"
-	"sync"
-
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/hexablock/vivaldi"
+	"sync"
 )
 
 type containerPool struct {
@@ -24,6 +24,8 @@ type NodeResources struct {
 	sync.RWMutex
 	AvailableMemMB int64
 	AvailableCPUs  float64
+	DropCount      int64
+	Coordinates    *vivaldi.Coordinate
 	containerPools map[string]*containerPool
 }
 
@@ -38,7 +40,7 @@ type scheduledRequest struct {
 
 // schedDecision wraps a action made by the scheduler.
 // Possible decisions are 1) drop, 2) execute locally or 3) execute on a remote
-// node (offloading).
+// Node (offloading).
 type schedDecision struct {
 	action     action
 	contID     container.ContainerID

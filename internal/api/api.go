@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/hexablock/vivaldi"
 	"io"
 	"log"
 	"net/http"
@@ -137,4 +138,22 @@ func DecodePriority(priority string) (p function.ServiceClass) {
 	} else {
 		return function.LOW
 	}
+}
+
+// GetServerStatus simple api to check the current server status
+func GetServerStatus(c echo.Context) error {
+	scheduling.Node.RLock()
+	defer scheduling.Node.RUnlock()
+
+	response := struct {
+		AvailableMemMB int64
+		AvailableCPUs  float64
+		DropCount      int64
+		coordinates    vivaldi.Coordinate
+	}{scheduling.Node.AvailableMemMB,
+		scheduling.Node.AvailableCPUs,
+		scheduling.Node.DropCount,
+		*scheduling.Node.Coordinates}
+
+	return c.JSON(http.StatusOK, response)
 }

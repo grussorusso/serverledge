@@ -48,6 +48,8 @@ func main() {
 		cli.Delete()
 	case "list":
 		cli.List()
+	case "status":
+		cli.GetStatus()
 	default:
 		cli.ExitWithUsage()
 	}
