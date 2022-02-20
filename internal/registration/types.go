@@ -13,14 +13,8 @@ var KeepAliveErr = errors.New(" The system can't renew your registration key")
 type Registry struct {
 	Area   string
 	Key    string
-	id     string
 	etcdCh chan bool
 	client *vivaldi.Client
-}
-
-type ServerInformation struct {
-	id  string
-	url string
 }
 
 var BASEDIR = "registry"

@@ -29,7 +29,6 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
-	r.id = id
 	r.Key = r.getEtcdKey(id)
 	resp, err := etcdClient.Grant(ctx, int64(TTL))
 	if err != nil {
@@ -37,9 +36,9 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 		return err
 	}
 
-	log.Printf("Registration key: %s\n", r.getEtcdKey(r.id))
+	log.Printf("Registration key: %s\n", r.Key)
 	// save couple (id, url) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.getEtcdKey(r.id), url, clientv3.WithLease(resp.ID))
+	_, err = etcdClient.Put(ctx, r.Key, url, clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return IdRegistrationErr
@@ -98,11 +97,11 @@ func (r *Registry) Deregister() (e error) {
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
-	_, err = etcdClient.Delete(ctx, r.getEtcdKey(r.id))
+	_, err = etcdClient.Delete(ctx, r.Key)
 	if err != nil {
 		return err
 	}
 
-	log.Println("Deregister : " + r.id)
+	log.Println("Deregister : " + r.Key)
 	return nil
 }

@@ -108,6 +108,11 @@ type dist struct {
 
 //getRank finds servers nearby to the current one
 func getRank(rank int) {
+	if rank > len(serversMap) {
+		nearbyServersMap = serversMap
+		return
+	}
+
 	var distanceBuf = make([]dist, len(serversMap)) //distances from current server
 	for key, s := range serversMap {
 		distanceBuf = append(distanceBuf, dist{key, registry.client.DistanceTo(&s.Coordinates)})
