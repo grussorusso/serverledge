@@ -30,7 +30,7 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.id = id
-
+	r.Key = r.getEtcdKey(id)
 	resp, err := etcdClient.Grant(ctx, int64(TTL))
 	if err != nil {
 		log.Fatal(err)
@@ -65,7 +65,7 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 }
 
 //GetAll is used to obtain the list of  other server's addresses under a specific local Area
-func (r *Registry) GetAll() ([]ServerInformation, error) {
+func (r *Registry) GetAll() (map[string]string, error) {
 	baseDir := r.getEtcdKey("")
 	ctx := context.TODO()
 	etcdClient, err := utils.GetEtcdClient()
@@ -79,12 +79,11 @@ func (r *Registry) GetAll() ([]ServerInformation, error) {
 		return nil, err
 	}
 
-	servers := make([]ServerInformation, len(resp.Kvs))
-	for i, s := range resp.Kvs {
-		servers[i].ipv4 = string(s.Value)
-		servers[i].id = string(s.Key)
+	servers := make(map[string]string)
+	for _, s := range resp.Kvs {
+		servers[string(s.Key)] = string(s.Value)
 		//audit todo delete the next line
-		log.Printf("found edge server at: %s", servers[i])
+		log.Printf("found edge server at: %s", servers[string(s.Key)])
 	}
 
 	return servers, nil

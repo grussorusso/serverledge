@@ -3,6 +3,7 @@ package registration
 import (
 	"errors"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/hexablock/vivaldi"
 )
 
 var UnavailableClientErr = errors.New("etcd client unavailable")
@@ -10,14 +11,28 @@ var IdRegistrationErr = errors.New("etcd error: could not complete the registrat
 var KeepAliveErr = errors.New(" The system can't renew your registration key")
 
 type Registry struct {
-	Area string
-	id   string
+	Area   string
+	Key    string
+	id     string
+	etcdCh chan bool
+	client *vivaldi.Client
 }
 
 type ServerInformation struct {
-	id   string
-	ipv4 string
+	id  string
+	url string
 }
 
 var BASEDIR = "registry"
 var TTL = config.GetInt("registry.ttl", 10) // lease time in Seconds
+
+type StatusInformation struct {
+	Url            string
+	AvailableMemMB int64
+	AvailableCPUs  float64
+	DropCount      int64
+	Coordinates    vivaldi.Coordinate
+}
+
+var serversMap map[string]*StatusInformation
+var nearbyServersMap map[string]*StatusInformation

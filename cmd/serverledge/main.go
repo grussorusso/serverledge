@@ -106,7 +106,8 @@ func main() {
 	if err != nil {
 		return
 	}
-	err = r.RegisterToEtcd(utils.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d/", utils.GetIpAddress().String(), config.GetInt("api.port", 1323))
+	err = r.RegisterToEtcd(url)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

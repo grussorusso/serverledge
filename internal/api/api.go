@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
-	"github.com/hexablock/vivaldi"
+	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/utils"
 	"io"
 	"log"
 	"net/http"
@@ -144,16 +146,15 @@ func DecodePriority(priority string) (p function.ServiceClass) {
 func GetServerStatus(c echo.Context) error {
 	scheduling.Node.RLock()
 	defer scheduling.Node.RUnlock()
-
-	response := struct {
-		AvailableMemMB int64
-		AvailableCPUs  float64
-		DropCount      int64
-		coordinates    vivaldi.Coordinate
-	}{scheduling.Node.AvailableMemMB,
-		scheduling.Node.AvailableCPUs,
-		scheduling.Node.DropCount,
-		*scheduling.Node.Coordinates}
+	portNumber := config.GetInt("api.port", 1323)
+	url := fmt.Sprintf("http://%s:%d/", utils.GetIpAddress().String(), portNumber)
+	response := registration.StatusInformation{
+		Url:            url,
+		AvailableMemMB: scheduling.Node.AvailableMemMB,
+		AvailableCPUs:  scheduling.Node.AvailableCPUs,
+		DropCount:      scheduling.Node.DropCount,
+		Coordinates:    *scheduling.Node.Coordinates,
+	}
 
 	return c.JSON(http.StatusOK, response)
 }
