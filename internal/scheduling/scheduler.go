@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hexablock/vivaldi"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -31,7 +30,6 @@ func Run(p Policy) {
 	Node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	Node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
 	Node.containerPools = make(map[string]*containerPool)
-	Node.Coordinates = vivaldi.NewCoordinate(vivaldi.DefaultConfig())
 	log.Printf("Current Node resources: %v", Node)
 
 	container.InitDockerContainerFactory()

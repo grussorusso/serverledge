@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
-	"github.com/hexablock/vivaldi"
 	"sync"
 )
 
@@ -25,7 +24,6 @@ type NodeResources struct {
 	AvailableMemMB int64
 	AvailableCPUs  float64
 	DropCount      int64
-	Coordinates    *vivaldi.Coordinate
 	containerPools map[string]*containerPool
 }
 

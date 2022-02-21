@@ -98,16 +98,16 @@ func main() {
 	cacheSetup()
 
 	// register to etcd, this way server is visible to the others under a given local area
-	r := new(registration.Registry)
-	r.Area = config.GetString("registry.area", "ROME")
+	registry := new(registration.Registry)
+	registry.Area = config.GetString("registry.area", "ROME")
 	// before register checkout other servers into the local area
 	//todo use this info later on
-	_, err := r.GetAll()
+	_, err := registry.GetAll()
 	if err != nil {
 		return
 	}
 	url := fmt.Sprintf("http://%s:%d/", utils.GetIpAddress().String(), config.GetInt("api.port", 1323))
-	err = r.RegisterToEtcd(url)
+	err = registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -116,12 +116,19 @@ func main() {
 	e := echo.New()
 
 	// Register a signal handler to cleanup things on termination
-	registerTerminationHandler(r, e)
+	registerTerminationHandler(registry, e)
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
+	err = registration.Init(registry)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+
 	startAPIServer(e)
+
 }
 
 func createSchedulingPolicy() scheduling.Policy {

@@ -153,7 +153,7 @@ func GetServerStatus(c echo.Context) error {
 		AvailableMemMB: scheduling.Node.AvailableMemMB,
 		AvailableCPUs:  scheduling.Node.AvailableCPUs,
 		DropCount:      scheduling.Node.DropCount,
-		Coordinates:    *scheduling.Node.Coordinates,
+		Coordinates:    *registration.Reg.Client.GetCoordinate(),
 	}
 
 	return c.JSON(http.StatusOK, response)
