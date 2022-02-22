@@ -13,3 +13,4 @@ etcd.address: "localhost:2379"
 containers.memory: 2048
 container.expiration: 60
 janitor.interval: 30
+cloud: true

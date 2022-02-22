@@ -10,7 +10,7 @@ api.port: 1323
 etcd.address: "localhost:2379"
 
 # container management
-containers.memory: 1024
+containers.memory: 600
 container.expiration: 30
 janitor.interval: 30
 
