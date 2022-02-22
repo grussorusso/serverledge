@@ -92,31 +92,29 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		}
 	}
 
-	// TODO: SendReport also for dropped requests:
-	// Pass "schedDecision" to SendReport to check for drops
-	err = logger.SendReport(report, r.Fun.Name)
-	if err != nil {
-		log.Printf("unable to update log")
+	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
+		err = logger.SendReport(report, r.Fun.Name)
+		if err != nil {
+			log.Printf("unable to update log")
+		}
 	}
 	return report, nil
 }
 
-func handleColdStart(r *scheduledRequest, doOffload bool) {
+func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	log.Printf("Cold start procedure for: %v", r)
 	newContainer, err := newContainer(r.Fun)
 	if errors.Is(err, OutOfResourcesErr) || err != nil {
 		log.Printf("Could not create a new container: %v", err)
-		if doOffload {
-			handleOffload(r)
-		} else {
-			dropRequest(r)
-		}
+		return false
 	} else {
 		execLocally(r, newContainer, false)
+		return true
 	}
 }
 
 func dropRequest(r *scheduledRequest) {
+	dropManager.sendDropAlert()
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 
@@ -128,11 +126,12 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	r.decisionChannel <- decision
 }
 
-func handleOffload(r *scheduledRequest) {
+func handleOffload(r *scheduledRequest, serverUrl string) {
+	r.Offloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
 		action:     EXEC_REMOTE,
 		contID:     "",
-		remoteHost: config.GetString("server_url", "http://127.0.0.1:1324/invoke/"),
+		remoteHost: serverUrl,
 	}
 }
 

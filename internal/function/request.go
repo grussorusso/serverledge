@@ -13,6 +13,7 @@ type Request struct {
 	Arrival time.Time
 	Report  *ExecutionReport
 	RequestQoS
+	Offloading bool
 }
 
 type RequestQoS struct {
@@ -36,7 +37,7 @@ func (r *Request) String() string {
 }
 
 // MaxRespTime todo adjust response time -> Second default unit
-var MaxRespTime = config.GetFloat("max.response.time", 200)
+var MaxRespTime = config.GetFloat("max.response.time", 20) //in Seconds
 
 type ServiceClass int64
 
@@ -50,4 +51,5 @@ type InvocationRequest struct {
 	Params      map[string]string
 	QoSClass    ServiceClass
 	QoSMaxRespT float64
+	Offloading  bool
 }

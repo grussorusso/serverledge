@@ -2,6 +2,7 @@ package registration
 
 import (
 	"errors"
+	"github.com/LK4D4/trylock"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/hexablock/vivaldi"
 )
@@ -11,10 +12,13 @@ var IdRegistrationErr = errors.New("etcd error: could not complete the registrat
 var KeepAliveErr = errors.New(" The system can't renew your registration key")
 
 type Registry struct {
-	Area   string
-	Key    string
-	Client *vivaldi.Client
-	etcdCh chan bool
+	Area             string
+	Key              string
+	Client           *vivaldi.Client
+	RwMtx            trylock.Mutex
+	NearbyServersMap map[string]*StatusInformation
+	serversMap       map[string]*StatusInformation
+	etcdCh           chan bool
 }
 
 var BASEDIR = "registry"
@@ -27,6 +31,3 @@ type StatusInformation struct {
 	DropCount      int64
 	Coordinates    vivaldi.Coordinate
 }
-
-var serversMap map[string]*StatusInformation
-var nearbyServersMap map[string]*StatusInformation

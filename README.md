@@ -33,7 +33,7 @@ Start the server:
 
 Create a function `func` from example code:
 
-	$ bin/serverledge-cli create -function func7 -memory 728 -src examples/hello.py -runtime python310 -handler "hello.handler"
+	$ bin/serverledge-cli create -function func -memory 600 -src examples/hello.py -runtime python310 -handler "hello.handler"
 
 Invoke a function `func` with parameters `a=2` and `b=3`:
 

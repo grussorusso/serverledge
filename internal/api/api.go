@@ -43,10 +43,6 @@ func InvokeFunction(c echo.Context) error {
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
-	invocationRequest = function.InvocationRequest{
-		Params:      invocationRequest.Params,
-		QoSClass:    invocationRequest.QoSClass,
-		QoSMaxRespT: invocationRequest.QoSMaxRespT}
 	//update QoS parameters if any
 	if invocationRequest.QoSMaxRespT != -1 {
 		maxRespTime = invocationRequest.QoSMaxRespT
@@ -54,7 +50,7 @@ func InvokeFunction(c echo.Context) error {
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = maxRespTime
-
+	r.Offloading = invocationRequest.Offloading
 	report, err := scheduling.SubmitRequest(r)
 	if errors.Is(err, scheduling.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
@@ -130,12 +126,12 @@ func DeleteFunction(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func DecodePriority(priority string) (p function.ServiceClass) {
-	if priority == "low" {
+func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
+	if serviceClass == "low" {
 		return function.LOW
-	} else if priority == "performance" {
+	} else if serviceClass == "performance" {
 		return function.HIGH_PERFORMANCE
-	} else if priority == "availability" {
+	} else if serviceClass == "availability" {
 		return function.HIGH_AVAILABILITY
 	} else {
 		return function.LOW
@@ -147,7 +143,7 @@ func GetServerStatus(c echo.Context) error {
 	scheduling.Node.RLock()
 	defer scheduling.Node.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d/", utils.GetIpAddress().String(), portNumber)
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
 	response := registration.StatusInformation{
 		Url:            url,
 		AvailableMemMB: scheduling.Node.AvailableMemMB,

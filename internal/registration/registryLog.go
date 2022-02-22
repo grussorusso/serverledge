@@ -3,6 +3,7 @@ package registration
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-ping/ping"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/hexablock/vivaldi"
 	"io/ioutil"
@@ -27,8 +28,8 @@ func Init(r *Registry) (e error) {
 	}
 	Reg.Client = client
 	Reg.etcdCh = make(chan bool)
-	serversMap = make(map[string]*StatusInformation)
-	nearbyServersMap = make(map[string]*StatusInformation)
+	Reg.serversMap = make(map[string]*StatusInformation)
+	Reg.NearbyServersMap = make(map[string]*StatusInformation)
 	go runMonitor()
 	return nil
 }
@@ -50,6 +51,8 @@ func runMonitor() {
 }
 
 func monitoring() {
+	Reg.RwMtx.Lock()
+	defer Reg.RwMtx.Unlock()
 	etcdServerMap, err := Reg.GetAll()
 	if err != nil {
 		log.Println(err)
@@ -58,23 +61,23 @@ func monitoring() {
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
 	for key, url := range etcdServerMap {
-		oldInfo, ok := serversMap[key]
+		oldInfo, ok := Reg.serversMap[key]
 		newInfo, rtt := getStatusInformation(url)
 		if newInfo == nil {
 			//unreachable server
-			delete(serversMap, key)
+			delete(Reg.serversMap, key)
 			continue
 		}
-		serversMap[key] = newInfo
+		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 		}
 	}
 	//deletes information about servers that haven't registered anymore
-	for key := range serversMap {
+	for key := range Reg.serversMap {
 		_, ok := etcdServerMap[key]
 		if !ok {
-			delete(serversMap, key)
+			delete(Reg.serversMap, key)
 		}
 	}
 
@@ -82,9 +85,19 @@ func monitoring() {
 }
 
 func getStatusInformation(url string) (info *StatusInformation, duration time.Duration) {
-	initTime := time.Now()
-	resp, err := http.Get(url + "status")
-	rtt := time.Now().Sub(initTime)
+	ip := url[7 : len(url)-5]
+	pingAgent, err := ping.NewPinger(ip)
+	if err != nil {
+		return nil, 0
+	}
+	pingAgent.Count = 3   // 3 ping to obtain statistics
+	err = pingAgent.Run() // Blocks until finished.
+	if err != nil {
+		return nil, 0
+	}
+	rtt := pingAgent.Statistics().AvgRtt
+
+	resp, err := http.Get(url + "/status")
 	if err != nil {
 		fmt.Printf("Invocation failed: %v", err)
 		return nil, 0
@@ -114,38 +127,40 @@ type dist struct {
 
 //getRank finds servers nearby to the current one
 func getRank(rank int) {
-	if rank > len(serversMap) {
-		for k, v := range serversMap {
-			nearbyServersMap[k] = v
+	if rank > len(Reg.serversMap) {
+		for k, v := range Reg.serversMap {
+			Reg.NearbyServersMap[k] = v
 		}
 		return
 	}
 
 	var distanceBuf = make([]dist, 0) //distances from current server
-	for key, s := range serversMap {
+	for key, s := range Reg.serversMap {
 		distanceBuf = append(distanceBuf, dist{key, Reg.Client.DistanceTo(&s.Coordinates)})
 	}
 	sort.Slice(distanceBuf, func(i, j int) bool { return distanceBuf[i].distance < distanceBuf[j].distance })
-	nearbyServersMap = make(map[string]*StatusInformation)
+	Reg.NearbyServersMap = make(map[string]*StatusInformation)
 	for i := 0; i < rank; i++ {
 		k := distanceBuf[i].key
-		nearbyServersMap[k] = serversMap[k]
+		Reg.NearbyServersMap[k] = Reg.serversMap[k]
 	}
 }
 
 // nearbyMonitoring check nearby server's status
 func nearbyMonitoring() {
-	for key, info := range nearbyServersMap {
-		oldInfo, ok := serversMap[key]
+	Reg.RwMtx.Lock()
+	defer Reg.RwMtx.Unlock()
+	for key, info := range Reg.NearbyServersMap {
+		oldInfo, ok := Reg.serversMap[key]
 		newInfo, rtt := getStatusInformation(info.Url)
 		if newInfo == nil {
 			//unreachable server
-			delete(serversMap, key)
+			delete(Reg.serversMap, key)
 			//trigger a complete monitoring phase
 			go func() { Reg.etcdCh <- true }()
 			return
 		}
-		serversMap[key] = newInfo
+		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 		}

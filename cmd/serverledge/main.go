@@ -99,14 +99,19 @@ func main() {
 
 	// register to etcd, this way server is visible to the others under a given local area
 	registry := new(registration.Registry)
-	registry.Area = config.GetString("registry.area", "ROME")
+	isInCloud := config.GetBool("cloud", false)
+	if isInCloud {
+		registry.Area = "Cloud/" + config.GetString("registry.area", "ROME")
+	} else {
+		registry.Area = config.GetString("registry.area", "ROME")
+	}
 	// before register checkout other servers into the local area
 	//todo use this info later on
 	_, err := registry.GetAll()
 	if err != nil {
 		return
 	}
-	url := fmt.Sprintf("http://%s:%d/", utils.GetIpAddress().String(), config.GetInt("api.port", 1323))
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt("api.port", 1323))
 	err = registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Error(err)
@@ -134,5 +139,5 @@ func main() {
 func createSchedulingPolicy() scheduling.Policy {
 	//TODO
 	//return &scheduling.DefaultLocalPolicy{}
-	return &scheduling.GreedyPolicy{}
+	return &scheduling.QosAwarePolicy{}
 }

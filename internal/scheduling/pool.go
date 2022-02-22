@@ -133,12 +133,15 @@ func newContainer(fun *function.Function) (container.ContainerID, error) {
 	Node.Lock()
 	// check resources
 	if Node.AvailableMemMB < fun.MemoryMB {
-		enoughMem, _ := dismissContainer(fun.MemoryMB)
+		/**enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
 			Node.Unlock()
 			log.Printf("Not enough memory for the new container.")
 			return "", OutOfResourcesErr
-		}
+		}**/
+		Node.Unlock()
+		log.Printf("Not enough memory for the new container.")
+		return "", OutOfResourcesErr
 	}
 	if Node.AvailableCPUs < fun.CPUDemand {
 		Node.Unlock()

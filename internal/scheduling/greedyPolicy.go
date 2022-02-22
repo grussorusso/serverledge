@@ -7,30 +7,16 @@ import (
 	"github.com/grussorusso/serverledge/internal/logging"
 	"log"
 	"math"
-	"sync/atomic"
 	"time"
 )
 
 var expirationInterval = time.Duration(config.GetInt("policy.drop.expiration", 30))
 
 type GreedyPolicy struct {
-	dropManager *DropManager
-}
-
-type DropManager struct {
-	dropChan   chan time.Time
-	dropCount  int64
-	expiration int64
 }
 
 func (p *GreedyPolicy) Init() {
-	p.dropManager = &DropManager{
-		dropCount:  0,
-		dropChan:   make(chan time.Time, 1),
-		expiration: time.Now().UnixNano(),
-	}
-
-	go p.dropManager.dropRun()
+	InitDropManager()
 }
 
 func (p *GreedyPolicy) OnCompletion(r *scheduledRequest) {
@@ -47,25 +33,25 @@ func (p *GreedyPolicy) OnArrival(r *scheduledRequest) {
 		act := p.takeSchedulingDecision(r)
 		switch act {
 		case SCHED_BASIC:
-			handleColdStart(r, true)
+			handleColdStart(r) // offload true
 			break
 		case SCHED_LOCAL:
-			handleColdStart(r, false)
+			handleColdStart(r) // offload false
 			break
 		case SCHED_REMOTE:
-			handleOffload(r)
+			handleOffload(r, "")
 			break
 		case SCHED_DROP:
-			p.dropManager.sendDropAlert()
+			dropManager.sendDropAlert()
 			dropRequest(r)
 			break
 		default:
-			p.dropManager.sendDropAlert()
+			dropManager.sendDropAlert()
 			dropRequest(r)
 		}
 	} else {
 		//offloading disabled
-		handleColdStart(r, false)
+		handleColdStart(r)
 	}
 }
 
@@ -80,6 +66,7 @@ func (p *GreedyPolicy) takeSchedulingDecision(r *scheduledRequest) (act scheduli
 	}
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
+	//todo cold start prediction fix
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
 	Node.RLock()
 	defer Node.RUnlock()
@@ -106,7 +93,7 @@ func (p *GreedyPolicy) decision(timeOffload float64, timeLocal float64, r *sched
 	switch r.Class {
 	case function.LOW:
 		// a request has been dropped recently -> do offload in a conservative fashion
-		if p.dropManager.dropCount > 0 {
+		if dropManager.dropCount > 0 {
 			return SCHED_REMOTE
 		} else {
 			return SCHED_LOCAL
@@ -119,35 +106,4 @@ func (p *GreedyPolicy) decision(timeOffload float64, timeLocal float64, r *sched
 
 	//never used here
 	return SCHED_BASIC
-}
-
-func (d *DropManager) sendDropAlert() {
-	dropTime := time.Now()
-	if dropTime.UnixNano() > d.expiration {
-		select { //non-blocking write on channel
-		case d.dropChan <- dropTime:
-			return
-		default:
-			return
-		}
-	}
-}
-
-func (d *DropManager) dropRun() {
-	ticker := time.NewTicker(time.Duration(config.GetInt("policy.drop.expiration", 30)) * time.Second)
-	for {
-		select {
-		case tick := <-d.dropChan:
-			log.Printf("drop occurred")
-			//update expiration
-			d.expiration = tick.Add(expirationInterval * time.Second).UnixNano()
-			d.dropCount++
-			atomic.StoreInt64(&Node.DropCount, d.dropCount)
-		case <-ticker.C:
-			if time.Now().UnixNano() >= d.expiration {
-				d.dropCount = 0
-				atomic.StoreInt64(&Node.DropCount, d.dropCount)
-			}
-		}
-	}
 }
