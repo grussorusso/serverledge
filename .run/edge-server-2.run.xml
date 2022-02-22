@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="edge-server-2" type="GoApplicationRunConfiguration" factoryName="Go Application" singleton="false">
+    <module name="serverledge" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="examples/edge-server-configuration-test-1.yaml" />
+    <kind value="FILE" />
+    <package value="serverledge" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/serverledge/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
