@@ -1,26 +1,27 @@
 ![ServerlEdge](docs/logo.png)
 
-ServerlEdge is a Function-as-a-Service (FaaS) platform specifically designed to
-work in Edge/Fog environments.
+Serverledge is a Function-as-a-Service (FaaS) platform designed to
+work in Edge-Cloud environments.
 
-## Architecture
+Serverledge allows user to define and execute functions across
+distributed nodes located in Edge locations or in Cloud data centers.
+Each Serverledge node serves function invocation requests using a local
+container pool, so that functions are executed within containers for isolation purposes.
+When Edge nodes are overloaded, Serverledge tries to offload computation
+to neighbor Edge nodes or to the Cloud.
 
-ServerlEdge currently relies on a server component that executes functions 
-locally. Functions are executed within containers. Each container is equipped
-with an **Executor** component, which is a simple HTTP server. The Executor
-listen for requests on port 8080. When a function must be invoked on a
-container, a POST request is sent to the Executor with the invocation
-parameters. The Executor response will contain the invocation result.
+## Building from sources
 
-*... to be expanded ...*
+1. Check that Golang is correctly installed on your machine.
 
-## Compilation
+1. Download a copy of the source code.
 
-Build the project from sources:
+1. Build the project:
+
 
 	$ make
 
-## Running locally
+## Running (single node deployment)
 
 You need an **etcd** server to be up and running. To quickly start a local
 server:
@@ -37,7 +38,7 @@ Create a function `func` from example code:
 
 Invoke a function `func` with parameters `a=2` and `b=3`:
 
-	$ bin/serverledge-cli invoke -name func -param "a:2" -param "b:3" 
+	$ bin/serverledge-cli invoke -name func -param "a:2" -param "b:3"
 
 You can optionally specify a QoS class name and a maximum requested response
 time:
@@ -56,7 +57,7 @@ chosen format, the default file name will be `serverledge-conf.yaml` or
 in the user `$HOME` directory, or in the working directory where the server is
 started.
 
-Alternatively, you can indicate a specific configuration file when starting the 
+Alternatively, you can indicate a specific configuration file when starting the
 server:
 
 	$ bin/serverledge <config file>
@@ -89,7 +90,7 @@ Available runtime: `nodejs17` (NodeJS 17)
 	function handler_fun (context, params) {
 		return "..."
 	}
-	
+
 	module.exports = handler_fun // this is mandatory!
 
 Specify the handler as `<script_file_name>.js` (e.g., `myfile.js`).
