@@ -31,7 +31,9 @@ func (p *QosAwarePolicy) OnArrival(r *scheduledRequest) {
 		if r.Offloading {
 			p.takeSchedulingDecision(r)
 		} else {
-			handleColdStart(r)
+			if !handleColdStart(r) {
+				dropRequest(r)
+			}
 		}
 
 	}
@@ -152,7 +154,7 @@ func handleLowReq(r *scheduledRequest) {
 		}
 	}
 	//edge offload not possible
-	handleOffload(r, remoteServerUrl)
+	handleOffload(r, remoteServerUrl+"/invoke/")
 }
 
 func handleEdgeOffloading(r *scheduledRequest) (url string) {

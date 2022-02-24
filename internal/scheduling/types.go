@@ -9,7 +9,7 @@ import (
 )
 
 type containerPool struct {
-	sync.Mutex
+	//	sync.Mutex
 	busy  *list.List // list of ContainerID
 	ready *list.List // list of warmContainer
 }

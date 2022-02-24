@@ -22,8 +22,8 @@ var requests chan *scheduledRequest
 var completions chan *scheduledRequest
 
 func Run(p Policy) {
-	requests = make(chan *scheduledRequest)
-	completions = make(chan *scheduledRequest)
+	requests = make(chan *scheduledRequest, 500)
+	completions = make(chan *scheduledRequest, 500)
 
 	// initialize Node resources
 	availableCores := runtime.NumCPU()
@@ -65,12 +65,18 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	}
 
 	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
-	requests <- &schedRequest
+	select { // non-blocking send,if decision is not taken in time drop the request
+	case requests <- &schedRequest:
+		break
+	case <-time.After(time.Duration(r.RequestQoS.MaxRespT) * time.Second):
+		schedRequest.decisionChannel <- schedDecision{action: DROP}
+		break
+	}
 
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		return nil, fmt.Errorf("Could not schedule the request!")
+		return nil, fmt.Errorf("could not schedule the request")
 	}
 	log.Printf("Sched action: %v", schedDecision)
 
@@ -92,7 +98,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		}
 	}
 
-	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
+	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl+"/invoke/") {
 		err = logger.SendReport(report, r.Fun.Name)
 		if err != nil {
 			log.Printf("unable to update log")
@@ -140,7 +146,7 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return nil, err
 	}
 	sendingTime := time.Now() // used to compute latency later on
@@ -148,7 +154,7 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 		bytes.NewBuffer(invocationBody))
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return nil, err
 	}
 	defer resp.Body.Close()

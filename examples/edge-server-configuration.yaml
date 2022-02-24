@@ -10,10 +10,10 @@ api.port: 1323
 etcd.address: "localhost:2379"
 
 # container management
-containers.memory: 600
+containers.pool.memory: 1000
 container.expiration: 30
 janitor.interval: 30
 
 # offloading parameters
-server_url: "http://127.0.0.1:1324/invoke/"
+cloud.server.url: "http://127.0.0.1:1324"
 offloading: true

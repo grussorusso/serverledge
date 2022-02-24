@@ -15,5 +15,5 @@ container.expiration: 30
 janitor.interval: 30
 
 # offloading parameters
-server_url: "http://127.0.0.1:1324/invoke/"
+cloud.server.url: "http://127.0.0.1:1324"
 offloading: true
