@@ -50,7 +50,5 @@ class ServerEdgeUser(HttpUser):
             "Offloading": True
         })
 
-    def on_start(self):
-        self.create_python_function()
 
 #usage: locust -f load-test.py
