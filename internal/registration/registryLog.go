@@ -36,8 +36,8 @@ func Init(r *Registry) (e error) {
 
 func runMonitor() {
 	//todo  adjust default values
-	nearbyTicker := time.NewTicker(time.Duration(config.GetInt("registry.nearby.interval", 15)) * time.Second)         //wake-up nearby monitoring
-	monitoringTicker := time.NewTicker(time.Duration(config.GetInt("registry.monitoring.interval", 30)) * time.Second) // wake-up general-area monitoring
+	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 15)) * time.Second)         //wake-up nearby monitoring
+	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 30)) * time.Second) // wake-up general-area monitoring
 	for {
 		select {
 		case <-Reg.etcdCh:

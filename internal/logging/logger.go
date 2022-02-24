@@ -116,7 +116,7 @@ func (logger *Logger) SendReport(report *function.ExecutionReport, functionName 
 }
 
 func (logPtr *functionLog) run() {
-	ticker := time.NewTicker(time.Duration(config.GetInt("logging.cleanInterval", 3)) * time.Minute)
+	ticker := time.NewTicker(time.Duration(config.GetInt(config.LOGGER_CLEANUP_INTERVAL, 3)) * time.Minute)
 	for {
 		select {
 		case <-logPtr.stop:

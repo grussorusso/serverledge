@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
-	"log"
 	"sync/atomic"
 	"time"
 )
@@ -14,6 +13,7 @@ type DropManager struct {
 }
 
 var dropManager *DropManager
+var expirationInterval = time.Duration(config.GetInt(config.DROP_PERIOD, 30))
 
 func InitDropManager() {
 	dropManager = &DropManager{
@@ -39,11 +39,10 @@ func (d *DropManager) sendDropAlert() {
 }
 
 func (d *DropManager) dropRun() {
-	ticker := time.NewTicker(time.Duration(config.GetInt("policy.drop.expiration", 30)) * time.Second)
+	ticker := time.NewTicker(time.Duration(config.GetInt(config.DROP_PERIOD, 30)) * time.Second)
 	for {
 		select {
 		case tick := <-d.dropChan:
-			log.Printf("drop occurred")
 			//update expiration
 			d.expiration = tick.Add(expirationInterval * time.Second).UnixNano()
 			d.dropCount++

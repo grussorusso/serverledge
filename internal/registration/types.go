@@ -22,7 +22,7 @@ type Registry struct {
 }
 
 var BASEDIR = "registry"
-var TTL = config.GetInt("registry.ttl", 90) // lease time in Seconds
+var TTL = config.GetInt(config.REGISTRATION_TTL, 90) // lease time in Seconds
 
 type StatusInformation struct {
 	Url            string

@@ -30,7 +30,7 @@ func startAPIServer(e *echo.Echo) {
 	e.GET("/status", api.GetServerStatus)
 
 	// Start server
-	portNumber := config.GetInt("api.port", 1323)
+	portNumber := config.GetInt(config.API_PORT, 1323)
 	e.HideBanner = true
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", portNumber)))
 }
@@ -39,15 +39,15 @@ func cacheSetup() {
 	//todo fix default values
 
 	// setup cache space
-	cache.Size = config.GetInt("cache.size", 10)
+	cache.Size = config.GetInt(config.CACHE_SIZE, 10)
 
 	//setup cleanup interval
-	d := config.GetInt("cache.cleanup", 60)
+	d := config.GetInt(config.CACHE_CLEANUP, 60)
 	interval := time.Duration(d)
 	cache.CleanupInterval = interval * time.Second
 
 	//setup default expiration time
-	d = config.GetInt("cache.expiration", 60)
+	d = config.GetInt(config.CACHE_ITEM_EXPIRATION, 60)
 	expirationInterval := time.Duration(d)
 	cache.DefaultExp = expirationInterval * time.Second
 
@@ -99,11 +99,11 @@ func main() {
 
 	// register to etcd, this way server is visible to the others under a given local area
 	registry := new(registration.Registry)
-	isInCloud := config.GetBool("cloud", false)
+	isInCloud := config.GetBool(config.IS_IN_CLOUD, false)
 	if isInCloud {
-		registry.Area = "Cloud/" + config.GetString("registry.area", "ROME")
+		registry.Area = "Cloud/" + config.GetString(config.REGISTRY_AREA, "ROME")
 	} else {
-		registry.Area = config.GetString("registry.area", "ROME")
+		registry.Area = config.GetString(config.REGISTRY_AREA, "ROME")
 	}
 	// before register checkout other servers into the local area
 	//todo use this info later on
@@ -111,7 +111,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt("api.port", 1323))
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
 	err = registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Error(err)

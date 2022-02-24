@@ -7,10 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/logging"
 	"log"
 	"math"
-	"time"
 )
-
-var expirationInterval = time.Duration(config.GetInt("policy.drop.expiration", 30))
 
 type GreedyPolicy struct {
 }

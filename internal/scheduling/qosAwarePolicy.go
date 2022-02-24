@@ -9,7 +9,7 @@ import (
 	"math"
 )
 
-var remoteServerUrl = config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
+var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1324")
 
 type QosAwarePolicy struct{}
 
@@ -62,14 +62,14 @@ func handleHAReq(r *scheduledRequest) {
 	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgWarmInitTime) ||
 		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough information, remote (cloud schedule)
-		handleOffload(r, remoteServerUrl)
+		handleOffload(r, remoteServerUrl+"/invoke/")
 		return
 	}
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
 	if timeOffload <= r.RequestQoS.MaxRespT { // todo add error-gap
-		handleOffload(r, remoteServerUrl)
+		handleOffload(r, remoteServerUrl+"/invoke/")
 		return
 	}
 	//(cloud) offload takes too long
@@ -109,7 +109,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 	}
 	//cold start takes too long, or it is not possible (resources unavailable)
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl)
+		handleOffload(r, remoteServerUrl+"/invoke/")
 		return
 	}
 
@@ -135,7 +135,7 @@ func handleLowReq(r *scheduledRequest) {
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
 	if math.IsNaN(remoteStatus.AvgExecutionTime) {
 		//not enough remote information, do (cloud) offload opportunistically
-		handleOffload(r, remoteServerUrl)
+		handleOffload(r, remoteServerUrl+"/invoke/")
 		return
 	}
 

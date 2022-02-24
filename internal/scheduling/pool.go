@@ -102,7 +102,7 @@ func releaseContainer(contID container.ContainerID, f *function.Function) {
 
 	// setup Expiration as time duration from now
 	//todo adjust default value
-	d := time.Duration(config.GetInt("container.expiration", 30)) * time.Second
+	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 30)) * time.Second
 	fp.putReadyContainer(contID, time.Now().Add(d).UnixNano())
 
 	// we must update the busy list by removing this element
