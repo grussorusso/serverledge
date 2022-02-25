@@ -1,15 +1,29 @@
 
 ---
 # cache parameters
-cache.expiration: 90
-cache.cleanup: 40
-cache.size: 20
+cache.expiration: 90 # Seconds
+cache.cleanup: 40 # Seconds
+cache.size: 20 #items in cache
 
 # server api parameters
 api.port: 1324
 etcd.address: "localhost:2379"
+cloud: true
 
 # container management
-containers.memory: 2048
-container.expiration: 60
-janitor.interval: 30
+containers.pool.memory: 2048 #MB
+container.expiration: 60 # Seconds
+janitor.interval: 30 # Seconds
+
+
+# execution report logger management
+logging.cleanInterval: 10 # minutes
+logging.expiration: 5 # minutes
+
+#registration
+registry.nearby.interval: 40 #Seconds
+registry.monitoring.interval: 90 # Seconds
+registry.ttl: 90 #Seconds
+
+#drop management
+policy.drop.expiration: 30 # Seconds

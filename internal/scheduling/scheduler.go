@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
@@ -21,15 +22,15 @@ var requests chan *scheduledRequest
 var completions chan *scheduledRequest
 
 func Run(p Policy) {
-	requests = make(chan *scheduledRequest)
-	completions = make(chan *scheduledRequest)
+	requests = make(chan *scheduledRequest, 500)
+	completions = make(chan *scheduledRequest, 500)
 
-	// initialize node resources
+	// initialize Node resources
 	availableCores := runtime.NumCPU()
-	node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
-	node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
-	node.containerPools = make(map[string]*containerPool)
-	log.Printf("Current node resources: %v", node)
+	Node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
+	Node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
+	Node.containerPools = make(map[string]*containerPool)
+	log.Printf("Current Node resources: %v", Node)
 
 	container.InitDockerContainerFactory()
 
@@ -46,9 +47,9 @@ func Run(p Policy) {
 	for {
 		select {
 		case r = <-requests:
-			p.OnArrival(r)
+			go p.OnArrival(r)
 		case r = <-completions:
-			p.OnCompletion(r)
+			go p.OnCompletion(r)
 		}
 	}
 
@@ -58,80 +59,109 @@ func Run(p Policy) {
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	log.Printf("New request for '%s' (class: %s, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
 
-	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
-	requests <- &schedRequest
-
-	// wait on channel for scheduling action
-	schedDecision, ok := <-schedRequest.decisionChannel
-	if !ok {
-		return nil, fmt.Errorf("Could not schedule the request!")
-	}
-	log.Printf("Sched action: %v", schedDecision)
-
 	logger := logging.GetLogger()
 	if !logger.Exists(r.Fun.Name) {
 		logger.InsertNewLog(r.Fun.Name)
 	}
 
+	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
+	select { // non-blocking send,if decision is not taken in time drop the request
+	case requests <- &schedRequest:
+		break
+	case <-time.After(time.Duration(r.RequestQoS.MaxRespT) * time.Second):
+		schedRequest.decisionChannel <- schedDecision{action: DROP}
+		break
+	}
+
+	// wait on channel for scheduling action
+	schedDecision, ok := <-schedRequest.decisionChannel
+	if !ok {
+		return nil, fmt.Errorf("could not schedule the request")
+	}
+	log.Printf("Sched action: %v", schedDecision)
+
+	var report *function.ExecutionReport
+	var err error
 	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
 		return nil, OutOfResourcesErr
-	} else {
-		report, err := Execute(schedDecision.contID, &schedRequest)
+	} else if schedDecision.action == EXEC_REMOTE {
+		log.Printf("Offloading request")
+		report, err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		report, err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-		// TODO: SendReport also for dropped requests:
-		// Pass "schedDecision" to SendReport to check for drops
+	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl+"/invoke/") {
 		err = logger.SendReport(report, r.Fun.Name)
 		if err != nil {
 			log.Printf("unable to update log")
 		}
-
-		return report, nil
 	}
+	return report, nil
 }
 
-func handleColdStart(r *scheduledRequest) {
+func handleColdStart(r *scheduledRequest) (isSuccess bool) {
+	log.Printf("Cold start procedure for: %v", r)
 	newContainer, err := newContainer(r.Fun)
-	if errors.Is(err, OutOfResourcesErr) {
-		dropRequest(r)
-	} else if err != nil {
+	if errors.Is(err, OutOfResourcesErr) || err != nil {
 		log.Printf("Could not create a new container: %v", err)
-		dropRequest(r)
+		return false
 	} else {
 		execLocally(r, newContainer, false)
+		return true
 	}
 }
 
 func dropRequest(r *scheduledRequest) {
+	dropManager.sendDropAlert()
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 
 func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart}
+	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart, Arrival: r.Arrival}
 
 	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
 }
 
-func offload(r *scheduledRequest) (*http.Response, error) {
-	serverUrl := config.GetString("server_url", "http://127.0.0.1:1324/invoke/")
-	jsonData, err := json.Marshal(r.Params)
+func handleOffload(r *scheduledRequest, serverUrl string) {
+	r.Offloading = false // the next server can't offload this request
+	r.decisionChannel <- schedDecision{
+		action:     EXEC_REMOTE,
+		contID:     "",
+		remoteHost: serverUrl,
+	}
+}
+
+func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {
+	// Prepare request
+	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
+	invocationBody, err := json.Marshal(request)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return nil, err
 	}
-
+	sendingTime := time.Now() // used to compute latency later on
 	resp, err := http.Post(serverUrl+r.Fun.Name, "application/json",
-		bytes.NewBuffer(jsonData))
+		bytes.NewBuffer(invocationBody))
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return nil, err
 	}
+	defer resp.Body.Close()
+	var report function.ExecutionReport
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &report)
 
-	return resp, nil
+	report.OffloadLatency = report.Arrival.Sub(sendingTime).Seconds()
+	return &report, nil
 }

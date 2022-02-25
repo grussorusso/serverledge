@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/function"
 	"os"
 	"strings"
 
-	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/utils"
 )
 
@@ -42,7 +43,7 @@ func Invoke() {
 	}
 
 	// Prepare request
-	request := api.FunctionInvocationRequest{params, *qosClass, *qosMaxRespT}
+	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(*qosClass), QoSMaxRespT: *qosMaxRespT, Offloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()

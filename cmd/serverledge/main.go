@@ -27,9 +27,10 @@ func startAPIServer(e *echo.Echo) {
 	e.POST("/create", api.CreateFunction)
 	e.POST("/delete", api.DeleteFunction)
 	e.GET("/function", api.GetFunctions)
+	e.GET("/status", api.GetServerStatus)
 
 	// Start server
-	portNumber := config.GetInt("api.port", 1323)
+	portNumber := config.GetInt(config.API_PORT, 1323)
 	e.HideBanner = true
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", portNumber)))
 }
@@ -38,15 +39,15 @@ func cacheSetup() {
 	//todo fix default values
 
 	// setup cache space
-	cache.Size = config.GetInt("cache.size", 10)
+	cache.Size = config.GetInt(config.CACHE_SIZE, 10)
 
 	//setup cleanup interval
-	d := config.GetInt("cache.cleanup", 60)
+	d := config.GetInt(config.CACHE_CLEANUP, 60)
 	interval := time.Duration(d)
 	cache.CleanupInterval = interval * time.Second
 
 	//setup default expiration time
-	d = config.GetInt("cache.expiration", 60)
+	d = config.GetInt(config.CACHE_ITEM_EXPIRATION, 60)
 	expirationInterval := time.Duration(d)
 	cache.DefaultExp = expirationInterval * time.Second
 
@@ -72,6 +73,8 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 
 			//logging cleanup; stop all associated threads
 			logging.GetLogger().CleanUpLog()
+			//stop container janitor
+			scheduling.StopJanitor()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -95,15 +98,21 @@ func main() {
 	cacheSetup()
 
 	// register to etcd, this way server is visible to the others under a given local area
-	r := new(registration.Registry)
-	r.Area = config.GetString("registry.area", "ROME")
+	registry := new(registration.Registry)
+	isInCloud := config.GetBool(config.IS_IN_CLOUD, false)
+	if isInCloud {
+		registry.Area = "Cloud/" + config.GetString(config.REGISTRY_AREA, "ROME")
+	} else {
+		registry.Area = config.GetString(config.REGISTRY_AREA, "ROME")
+	}
 	// before register checkout other servers into the local area
 	//todo use this info later on
-	_, err := r.GetAll()
+	_, err := registry.GetAll()
 	if err != nil {
 		return
 	}
-	err = r.RegisterToEtcd(utils.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
+	err = registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -112,15 +121,23 @@ func main() {
 	e := echo.New()
 
 	// Register a signal handler to cleanup things on termination
-	registerTerminationHandler(r, e)
+	registerTerminationHandler(registry, e)
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
+	err = registration.Init(registry)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+
 	startAPIServer(e)
+
 }
 
 func createSchedulingPolicy() scheduling.Policy {
 	//TODO
-	return &scheduling.DefaultLocalPolicy{}
+	//return &scheduling.DefaultLocalPolicy{}
+	return &scheduling.QosAwarePolicy{}
 }

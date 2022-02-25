@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
 	"time"
 )
 
@@ -12,14 +13,16 @@ type Request struct {
 	Arrival time.Time
 	Report  *ExecutionReport
 	RequestQoS
+	Offloading bool
 }
 
 type RequestQoS struct {
-	Class    string
+	Class    ServiceClass
 	MaxRespT float64
 }
 
 type ExecutionReport struct {
+	Arrival        time.Time // this is useful for latency computing
 	Result         string
 	ResponseTime   float64
 	IsWarmStart    bool
@@ -31,4 +34,22 @@ type ExecutionReport struct {
 
 func (r *Request) String() string {
 	return fmt.Sprintf("Req-%s", r.Fun.Name)
+}
+
+// MaxRespTime todo adjust response time -> Second default unit
+var MaxRespTime = config.GetFloat("max.response.time", 20) //in Seconds
+
+type ServiceClass int64
+
+const (
+	LOW               ServiceClass = 0
+	HIGH_PERFORMANCE               = 1
+	HIGH_AVAILABILITY              = 2
+)
+
+type InvocationRequest struct {
+	Params      map[string]string
+	QoSClass    ServiceClass
+	QoSMaxRespT float64
+	Offloading  bool
 }

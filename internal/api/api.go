@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/utils"
 	"io"
 	"log"
 	"net/http"
@@ -25,6 +28,8 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
+	//handle missing parameters with default ones
+	maxRespTime := function.MaxRespTime // default maxRespTime
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
@@ -32,16 +37,20 @@ func InvokeFunction(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "")
 	}
 
-	var invocationRequest FunctionInvocationRequest
+	var invocationRequest function.InvocationRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("Could not parse request: %v", err)
+		return fmt.Errorf("could not parse request: %v", err)
 	}
 
+	//update QoS parameters if any
+	if invocationRequest.QoSMaxRespT != -1 {
+		maxRespTime = invocationRequest.QoSMaxRespT
+	}
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
-	r.MaxRespT = invocationRequest.QoSMaxRespT
-
+	r.MaxRespT = maxRespTime
+	r.Offloading = invocationRequest.Offloading
 	report, err := scheduling.SubmitRequest(r)
 	if errors.Is(err, scheduling.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
@@ -114,5 +123,34 @@ func DeleteFunction(c echo.Context) error {
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 	response := struct{ Deleted string }{f.Name}
+	return c.JSON(http.StatusOK, response)
+}
+
+func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
+	if serviceClass == "low" {
+		return function.LOW
+	} else if serviceClass == "performance" {
+		return function.HIGH_PERFORMANCE
+	} else if serviceClass == "availability" {
+		return function.HIGH_AVAILABILITY
+	} else {
+		return function.LOW
+	}
+}
+
+// GetServerStatus simple api to check the current server status
+func GetServerStatus(c echo.Context) error {
+	scheduling.Node.RLock()
+	defer scheduling.Node.RUnlock()
+	portNumber := config.GetInt("api.port", 1323)
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+	response := registration.StatusInformation{
+		Url:            url,
+		AvailableMemMB: scheduling.Node.AvailableMemMB,
+		AvailableCPUs:  scheduling.Node.AvailableCPUs,
+		DropCount:      scheduling.Node.DropCount,
+		Coordinates:    *registration.Reg.Client.GetCoordinate(),
+	}
+
 	return c.JSON(http.StatusOK, response)
 }

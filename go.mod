@@ -3,7 +3,10 @@ module github.com/grussorusso/serverledge
 go 1.17
 
 require (
+	github.com/LK4D4/trylock v0.0.0-20191027065348-ff7e133a5c54
 	github.com/docker/docker v20.10.9+incompatible
+	github.com/go-ping/ping v0.0.0-20211130115550-779d1e919534
+	github.com/hexablock/vivaldi v0.0.0-20180727225019-07adad3f2b5f
 	github.com/labstack/echo/v4 v4.6.1
 	github.com/labstack/gommon v0.3.0
 	github.com/lithammer/shortuuid v3.0.0+incompatible
@@ -50,6 +53,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect

@@ -6,11 +6,11 @@ cache.cleanup: 60
 cache.size: 10
 
 # server api parameters
-api.port: 1323
+api.port: 1325
 etcd.address: "localhost:2379"
 
 # container management
-containers.pool.memory: 1000
+containers.memory: 1000
 container.expiration: 30
 janitor.interval: 30
 

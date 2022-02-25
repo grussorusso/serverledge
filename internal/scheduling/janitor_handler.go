@@ -24,7 +24,7 @@ func GetJanitorInstance() *janitor {
 
 	if Instance == nil {
 		// todo adjust default interval
-		Instance = runJanitor(time.Duration(config.GetInt("janitor.interval", 30)) * time.Second) // <-- thread safe
+		Instance = runJanitor(time.Duration(config.GetInt(config.POOL_CLEANUP_PERIOD, 30)) * time.Second) // <-- thread safe
 	}
 
 	return Instance
