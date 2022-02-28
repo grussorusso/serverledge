@@ -3,9 +3,10 @@ package scheduling
 import (
 	"container/list"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/container"
 	"log"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/container"
 
 	"github.com/grussorusso/serverledge/internal/config"
 
@@ -124,11 +125,16 @@ func releaseContainer(contID container.ContainerID, f *function.Function) {
 //The container can be directly used to schedule a request, as it is already
 //in the busy pool.
 func newContainer(fun *function.Function) (container.ContainerID, error) {
-	runtime, ok := container.RuntimeToInfo[fun.Runtime]
-	if !ok {
-		return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
+	var image string
+	if fun.Runtime == container.CUSTOM_RUNTIME {
+		image = fun.CustomImage
+	} else {
+		runtime, ok := container.RuntimeToInfo[fun.Runtime]
+		if !ok {
+			return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
+		}
+		image = runtime.Image
 	}
-	image := runtime.Image
 
 	Node.Lock()
 	defer Node.Unlock()

@@ -2,12 +2,15 @@ package scheduling
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/executor"
 	"github.com/grussorusso/serverledge/internal/function"
-	"log"
-	"time"
 )
+
+const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) (*function.ExecutionReport, error) {
@@ -15,13 +18,21 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 
 	log.Printf("Invoking function on container: %v", contID)
 
-	cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
-	req := executor.InvocationRequest{
-		cmd,
-		r.Params,
-		r.Fun.Handler,
-		"/app",
+	var req executor.InvocationRequest
+	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
+		req = executor.InvocationRequest{
+			Params: r.Params,
+		}
+	} else {
+		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
+		req = executor.InvocationRequest{
+			cmd,
+			r.Params,
+			r.Fun.Handler,
+			HANDLER_DIR,
+		}
 	}
+
 	response, err := container.Execute(contID, &req)
 	if err != nil {
 		return nil, fmt.Errorf("Execution request failed: %v", err)

@@ -19,25 +19,40 @@ func Create() {
 	funcName := createCmd.String("function", "", "name of the function")
 	runtime := createCmd.String("runtime", "python38", "runtime for the function")
 	handler := createCmd.String("handler", "", "function handler")
+	customImage := createCmd.String("custom_image", "", "custom container image (only if runtime is 'custom')")
 	memory := createCmd.Int("memory", 128, "max memory in MB for the function")
 	cpuDemand := createCmd.Float64("cpu", 0.0, "estimated CPU demand for the function (e.g., 1.0 = 1 core)")
 	src := createCmd.String("src", "", "source the function (single file, directory or TAR archive)")
 	createCmd.Parse(os.Args[2:])
 
-	if *funcName == "" || *src == "" || *runtime == "" || *handler == "" {
+	if *funcName == "" || *runtime == "" {
 		ExitWithUsage()
 	}
 
-	srcContent, err := readSourcesAsTar(*src)
-	if err != nil {
-		fmt.Printf("%v", err)
-		os.Exit(3)
+	if *runtime == "custom" && *customImage == "" {
+		ExitWithUsage()
+	} else if *runtime != "custom" && *src == "" {
+		ExitWithUsage()
 	}
-	encoded := base64.StdEncoding.EncodeToString(srcContent)
+
+	var encoded string
+	if *runtime != "custom" {
+		srcContent, err := readSourcesAsTar(*src)
+		if err != nil {
+			fmt.Printf("%v", err)
+			os.Exit(3)
+		}
+		encoded = base64.StdEncoding.EncodeToString(srcContent)
+	} else {
+		encoded = ""
+	}
 
 	request := function.Function{Name: *funcName, Handler: *handler,
 		Runtime: *runtime, MemoryMB: int64(*memory),
-		CPUDemand: *cpuDemand, TarFunctionCode: encoded}
+		CPUDemand:       *cpuDemand,
+		TarFunctionCode: encoded,
+		CustomImage:     *customImage,
+	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()

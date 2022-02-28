@@ -6,6 +6,8 @@ type RuntimeInfo struct {
 	InvocationCmd []string
 }
 
+const CUSTOM_RUNTIME = "custom"
+
 var refreshedImages = map[string]bool{}
 
 var RuntimeToInfo = map[string]RuntimeInfo{

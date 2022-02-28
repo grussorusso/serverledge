@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,9 +52,16 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	// Exec handler process
 	cmd := req.Command
 	if cmd == nil || len(cmd) < 1 {
-		log.Printf("Invalid request!")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		// this request is either invalid or uses a custom runtime
+		// in the latter case, we find the command in the env
+		customCmd, ok := os.LookupEnv("CUSTOM_CMD")
+		if !ok {
+			log.Printf("Invalid request!")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		cmd = strings.Split(customCmd, " ")
 	}
 
 	t0 := time.Now()

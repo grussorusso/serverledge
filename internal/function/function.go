@@ -19,6 +19,7 @@ type Function struct {
 	CPUDemand       float64 // 1.0 -> 1 core
 	Handler         string  // example: "module.function_name"
 	TarFunctionCode string  // input is .tar
+	CustomImage     string  // used if custom runtime is chosen
 }
 
 func (f Function) getEtcdKey() string {
