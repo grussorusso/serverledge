@@ -1,8 +1,8 @@
 
 ---
 # cache parameters
-cache.expiration: 90 # Seconds
-cache.cleanup: 40 # Seconds
+cache.expiration: 3600 # Seconds <----
+cache.cleanup: 300 # Seconds <-----
 cache.size: 20 #items in cache
 
 # server api parameters
@@ -12,8 +12,8 @@ cloud: true
 
 # container management
 containers.pool.memory: 2048 #MB
-container.expiration: 60 # Seconds
-janitor.interval: 30 # Seconds
+container.expiration: 600 # Seconds <----
+janitor.interval: 600 # Seconds <------
 
 
 # execution report logger management
