@@ -138,7 +138,10 @@ func main() {
 }
 
 func createSchedulingPolicy() scheduling.Policy {
-	//TODO
-	return &scheduling.DefaultLocalPolicy{}
-	//return &scheduling.QosAwarePolicy{}
+	policyConf := config.GetString(config.SCHEDULING_POLICY, "default")
+	if policyConf == "qosaware" {
+		return &scheduling.QosAwarePolicy{}
+	} else {
+		return &scheduling.DefaultLocalPolicy{}
+	}
 }

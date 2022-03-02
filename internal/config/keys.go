@@ -57,3 +57,7 @@ const REGISTRATION_TTL = "registry.ttl"
 
 // drop period in Seconds
 const DROP_PERIOD = "policy.drop.expiration"
+
+// Scheduling policy to use
+// Possible values: "qosaware", "default"
+const SCHEDULING_POLICY = "scheduler.policy"
