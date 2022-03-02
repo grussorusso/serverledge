@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"os"
 	"os/signal"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
@@ -138,6 +139,6 @@ func main() {
 
 func createSchedulingPolicy() scheduling.Policy {
 	//TODO
-	//return &scheduling.DefaultLocalPolicy{}
-	return &scheduling.QosAwarePolicy{}
+	return &scheduling.DefaultLocalPolicy{}
+	//return &scheduling.QosAwarePolicy{}
 }
