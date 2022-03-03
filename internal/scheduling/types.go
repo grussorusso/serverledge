@@ -1,34 +1,9 @@
 package scheduling
 
 import (
-	"container/list"
-	"errors"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
-	"sync"
 )
-
-type containerPool struct {
-	//	sync.Mutex
-	busy  *list.List // list of ContainerID
-	ready *list.List // list of warmContainer
-}
-
-type warmContainer struct {
-	Expiration int64
-	contID     container.ContainerID
-}
-
-type NodeResources struct {
-	sync.RWMutex
-	AvailableMemMB int64
-	AvailableCPUs  float64
-	DropCount      int64
-	containerPools map[string]*containerPool
-}
-
-var OutOfResourcesErr = errors.New("not enough resources for function execution")
-var NoWarmFoundErr = errors.New("no warm container is available")
 
 // scheduledRequest represents a Request within the scheduling subsystem
 type scheduledRequest struct {

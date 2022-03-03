@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -27,15 +28,15 @@ func Run(p Policy) {
 
 	// initialize Node resources
 	availableCores := runtime.NumCPU()
-	Node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
-	Node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
-	Node.containerPools = make(map[string]*containerPool)
-	log.Printf("Current Node resources: %v", Node)
+	resources_mgnt.Node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
+	resources_mgnt.Node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
+	resources_mgnt.Node.ContainerPools = make(map[string]*resources_mgnt.ContainerPool)
+	log.Printf("Current Node resources: %v", resources_mgnt.Node)
 
 	container.InitDockerContainerFactory()
 
 	//janitor periodically remove expired warm container
-	GetJanitorInstance()
+	resources_mgnt.GetJanitorInstance()
 
 	// initialize scheduling policy
 	p.Init()
@@ -84,9 +85,9 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	var err error
 	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
-		return nil, OutOfResourcesErr
+		return nil, resources_mgnt.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
-		log.Printf("Offloading request")
+		log.Printf("CanDoOffloading request")
 		report, err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return nil, err
@@ -109,8 +110,8 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	log.Printf("Cold start procedure for: %v", r)
-	newContainer, err := newContainer(r.Fun)
-	if errors.Is(err, OutOfResourcesErr) || err != nil {
+	newContainer, err := resources_mgnt.NewContainer(r.Fun)
+	if errors.Is(err, resources_mgnt.OutOfResourcesErr) || err != nil {
 		log.Printf("Could not create a new container: %v", err)
 		return false
 	} else {
@@ -133,7 +134,7 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 }
 
 func handleOffload(r *scheduledRequest, serverUrl string) {
-	r.Offloading = false // the next server can't offload this request
+	r.CanDoOffloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
 		action:     EXEC_REMOTE,
 		contID:     "",

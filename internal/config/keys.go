@@ -55,6 +55,9 @@ const REG_MONITORING_INTERVAL = "registry.monitoring.interval"
 // registration TTL in seconds
 const REGISTRATION_TTL = "registry.ttl"
 
+// port for udp status listener
+const LISTEN_UDP_PORT = "registry.udp.port"
+
 // drop period in Seconds
 const DROP_PERIOD = "policy.drop.expiration"
 

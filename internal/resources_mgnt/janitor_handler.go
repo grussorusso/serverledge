@@ -1,4 +1,4 @@
-package scheduling
+package resources_mgnt
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"

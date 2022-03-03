@@ -7,6 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"github.com/grussorusso/serverledge/utils"
 	"io"
 	"log"
@@ -50,9 +51,9 @@ func InvokeFunction(c echo.Context) error {
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = maxRespTime
-	r.Offloading = invocationRequest.Offloading
+	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	report, err := scheduling.SubmitRequest(r)
-	if errors.Is(err, scheduling.OutOfResourcesErr) {
+	if errors.Is(err, resources_mgnt.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
 		return c.String(http.StatusInternalServerError, "")
@@ -70,7 +71,7 @@ func InvokeFunction(c echo.Context) error {
 	//	defer res.Body.Close()
 	//	if err == nil {
 	//		body, _ := ioutil.ReadAll(res.Body)
-	//		log.Printf("Offloading Request status OK: %s", string(body))
+	//		log.Printf("CanDoOffloading Request status OK: %s", string(body))
 	//		return c.JSON(http.StatusOK, string(body))
 	//	}
 	//}
@@ -140,15 +141,15 @@ func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
 
 // GetServerStatus simple api to check the current server status
 func GetServerStatus(c echo.Context) error {
-	scheduling.Node.RLock()
-	defer scheduling.Node.RUnlock()
+	resources_mgnt.Node.RLock()
+	defer resources_mgnt.Node.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
 	response := registration.StatusInformation{
 		Url:            url,
-		AvailableMemMB: scheduling.Node.AvailableMemMB,
-		AvailableCPUs:  scheduling.Node.AvailableCPUs,
-		DropCount:      scheduling.Node.DropCount,
+		AvailableMemMB: resources_mgnt.Node.AvailableMemMB,
+		AvailableCPUs:  resources_mgnt.Node.AvailableCPUs,
+		DropCount:      resources_mgnt.Node.DropCount,
 		Coordinates:    *registration.Reg.Client.GetCoordinate(),
 	}
 

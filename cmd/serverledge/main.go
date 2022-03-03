@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"os"
 	"os/signal"
 	"time"
@@ -64,7 +65,7 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 		select {
 		case sig := <-c:
 			fmt.Printf("Got %s signal. Terminating...\n", sig)
-			scheduling.ShutdownAll()
+			resources_mgnt.ShutdownAll()
 
 			// deregister from etcd; server should be unreachable
 			err := r.Deregister()
@@ -75,7 +76,7 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 			//logging cleanup; stop all associated threads
 			logging.GetLogger().CleanUpLog()
 			//stop container janitor
-			scheduling.StopJanitor()
+			resources_mgnt.StopJanitor()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -102,13 +103,13 @@ func main() {
 	registry := new(registration.Registry)
 	isInCloud := config.GetBool(config.IS_IN_CLOUD, false)
 	if isInCloud {
-		registry.Area = "Cloud/" + config.GetString(config.REGISTRY_AREA, "ROME")
+		registry.Area = "cloud/" + config.GetString(config.REGISTRY_AREA, "ROME")
 	} else {
 		registry.Area = config.GetString(config.REGISTRY_AREA, "ROME")
 	}
 	// before register checkout other servers into the local area
-	//todo use this info later on
-	_, err := registry.GetAll()
+	//todo use this info later on; future work with active remote server selection
+	_, err := registry.GetAll(true)
 	if err != nil {
 		return
 	}
@@ -123,6 +124,8 @@ func main() {
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler(registry, e)
+	// start listening for incoming udp connections; use case: edge-nodes request for status infos
+	go registration.UDPStatusServer()
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)

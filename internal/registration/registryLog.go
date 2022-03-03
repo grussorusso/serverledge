@@ -1,14 +1,9 @@
 package registration
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/go-ping/ping"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/hexablock/vivaldi"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"reflect"
 	"sort"
 	"time"
@@ -53,7 +48,7 @@ func runMonitor() {
 func monitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
-	etcdServerMap, err := Reg.GetAll()
+	etcdServerMap, err := Reg.GetAll(false)
 	if err != nil {
 		log.Println(err)
 		return
@@ -62,7 +57,10 @@ func monitoring() {
 	delete(etcdServerMap, Reg.Key) // not consider myself
 	for key, url := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
-		newInfo, rtt := getStatusInformation(url)
+
+		ip := url[7 : len(url)-5]
+		// use udp socket to retrieve infos about the edge-node status and rtt
+		newInfo, rtt := statusInfoRequest(ip)
 		if newInfo == nil {
 			//unreachable server
 			delete(Reg.serversMap, key)
@@ -84,7 +82,7 @@ func monitoring() {
 	getRank(2) //todo change this value
 }
 
-func getStatusInformation(url string) (info *StatusInformation, duration time.Duration) {
+/*func getStatusInformation(url string) (info *StatusInformation, duration time.Duration) {
 	ip := url[7 : len(url)-5]
 	pingAgent, err := ping.NewPinger(ip)
 	if err != nil {
@@ -118,7 +116,7 @@ func getStatusInformation(url string) (info *StatusInformation, duration time.Du
 	}
 
 	return &result, rtt
-}
+}*/
 
 type dist struct {
 	key      string
@@ -152,7 +150,9 @@ func nearbyMonitoring() {
 	defer Reg.RwMtx.Unlock()
 	for key, info := range Reg.NearbyServersMap {
 		oldInfo, ok := Reg.serversMap[key]
-		newInfo, rtt := getStatusInformation(info.Url)
+
+		ip := info.Url[7 : len(info.Url)-5]
+		newInfo, rtt := statusInfoRequest(ip)
 		if newInfo == nil {
 			//unreachable server
 			delete(Reg.serversMap, key)

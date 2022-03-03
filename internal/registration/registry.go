@@ -64,8 +64,13 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 }
 
 //GetAll is used to obtain the list of  other server's addresses under a specific local Area
-func (r *Registry) GetAll() (map[string]string, error) {
-	baseDir := r.getEtcdKey("")
+func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
+	var baseDir string
+	if remotes {
+		baseDir = fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", r.Area)
+	} else {
+		baseDir = r.getEtcdKey("")
+	}
 	ctx := context.TODO()
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
@@ -82,7 +87,11 @@ func (r *Registry) GetAll() (map[string]string, error) {
 	for _, s := range resp.Kvs {
 		servers[string(s.Key)] = string(s.Value)
 		//audit todo delete the next line
-		log.Printf("found edge server at: %s", servers[string(s.Key)])
+		if remotes {
+			log.Printf("found remote server at: %s", servers[string(s.Key)])
+		} else {
+			log.Printf("found edge server at: %s", servers[string(s.Key)])
+		}
 	}
 
 	return servers, nil

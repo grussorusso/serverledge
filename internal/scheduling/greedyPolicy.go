@@ -5,6 +5,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/logging"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"log"
 	"math"
 )
@@ -22,11 +23,11 @@ func (p *GreedyPolicy) OnCompletion(r *scheduledRequest) {
 
 func (p *GreedyPolicy) OnArrival(r *scheduledRequest) {
 	offloading := config.GetBool("offloading", false)
-	containerID, err := acquireWarmContainer(r.Fun)
+	containerID, err := resources_mgnt.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
-	} else if errors.Is(err, NoWarmFoundErr) && offloading {
+	} else if errors.Is(err, resources_mgnt.NoWarmFoundErr) && offloading {
 		act := p.takeSchedulingDecision(r)
 		switch act {
 		case SCHED_BASIC:
@@ -65,9 +66,9 @@ func (p *GreedyPolicy) takeSchedulingDecision(r *scheduledRequest) (act scheduli
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	//todo cold start prediction fix
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
-	Node.RLock()
-	defer Node.RUnlock()
-	if Node.AvailableMemMB < r.Fun.MemoryMB { //not enough memory
+	resources_mgnt.Node.RLock()
+	defer resources_mgnt.Node.RUnlock()
+	if resources_mgnt.Node.AvailableMemMB < r.Fun.MemoryMB { //not enough memory
 		if r.RequestQoS.MaxRespT <= timeOffload {
 			return SCHED_REMOTE
 		} else { //not enough memory and offloading takes too long

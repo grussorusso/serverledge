@@ -17,3 +17,4 @@ janitor.interval: 30
 # offloading parameters
 cloud.server.url: "http://127.0.0.1:1324"
 offloading: true
+scheduler.policy: "qosaware"

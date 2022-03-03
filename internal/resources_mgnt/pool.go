@@ -1,4 +1,4 @@
-package scheduling
+package resources_mgnt
 
 import (
 	"container/list"
@@ -16,17 +16,17 @@ import (
 var Node NodeResources
 
 //getFunctionPool retrieves (or creates) the container pool for a function.
-func getFunctionPool(f *function.Function) *containerPool {
-	if fp, ok := Node.containerPools[f.Name]; ok {
+func getFunctionPool(f *function.Function) *ContainerPool {
+	if fp, ok := Node.ContainerPools[f.Name]; ok {
 		return fp
 	}
 
 	fp := newFunctionPool(f)
-	Node.containerPools[f.Name] = fp
+	Node.ContainerPools[f.Name] = fp
 	return fp
 }
 
-func (fp *containerPool) acquireReadyContainer() (container.ContainerID, bool) {
+func (fp *ContainerPool) acquireReadyContainer() (container.ContainerID, bool) {
 	// TODO: picking most-recent / least-recent container might be better?
 	elem := fp.ready.Front()
 	if elem == nil {
@@ -40,19 +40,19 @@ func (fp *containerPool) acquireReadyContainer() (container.ContainerID, bool) {
 	return contID, true
 }
 
-func (fp *containerPool) putBusyContainer(contID container.ContainerID) {
+func (fp *ContainerPool) putBusyContainer(contID container.ContainerID) {
 	fp.busy.PushBack(contID)
 }
 
-func (fp *containerPool) putReadyContainer(contID container.ContainerID, expiration int64) {
+func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, expiration int64) {
 	fp.ready.PushBack(warmContainer{
 		contID:     contID,
 		Expiration: expiration,
 	})
 }
 
-func newFunctionPool(f *function.Function) *containerPool {
-	fp := &containerPool{}
+func newFunctionPool(f *function.Function) *ContainerPool {
+	fp := &ContainerPool{}
 	fp.busy = list.New()
 	fp.ready = list.New()
 
@@ -66,7 +66,7 @@ func newFunctionPool(f *function.Function) *containerPool {
 // The function returns an error if either:
 // (i) the warm container does not exist
 // (ii) there are not enough resources to start the container
-func acquireWarmContainer(f *function.Function) (container.ContainerID, error) {
+func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	Node.Lock()
 	defer Node.Unlock()
 
@@ -90,7 +90,7 @@ func acquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
-func releaseContainer(contID container.ContainerID, f *function.Function) {
+func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	//time.Sleep(15 * time.Second)
 	log.Printf("Container released for %v: %v", f, contID)
 
@@ -124,7 +124,7 @@ func releaseContainer(contID container.ContainerID, f *function.Function) {
 //NewContainer creates and starts a new container for the given function.
 //The container can be directly used to schedule a request, as it is already
 //in the busy pool.
-func newContainer(fun *function.Function) (container.ContainerID, error) {
+func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	var image string
 	if fun.Runtime == container.CUSTOM_RUNTIME {
 		image = fun.CustomImage
@@ -180,7 +180,7 @@ func newContainer(fun *function.Function) (container.ContainerID, error) {
 
 type itemToDismiss struct {
 	contID container.ContainerID
-	pool   *containerPool
+	pool   *ContainerPool
 	elem   *list.Element
 	memory int64
 }
@@ -192,11 +192,11 @@ func dismissContainer(requiredMemoryMB int64) (bool, error) {
 
 	var cleanedMB int64 = 0
 	var containerToDismiss []itemToDismiss
-	var toUnlock []*containerPool
+	var toUnlock []*ContainerPool
 	res := false
 
 	//first phase, research
-	for _, funPool := range Node.containerPools {
+	for _, funPool := range Node.ContainerPools {
 		//funPool.Lock()
 		if funPool.ready.Len() > 0 {
 			toUnlock = append(toUnlock, funPool)
@@ -256,7 +256,7 @@ func DeleteExpiredContainer() {
 	Node.Lock()
 	defer Node.Unlock()
 
-	for _, pool := range Node.containerPools {
+	for _, pool := range Node.ContainerPools {
 		//pool.Lock()
 
 		elem := pool.ready.Front()
@@ -288,7 +288,7 @@ func ShutdownAll() {
 	Node.Lock()
 	defer Node.Unlock()
 
-	for fun, pool := range Node.containerPools {
+	for fun, pool := range Node.ContainerPools {
 		//	pool.Lock()
 
 		elem := pool.ready.Front()

@@ -38,7 +38,7 @@ func invokeFunction(t *testing.T) {
 	params["a"] = "a"
 	params["b"] = "b"
 	// Prepare request
-	request := function.InvocationRequest{Params: params, QoSClass: function.LOW, QoSMaxRespT: 2, Offloading: true}
+	request := function.InvocationRequest{Params: params, QoSClass: function.LOW, QoSMaxRespT: 2, CanDoOffloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		t.Log(err)

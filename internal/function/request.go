@@ -13,7 +13,7 @@ type Request struct {
 	Arrival time.Time
 	Report  *ExecutionReport
 	RequestQoS
-	Offloading bool
+	CanDoOffloading bool
 }
 
 type RequestQoS struct {
@@ -48,8 +48,8 @@ const (
 )
 
 type InvocationRequest struct {
-	Params      map[string]string
-	QoSClass    ServiceClass
-	QoSMaxRespT float64
-	Offloading  bool
+	Params          map[string]string
+	QoSClass        ServiceClass
+	QoSMaxRespT     float64
+	CanDoOffloading bool
 }

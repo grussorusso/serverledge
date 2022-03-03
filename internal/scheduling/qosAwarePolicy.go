@@ -5,11 +5,12 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"log"
 	"math"
 )
 
-var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1324")
+var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1323")
 
 type QosAwarePolicy struct{}
 
@@ -23,12 +24,12 @@ func (p *QosAwarePolicy) OnCompletion(r *scheduledRequest) {
 
 func (p *QosAwarePolicy) OnArrival(r *scheduledRequest) {
 	//offloading := config.GetBool("offloading", false)
-	containerID, err := acquireWarmContainer(r.Fun)
+	containerID, err := resources_mgnt.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
 	} else {
-		if r.Offloading {
+		if r.CanDoOffloading {
 			p.takeSchedulingDecision(r)
 		} else {
 			if !handleColdStart(r) {

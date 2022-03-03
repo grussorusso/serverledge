@@ -38,7 +38,7 @@ func invokeHAFunction(t *testing.T, respT float64) {
 	params["a"] = "a"
 	params["b"] = "b"
 	// Prepare request
-	request := function.InvocationRequest{Params: params, QoSClass: function.HIGH_AVAILABILITY, QoSMaxRespT: respT, Offloading: true}
+	request := function.InvocationRequest{Params: params, QoSClass: function.HIGH_AVAILABILITY, QoSMaxRespT: respT, CanDoOffloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		t.Log(err)

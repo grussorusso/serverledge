@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"log"
 	"time"
 
@@ -14,7 +15,7 @@ const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) (*function.ExecutionReport, error) {
-	defer releaseContainer(contID, r.Fun)
+	defer resources_mgnt.ReleaseContainer(contID, r.Fun)
 
 	log.Printf("Invoking function on container: %v", contID)
 
