@@ -61,21 +61,14 @@ func handleUDPConnection(conn *net.UDPConn) {
 }
 
 func getCurrentStatusInformation() (status []byte, err error) {
-	arrival := time.Now()
-	// from now on there is a delay to retrieve the status information: e.g. blocking read lock
-	// this delay shouldn't be considered in rtt
-	node.Resources.RLock()
-	defer node.Resources.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
-	delay := time.Now().Sub(arrival)
 	response := StatusInformation{
 		Url:            url,
 		AvailableMemMB: node.Resources.AvailableMemMB,
 		AvailableCPUs:  node.Resources.AvailableCPUs,
 		DropCount:      node.Resources.DropCount,
 		Coordinates:    *Reg.Client.GetCoordinate(),
-		Delay:          delay,
 	}
 
 	return json.Marshal(response)
@@ -125,7 +118,5 @@ func statusInfoRequest(hostname string) (info *StatusInformation, duration time.
 		fmt.Println("Can not unmarshal JSON")
 		return nil, 0
 	}
-	// internal server delay retrieving information should not be considered
-	rtt -= result.Delay
 	return &result, rtt
 }

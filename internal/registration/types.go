@@ -2,10 +2,10 @@ package registration
 
 import (
 	"errors"
+
 	"github.com/LK4D4/trylock"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/hexablock/vivaldi"
-	"time"
 )
 
 var UnavailableClientErr = errors.New("etcd client unavailable")
@@ -31,5 +31,4 @@ type StatusInformation struct {
 	AvailableCPUs  float64
 	DropCount      int64
 	Coordinates    vivaldi.Coordinate
-	Delay          time.Duration // is technical information to correct estimate RTT
 }
