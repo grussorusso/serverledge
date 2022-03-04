@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"github.com/grussorusso/serverledge/internal/node"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,17 +26,17 @@ func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *scheduledRequest, 500)
 
-	// initialize Node resources
+	// initialize Resources resources
 	availableCores := runtime.NumCPU()
-	resources_mgnt.Node.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
-	resources_mgnt.Node.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
-	resources_mgnt.Node.ContainerPools = make(map[string]*resources_mgnt.ContainerPool)
-	log.Printf("Current Node resources: %v", resources_mgnt.Node)
+	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
+	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
+	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
+	log.Printf("Current Resources resources: %v", node.Resources)
 
 	container.InitDockerContainerFactory()
 
 	//janitor periodically remove expired warm container
-	resources_mgnt.GetJanitorInstance()
+	node.GetJanitorInstance()
 
 	// initialize scheduling policy
 	p.Init()
@@ -85,7 +85,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	var err error
 	if schedDecision.action == DROP {
 		log.Printf("Dropping request")
-		return nil, resources_mgnt.OutOfResourcesErr
+		return nil, node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
 		log.Printf("CanDoOffloading request")
 		report, err = Offload(r, schedDecision.remoteHost)
@@ -110,8 +110,8 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	log.Printf("Cold start procedure for: %v", r)
-	newContainer, err := resources_mgnt.NewContainer(r.Fun)
-	if errors.Is(err, resources_mgnt.OutOfResourcesErr) || err != nil {
+	newContainer, err := node.NewContainer(r.Fun)
+	if errors.Is(err, node.OutOfResourcesErr) || err != nil {
 		log.Printf("Could not create a new container: %v", err)
 		return false
 	} else {

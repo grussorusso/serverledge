@@ -4,8 +4,8 @@ import (
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/logging"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"log"
 	"math"
 )
@@ -24,7 +24,7 @@ func (p *QosAwarePolicy) OnCompletion(r *scheduledRequest) {
 
 func (p *QosAwarePolicy) OnArrival(r *scheduledRequest) {
 	//offloading := config.GetBool("offloading", false)
-	containerID, err := resources_mgnt.AcquireWarmContainer(r.Fun)
+	containerID, err := node.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)

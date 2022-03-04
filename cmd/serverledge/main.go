@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"github.com/grussorusso/serverledge/internal/node"
 
 	"golang.org/x/net/context"
 
@@ -70,7 +70,7 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 		select {
 		case sig := <-c:
 			fmt.Printf("Got %s signal. Terminating...\n", sig)
-			resources_mgnt.ShutdownAll()
+			node.ShutdownAllContainers()
 
 			// deregister from etcd; server should be unreachable
 			err := r.Deregister()
@@ -81,7 +81,7 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 			//logging cleanup; stop all associated threads
 			logging.GetLogger().CleanUpLog()
 			//stop container janitor
-			resources_mgnt.StopJanitor()
+			node.StopJanitor()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

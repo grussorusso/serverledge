@@ -1,4 +1,4 @@
-package resources_mgnt
+package node
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/utils"
 	"log"
 	"net"
@@ -63,16 +63,16 @@ func getCurrentStatusInformation() (status []byte, err error) {
 	arrival := time.Now()
 	// from now on there is a delay to retrieve the status information: e.g. blocking read lock
 	// this delay shouldn't be considered in rtt
-	resources_mgnt.Node.RLock()
-	defer resources_mgnt.Node.RUnlock()
+	node.Resources.RLock()
+	defer node.Resources.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
 	delay := time.Now().Sub(arrival)
 	response := StatusInformation{
 		Url:            url,
-		AvailableMemMB: resources_mgnt.Node.AvailableMemMB,
-		AvailableCPUs:  resources_mgnt.Node.AvailableCPUs,
-		DropCount:      resources_mgnt.Node.DropCount,
+		AvailableMemMB: node.Resources.AvailableMemMB,
+		AvailableCPUs:  node.Resources.AvailableCPUs,
+		DropCount:      node.Resources.DropCount,
 		Coordinates:    *Reg.Client.GetCoordinate(),
 		Delay:          delay,
 	}

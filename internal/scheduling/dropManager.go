@@ -2,7 +2,7 @@ package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"github.com/grussorusso/serverledge/internal/node"
 	"sync/atomic"
 	"time"
 )
@@ -47,11 +47,11 @@ func (d *DropManager) dropRun() {
 			//update expiration
 			d.expiration = tick.Add(expirationInterval * time.Second).UnixNano()
 			d.dropCount++
-			atomic.StoreInt64(&resources_mgnt.Node.DropCount, d.dropCount)
+			atomic.StoreInt64(&node.Resources.DropCount, d.dropCount)
 		case <-ticker.C:
 			if time.Now().UnixNano() >= d.expiration {
 				d.dropCount = 0
-				atomic.StoreInt64(&resources_mgnt.Node.DropCount, d.dropCount)
+				atomic.StoreInt64(&node.Resources.DropCount, d.dropCount)
 			}
 		}
 	}

@@ -2,7 +2,7 @@ package scheduling
 
 import (
 	"errors"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 )
 
@@ -23,15 +23,15 @@ func (p *DefaultLocalPolicy) OnCompletion(r *scheduledRequest) {
 }
 
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
-	containerID, err := resources_mgnt.AcquireWarmContainer(r.Fun)
+	containerID, err := node.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
-	} else if errors.Is(err, resources_mgnt.NoWarmFoundErr) {
+	} else if errors.Is(err, node.NoWarmFoundErr) {
 		// Cold Start (handles asynchronously)
 		go handleColdStart(r)
-	} else if errors.Is(err, resources_mgnt.OutOfResourcesErr) {
-		log.Printf("Not enough resources on the Node.")
+	} else if errors.Is(err, node.OutOfResourcesErr) {
+		log.Printf("Not enough resources on the Resources.")
 		dropRequest(r)
 	} else {
 		// other error

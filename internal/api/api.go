@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 	"github.com/grussorusso/serverledge/utils"
 	"io"
 	"log"
@@ -53,7 +53,7 @@ func InvokeFunction(c echo.Context) error {
 	r.MaxRespT = maxRespTime
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	report, err := scheduling.SubmitRequest(r)
-	if errors.Is(err, resources_mgnt.OutOfResourcesErr) {
+	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
 		return c.String(http.StatusInternalServerError, "")
@@ -141,15 +141,15 @@ func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
 
 // GetServerStatus simple api to check the current server status
 func GetServerStatus(c echo.Context) error {
-	resources_mgnt.Node.RLock()
-	defer resources_mgnt.Node.RUnlock()
+	node.Resources.RLock()
+	defer node.Resources.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
 	response := registration.StatusInformation{
 		Url:            url,
-		AvailableMemMB: resources_mgnt.Node.AvailableMemMB,
-		AvailableCPUs:  resources_mgnt.Node.AvailableCPUs,
-		DropCount:      resources_mgnt.Node.DropCount,
+		AvailableMemMB: node.Resources.AvailableMemMB,
+		AvailableCPUs:  node.Resources.AvailableCPUs,
+		DropCount:      node.Resources.DropCount,
 		Coordinates:    *registration.Reg.Client.GetCoordinate(),
 	}
 
