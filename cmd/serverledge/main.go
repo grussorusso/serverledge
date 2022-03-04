@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/resources_mgnt"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/resources_mgnt"
 
 	"golang.org/x/net/context"
 
@@ -34,7 +36,10 @@ func startAPIServer(e *echo.Echo) {
 	// Start server
 	portNumber := config.GetInt(config.API_PORT, 1323)
 	e.HideBanner = true
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", portNumber)))
+
+	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && err != http.ErrServerClosed {
+		e.Logger.Fatal("shutting down the server")
+	}
 }
 
 func cacheSetup() {

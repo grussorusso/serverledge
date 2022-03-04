@@ -18,8 +18,9 @@ to neighbor Edge nodes or to the Cloud.
 
 1. Build the project:
 
-
-	$ make
+```
+$ make
+```
 
 ## Running (single node deployment)
 
@@ -53,6 +54,11 @@ Get Server Status:
 To shutdown the etcd server:
 
 	$ ./scripts/stop-etcd.sh
+
+## Distributed Deployment
+
+[This repository](https://github.com/grussorusso/serverledge-deploy) provides an Ansible playbook to deploy Serverledge in an 
+Edge-Cloud environment.
 
 ## Configuration
 
