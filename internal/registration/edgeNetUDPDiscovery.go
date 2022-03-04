@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/node"
-	"github.com/grussorusso/serverledge/utils"
 	"log"
 	"net"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/grussorusso/serverledge/utils"
 )
 
 //UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
@@ -29,7 +30,7 @@ func UDPStatusServer() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("UDP server up and listening on port %d", port)
+	log.Printf("UDP server up and listening on port %d", port)
 	defer udpConn.Close()
 
 	for {

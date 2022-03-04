@@ -2,6 +2,7 @@ package node
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -13,6 +14,10 @@ type NodeResources struct {
 	AvailableCPUs  float64
 	DropCount      int64
 	ContainerPools map[string]*ContainerPool
+}
+
+func (n NodeResources) String() string {
+	return fmt.Sprintf("[CPUs: %f - Mem: %d]", n.AvailableCPUs, n.AvailableMemMB)
 }
 
 var Resources NodeResources
