@@ -2,14 +2,15 @@ package registration
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	_ "go.etcd.io/etcd/client/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
-	"log"
-	"strconv"
-	"time"
 )
 
 // getEtcdKey append to a given unique id the logical path depending on the Area.
@@ -71,7 +72,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	} else {
 		baseDir = r.getEtcdKey("")
 	}
-	ctx := context.TODO()
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -80,7 +81,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	//retrieve all url of the other servers under my Area
 	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not read from etcd: %v", err)
 	}
 
 	servers := make(map[string]string)

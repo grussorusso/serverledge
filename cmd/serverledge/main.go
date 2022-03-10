@@ -116,8 +116,10 @@ func main() {
 	//todo use this info later on; future work with active remote server selection
 	_, err := registry.GetAll(true)
 	if err != nil {
-		return
+		log.Error(err)
+		os.Exit(1)
 	}
+
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
 	err = registry.RegisterToEtcd(url)
 	if err != nil {

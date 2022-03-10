@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/node"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/logging"
@@ -140,6 +141,11 @@ func handleOffload(r *scheduledRequest, serverUrl string) {
 		contID:     "",
 		remoteHost: serverUrl,
 	}
+}
+
+func handleCloudOffload(r *scheduledRequest) {
+	cloudAddress := config.GetString(config.CLOUD_URL, "")
+	handleOffload(r, cloudAddress)
 }
 
 func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {

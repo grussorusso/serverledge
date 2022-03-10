@@ -24,7 +24,7 @@ func GetEtcdClient() (*clientv3.Client, error) {
 	etcdHost := config.GetString(config.ETCD_ADDRESS, "localhost:2379")
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{etcdHost},
-		DialTimeout: 2 * time.Second,
+		DialTimeout: 1 * time.Second,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to etcd: %v", err)
