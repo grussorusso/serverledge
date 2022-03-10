@@ -134,12 +134,12 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	r.decisionChannel <- decision
 }
 
-func handleOffload(r *scheduledRequest, serverUrl string) {
+func handleOffload(r *scheduledRequest, serverHost string) {
 	r.CanDoOffloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
 		action:     EXEC_REMOTE,
 		contID:     "",
-		remoteHost: serverUrl,
+		remoteHost: serverHost,
 	}
 }
 
@@ -157,7 +157,7 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 		return nil, err
 	}
 	sendingTime := time.Now() // used to compute latency later on
-	resp, err := http.Post(serverUrl+r.Fun.Name, "application/json",
+	resp, err := http.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
 		bytes.NewBuffer(invocationBody))
 
 	if err != nil {

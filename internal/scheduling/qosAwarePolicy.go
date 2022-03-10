@@ -1,13 +1,14 @@
 package scheduling
 
 import (
+	"log"
+	"math"
+
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
-	"log"
-	"math"
 )
 
 var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1323")
@@ -65,14 +66,14 @@ func handleHAReq(r *scheduledRequest) {
 	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgWarmInitTime) ||
 		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough information, remote (cloud schedule)
-		handleOffload(r, remoteServerUrl+"/invoke/")
+		handleOffload(r, remoteServerUrl)
 		return
 	}
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
 	if timeOffload <= r.RequestQoS.MaxRespT { // todo add error-gap
-		handleOffload(r, remoteServerUrl+"/invoke/")
+		handleOffload(r, remoteServerUrl)
 		return
 	}
 	//(cloud) offload takes too long
@@ -112,7 +113,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 	}
 	//cold start takes too long, or it is not possible (resources unavailable)
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl+"/invoke/")
+		handleOffload(r, remoteServerUrl)
 		return
 	}
 
@@ -121,7 +122,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 		defer registration.Reg.RwMtx.Unlock()
 		url := handleEdgeOffloading(r)
 		if url != "" {
-			handleOffload(r, url+"/invoke/")
+			handleOffload(r, url)
 			return
 		} else {
 			dropRequest(r)
@@ -138,7 +139,7 @@ func handleLowReq(r *scheduledRequest) {
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
 	if math.IsNaN(remoteStatus.AvgExecutionTime) {
 		//not enough remote information, do (cloud) offload opportunistically
-		handleOffload(r, remoteServerUrl+"/invoke/")
+		handleOffload(r, remoteServerUrl)
 		return
 	}
 
@@ -150,12 +151,12 @@ func handleLowReq(r *scheduledRequest) {
 		defer registration.Reg.RwMtx.Unlock()
 		url := handleEdgeOffloading(r)
 		if url != "" {
-			handleOffload(r, url+"/invoke/")
+			handleOffload(r, url)
 			return
 		}
 	}
 	//edge offload not possible
-	handleOffload(r, remoteServerUrl+"/invoke/")
+	handleOffload(r, remoteServerUrl)
 }
 
 func handleEdgeOffloading(r *scheduledRequest) (url string) {

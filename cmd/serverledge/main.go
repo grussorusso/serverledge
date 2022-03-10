@@ -151,6 +151,8 @@ func createSchedulingPolicy() scheduling.Policy {
 	policyConf := config.GetString(config.SCHEDULING_POLICY, "default")
 	if policyConf == "qosaware" {
 		return &scheduling.QosAwarePolicy{}
+	} else if policyConf == "cloudonly" {
+		return &scheduling.CloudOnlyPolicy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

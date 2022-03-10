@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/utils"
-	"io"
-	"log"
-	"net/http"
-	"time"
 
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
@@ -56,6 +57,7 @@ func InvokeFunction(c echo.Context) error {
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
+		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
 		return c.JSON(http.StatusOK, report)

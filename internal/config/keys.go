@@ -62,5 +62,5 @@ const LISTEN_UDP_PORT = "registry.udp.port"
 const DROP_PERIOD = "policy.drop.expiration"
 
 // Scheduling policy to use
-// Possible values: "qosaware", "default"
+// Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
