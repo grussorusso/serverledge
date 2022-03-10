@@ -98,6 +98,29 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	return servers, nil
 }
 
+//GetCloudNodes retrieves the list of Cloud servers in a given region
+func GetCloudNodes(region string) (map[string]string, error) {
+	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Fatal(UnavailableClientErr)
+		return nil, UnavailableClientErr
+	}
+
+	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
+	if err != nil {
+		return nil, fmt.Errorf("Could not read from etcd: %v", err)
+	}
+
+	servers := make(map[string]string)
+	for _, s := range resp.Kvs {
+		servers[string(s.Key)] = string(s.Value)
+	}
+
+	return servers, nil
+}
+
 // Deregister deletes from etcd the key, value pair previously inserted
 func (r *Registry) Deregister() (e error) {
 	etcdClient, err := utils.GetEtcdClient()
