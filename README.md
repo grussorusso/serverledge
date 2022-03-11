@@ -33,13 +33,15 @@ Start the server:
 
 	$ bin/serverledge
 
-Create a function `func` from example code:
+> Note: in the following commands parameters order is not important
 
-	$ bin/serverledge-cli create -function func -memory 600 -src examples/hello.py -runtime python310 -handler "hello.handler"
+Create a function `func` from example code, you can optionally specify host and port number:
 
-Invoke a function `func` with parameters `a=2` and `b=3`:
+	$ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd create -function func -memory 600 -src examples/hello.py -runtime python310 -handler "hello.handler" 
 
-	$ bin/serverledge-cli invoke -function func -param "a:2" -param "b:3" 
+Invoke a function `func` with parameters `a=2` and `b=3`, you can optionally specify host and port number:
+
+	$ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd invoke -function func -param "a:2" -param "b:3"
 
 You can optionally specify a QoS class name and a maximum requested response
 time:
@@ -105,4 +107,12 @@ Available runtime: `nodejs17` (NodeJS 17)
 	module.exports = handler_fun // this is mandatory!
 
 Specify the handler as `<script_file_name>.js` (e.g., `myfile.js`).
-An example is given in `examples/hello.js`.
+An example is given in `examples/sieve.js`.
+
+Create a function sieve:
+
+    $ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd create -function sieve -memory 128 -src examples/sieve.js -runtime nodejs17 -handler "sieve.js"
+
+Invoke sieve function: 
+
+    $ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd invoke -function sieve 

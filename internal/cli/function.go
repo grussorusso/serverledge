@@ -14,30 +14,20 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 )
 
-func Create() {
-	createCmd := flag.NewFlagSet("create", flag.ExitOnError)
-	funcName := createCmd.String("function", "", "name of the function")
-	runtime := createCmd.String("runtime", "python38", "runtime for the function")
-	handler := createCmd.String("handler", "", "function handler")
-	customImage := createCmd.String("custom_image", "", "custom container image (only if runtime is 'custom')")
-	memory := createCmd.Int("memory", 128, "max memory in MB for the function")
-	cpuDemand := createCmd.Float64("cpu", 0.0, "estimated CPU demand for the function (e.g., 1.0 = 1 core)")
-	src := createCmd.String("src", "", "source the function (single file, directory or TAR archive)")
-	createCmd.Parse(os.Args[2:])
-
-	if *funcName == "" || *runtime == "" {
+func Create(funcName string, runtime string, customImage string, src string, handler string, memory int64, cpuDemand float64) {
+	if funcName == "" || runtime == "" {
 		ExitWithUsage()
 	}
 
-	if *runtime == "custom" && *customImage == "" {
+	if runtime == "custom" && customImage == "" {
 		ExitWithUsage()
-	} else if *runtime != "custom" && *src == "" {
+	} else if runtime != "custom" && src == "" {
 		ExitWithUsage()
 	}
 
 	var encoded string
-	if *runtime != "custom" {
-		srcContent, err := readSourcesAsTar(*src)
+	if runtime != "custom" {
+		srcContent, err := readSourcesAsTar(src)
 		if err != nil {
 			fmt.Printf("%v", err)
 			os.Exit(3)
@@ -47,11 +37,11 @@ func Create() {
 		encoded = ""
 	}
 
-	request := function.Function{Name: *funcName, Handler: *handler,
-		Runtime: *runtime, MemoryMB: int64(*memory),
-		CPUDemand:       *cpuDemand,
+	request := function.Function{Name: funcName, Handler: handler,
+		Runtime: runtime, MemoryMB: memory,
+		CPUDemand:       cpuDemand,
 		TarFunctionCode: encoded,
-		CustomImage:     *customImage,
+		CustomImage:     customImage,
 	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
