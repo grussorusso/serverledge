@@ -2,38 +2,20 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"log"
 	"os"
 	"os/signal"
 	"time"
 
 	"golang.org/x/net/context"
 
-	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/lb"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
-
-func startReverseProxy(e *echo.Echo) {
-	e.Use(middleware.Recover())
-
-	// Routes
-	e.POST("/invoke/:fun", api.InvokeFunction)
-	e.POST("/create", api.CreateFunction)
-	e.POST("/delete", api.DeleteFunction)
-	e.GET("/function", api.GetFunctions)
-	e.GET("/status", api.GetServerStatus)
-
-	// Start server
-	portNumber := config.GetInt(config.API_PORT, 1323)
-	e.HideBanner = true
-
-	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && err != http.ErrServerClosed {
-		e.Logger.Fatal("shutting down the server")
-	}
-}
 
 func registerTerminationHandler(e *echo.Echo) {
 	c := make(chan os.Signal)
@@ -62,15 +44,20 @@ func main() {
 	}
 	config.ReadConfiguration(configFileName)
 
-	// register to etcd, this way server is visible to the others under a given local area
-	registry := new(registration.Registry)
-	fmt.Printf("%v", registry)
+	// TODO: split Area in Region + Type (e.g., cloud/lb/edge)
+	region := config.GetString(config.REGISTRY_AREA, "ROME")
+	registry := &registration.Registry{Area: "lb/" + region}
+	hostport := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
+	if err := registry.RegisterToEtcd(hostport); err != nil {
+		log.Printf("Could not register to Etcd: %v", err)
+	}
 
 	e := echo.New()
+	e.HideBanner = true
+	e.Use(middleware.Recover())
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler(e)
 
-	startReverseProxy(e)
-
+	lb.StartReverseProxy(e, region)
 }

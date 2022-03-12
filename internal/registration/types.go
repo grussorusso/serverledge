@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/LK4D4/trylock"
-	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/hexablock/vivaldi"
 )
 
@@ -21,9 +20,6 @@ type Registry struct {
 	serversMap       map[string]*StatusInformation
 	etcdCh           chan bool
 }
-
-var BASEDIR = "registry"
-var TTL = config.GetInt(config.REGISTRATION_TTL, 90) // lease time in Seconds
 
 type StatusInformation struct {
 	Url            string
