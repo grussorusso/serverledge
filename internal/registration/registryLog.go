@@ -1,17 +1,18 @@
 package registration
 
 import (
-	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/hexablock/vivaldi"
 	"log"
 	"reflect"
 	"sort"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/hexablock/vivaldi"
 )
 
 var Reg *Registry
 
-func Init(r *Registry) (e error) {
+func InitEdgeMonitoring(r *Registry) (e error) {
 	Reg = r
 	defaultConfig := vivaldi.DefaultConfig()
 	defaultConfig.Dimensionality = 3
@@ -25,6 +26,10 @@ func Init(r *Registry) (e error) {
 	Reg.etcdCh = make(chan bool)
 	Reg.serversMap = make(map[string]*StatusInformation)
 	Reg.NearbyServersMap = make(map[string]*StatusInformation)
+
+	// start listening for incoming udp connections; use case: edge-nodes request for status infos
+	go UDPStatusServer()
+
 	go runMonitor()
 	return nil
 }
@@ -81,42 +86,6 @@ func monitoring() {
 
 	getRank(2) //todo change this value
 }
-
-/*func getStatusInformation(url string) (info *StatusInformation, duration time.Duration) {
-	ip := url[7 : len(url)-5]
-	pingAgent, err := ping.NewPinger(ip)
-	if err != nil {
-		return nil, 0
-	}
-	pingAgent.Count = 3   // 3 ping to obtain statistics
-	err = pingAgent.Run() // Blocks until finished.
-	if err != nil {
-		return nil, 0
-	}
-	rtt := pingAgent.Statistics().AvgRtt
-
-	resp, err := http.Get(url + "/status")
-	if err != nil {
-		fmt.Printf("Invocation failed: %v", err)
-		return nil, 0
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body) // response body is []byte
-	if err != nil {
-		fmt.Printf("ReadAll failed: %v", err)
-		return nil, 0
-	}
-
-	var result StatusInformation
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		fmt.Println("Can not unmarshal JSON")
-		return nil, 0
-	}
-
-	return &result, rtt
-}*/
 
 type dist struct {
 	key      string

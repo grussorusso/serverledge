@@ -20,7 +20,7 @@ func (r *Registry) getEtcdKey(id string) (key string) {
 }
 
 // RegisterToEtcd make a registration to the local Area; etcd put operation is performed
-func (r *Registry) RegisterToEtcd(url string) (e error) {
+func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -38,8 +38,8 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	}
 
 	log.Printf("Registration key: %s\n", r.Key)
-	// save couple (id, url) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.Key, url, clientv3.WithLease(resp.ID))
+	// save couple (id, hostport) to the correct Area-dir on etcd
+	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return IdRegistrationErr
