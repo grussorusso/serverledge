@@ -135,6 +135,14 @@ func main() {
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
+	if !isInCloud {
+		err = registration.InitEdgeMonitoring(registry)
+		if err != nil {
+			log.Error(err)
+			os.Exit(1)
+		}
+	}
+
 	startAPIServer(e)
 
 }

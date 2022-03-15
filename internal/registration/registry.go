@@ -6,12 +6,16 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	_ "go.etcd.io/etcd/client/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
 )
+
+var BASEDIR = "registry"
+var TTL = config.GetInt(config.REGISTRATION_TTL, 20) // lease time in Seconds
 
 // getEtcdKey append to a given unique id the logical path depending on the Area.
 // If it is called with  an empty string  it returns the base path for the current local Area.
@@ -20,7 +24,7 @@ func (r *Registry) getEtcdKey(id string) (key string) {
 }
 
 // RegisterToEtcd make a registration to the local Area; etcd put operation is performed
-func (r *Registry) RegisterToEtcd(url string) (e error) {
+func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -38,8 +42,8 @@ func (r *Registry) RegisterToEtcd(url string) (e error) {
 	}
 
 	log.Printf("Registration key: %s\n", r.Key)
-	// save couple (id, url) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.Key, url, clientv3.WithLease(resp.ID))
+	// save couple (id, hostport) to the correct Area-dir on etcd
+	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return IdRegistrationErr
@@ -93,6 +97,52 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 		} else {
 			log.Printf("found edge server at: %s", servers[string(s.Key)])
 		}
+	}
+
+	return servers, nil
+}
+
+//GetCloudNodes retrieves the list of Cloud servers in a given region
+func GetCloudNodes(region string) (map[string]string, error) {
+	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Fatal(UnavailableClientErr)
+		return nil, UnavailableClientErr
+	}
+
+	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
+	if err != nil {
+		return nil, fmt.Errorf("Could not read from etcd: %v", err)
+	}
+
+	servers := make(map[string]string)
+	for _, s := range resp.Kvs {
+		servers[string(s.Key)] = string(s.Value)
+	}
+
+	return servers, nil
+}
+
+//GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
+func GetCloudNodesInRegion(region string) (map[string]string, error) {
+	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Fatal(UnavailableClientErr)
+		return nil, UnavailableClientErr
+	}
+
+	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
+	if err != nil {
+		return nil, fmt.Errorf("Could not read from etcd: %v", err)
+	}
+
+	servers := make(map[string]string)
+	for _, s := range resp.Kvs {
+		servers[string(s.Key)] = string(s.Value)
 	}
 
 	return servers, nil
