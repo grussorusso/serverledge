@@ -64,11 +64,12 @@ func getCurrentStatusInformation() (status []byte, err error) {
 	portNumber := config.GetInt("api.port", 1323)
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
 	response := StatusInformation{
-		Url:            url,
-		AvailableMemMB: node.Resources.AvailableMemMB,
-		AvailableCPUs:  node.Resources.AvailableCPUs,
-		DropCount:      node.Resources.DropCount,
-		Coordinates:    *Reg.Client.GetCoordinate(),
+		Url:                     url,
+		AvailableWarmContainers: node.WarmStatus(),
+		AvailableMemMB:          node.Resources.AvailableMemMB,
+		AvailableCPUs:           node.Resources.AvailableCPUs,
+		DropCount:               node.Resources.DropCount,
+		Coordinates:             *Reg.Client.GetCoordinate(),
 	}
 
 	return json.Marshal(response)

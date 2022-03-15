@@ -99,8 +99,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 			return nil, err
 		}
 	}
-
-	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl+"/invoke/") {
+	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
 		err = logger.SendReport(report, r.Fun.Name)
 		if err != nil {
 			log.Printf("unable to update log")

@@ -154,7 +154,6 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	if Resources.AvailableMemMB < fun.MemoryMB {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
-			Resources.Unlock()
 			log.Printf("Not enough memory for the new container.")
 			return "", OutOfResourcesErr
 		}
@@ -196,17 +195,13 @@ type itemToDismiss struct {
 // 2-phases: first, we find ready container and collect them as a slice, second (cleanup phase) we delete the container only and only if
 // the sum of their memory is >= requiredMemoryMB is
 func dismissContainer(requiredMemoryMB int64) (bool, error) {
-
 	var cleanedMB int64 = 0
 	var containerToDismiss []itemToDismiss
-	var toUnlock []*ContainerPool
 	res := false
 
 	//first phase, research
 	for _, funPool := range Resources.ContainerPools {
-		//funPool.Lock()
 		if funPool.ready.Len() > 0 {
-			toUnlock = append(toUnlock, funPool)
 			// every container into the funPool has the same memory (same function)
 			//so it is not important which one you destroy
 			elem := funPool.ready.Front()
@@ -216,7 +211,6 @@ func dismissContainer(requiredMemoryMB int64) (bool, error) {
 			for ok := true; ok; ok = elem != nil {
 				containerToDismiss = append(containerToDismiss,
 					itemToDismiss{contID: contID, pool: funPool, elem: elem, memory: memory})
-
 				cleanedMB += memory
 				if cleanedMB >= requiredMemoryMB {
 					goto cleanup
@@ -224,9 +218,6 @@ func dismissContainer(requiredMemoryMB int64) (bool, error) {
 				//go on to the next one
 				elem = elem.Next()
 			}
-		} else {
-			// ready list is empty
-			//funPool.Unlock()
 		}
 	}
 
@@ -238,7 +229,7 @@ cleanup: // second phase, cleanup
 			err := container.Destroy(item.contID) // destroy the container
 			if err != nil {
 				res = false
-				goto unlock
+				return res, nil
 			}
 			Resources.AvailableMemMB += item.memory
 		}
@@ -246,12 +237,6 @@ cleanup: // second phase, cleanup
 		res = true
 		log.Printf("Released resources. Now: %v", Resources)
 	}
-
-unlock:
-	/*for _, elem := range toUnlock {
-		elem.Unlock()
-	}*/
-
 	return res, nil
 }
 
@@ -264,8 +249,6 @@ func DeleteExpiredContainer() {
 	defer Resources.Unlock()
 
 	for _, pool := range Resources.ContainerPools {
-		//pool.Lock()
-
 		elem := pool.ready.Front()
 		for ok := elem != nil; ok; ok = elem != nil {
 			warmed := elem.Value.(warmContainer)
@@ -284,8 +267,6 @@ func DeleteExpiredContainer() {
 				elem = elem.Next()
 			}
 		}
-
-		//pool.Unlock()
 	}
 
 }
@@ -296,8 +277,6 @@ func ShutdownAllContainers() {
 	defer Resources.Unlock()
 
 	for fun, pool := range Resources.ContainerPools {
-		//	pool.Lock()
-
 		elem := pool.ready.Front()
 		for ok := elem != nil; ok; ok = elem != nil {
 			warmed := elem.Value.(warmContainer)
@@ -326,7 +305,17 @@ func ShutdownAllContainers() {
 			Resources.AvailableMemMB += memory
 			Resources.AvailableCPUs += function.CPUDemand
 		}
-
-		//	pool.Unlock()
 	}
+}
+
+// WarmStatus foreach function returns the corresponding number of warm container available
+func WarmStatus() (warmPool map[string]int) {
+	Resources.RLock()
+	defer Resources.RUnlock()
+	warmPool = make(map[string]int)
+	for funcName, pool := range Resources.ContainerPools {
+		warmPool[funcName] = pool.ready.Len()
+	}
+
+	return warmPool
 }

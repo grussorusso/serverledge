@@ -131,17 +131,9 @@ func main() {
 
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler(registry, e)
-	// start listening for incoming udp connections; use case: edge-nodes request for status infos
-	go registration.UDPStatusServer()
 
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
-
-	err = registration.Init(registry)
-	if err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
 
 	startAPIServer(e)
 
@@ -149,10 +141,15 @@ func main() {
 
 func createSchedulingPolicy() scheduling.Policy {
 	policyConf := config.GetString(config.SCHEDULING_POLICY, "default")
+	log.Printf("%s configuration\n", policyConf)
 	if policyConf == "qosaware" {
 		return &scheduling.QosAwarePolicy{}
 	} else if policyConf == "cloudonly" {
 		return &scheduling.CloudOnlyPolicy{}
+	} else if policyConf == "edgecloud" {
+		return &scheduling.CloudEdgePolicy{}
+	} else if policyConf == "edgeonly" {
+		return &scheduling.EdgePolicy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

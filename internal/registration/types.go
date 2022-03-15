@@ -26,9 +26,10 @@ var BASEDIR = "registry"
 var TTL = config.GetInt(config.REGISTRATION_TTL, 90) // lease time in Seconds
 
 type StatusInformation struct {
-	Url            string
-	AvailableMemMB int64
-	AvailableCPUs  float64
-	DropCount      int64
-	Coordinates    vivaldi.Coordinate
+	Url                     string
+	AvailableWarmContainers map[string]int // <k, v> = <function name, warm container number>
+	AvailableMemMB          int64
+	AvailableCPUs           float64
+	DropCount               int64
+	Coordinates             vivaldi.Coordinate
 }

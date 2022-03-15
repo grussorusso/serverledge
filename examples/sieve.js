@@ -12,6 +12,7 @@ module.exports = (ctx, params) => {
 			}
 		}
 	}
-
-	return primes.toString()
+	
+	//return {body: `<html><body><h3>${primes.toString()}</h3></body></html>`}
+	return 	primes.toString()
 }

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -58,12 +59,22 @@ func (l *Log) GetLogStatus() (status *LogStatus) {
 		latency += reportItem.report.OffloadLatency
 	}
 
-	return &LogStatus{
+	nodeStatus := &LogStatus{
 		warmInit / float64(warmInitCounter),
 		coldInit / float64(coldInitCounter),
 		executionTime / float64(coldInitCounter+warmInitCounter),
 		latency / float64(coldInitCounter+warmInitCounter),
 	}
+
+	if math.IsNaN(nodeStatus.AvgColdInitTime) {
+		//there aren't cold start into the log
+		nodeStatus.AvgColdInitTime = 0
+	}
+	if math.IsNaN(nodeStatus.AvgWarmInitTime) {
+		//there aren't warm start into the log
+		nodeStatus.AvgWarmInitTime = 0
+	}
+	return nodeStatus
 
 }
 
