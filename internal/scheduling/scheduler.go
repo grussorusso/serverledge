@@ -30,7 +30,7 @@ func Run(p Policy) {
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
-	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores)*2.0)
+	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current Resources resources: %v", node.Resources)
 
@@ -122,7 +122,7 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 }
 
 func dropRequest(r *scheduledRequest) {
-	dropManager.sendDropAlert()
+	//dropManager.sendDropAlert() // TODO: cannot be here!
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 

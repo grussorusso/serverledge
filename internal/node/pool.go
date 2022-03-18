@@ -154,7 +154,6 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	if Resources.AvailableMemMB < fun.MemoryMB {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
-			Resources.Unlock()
 			log.Printf("Not enough memory for the new container.")
 			return "", OutOfResourcesErr
 		}
