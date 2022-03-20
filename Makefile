@@ -15,16 +15,18 @@ executor:
 	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/executor.go
 
 DOCKERHUB_USER=grussorusso
-images: image-nodejs17 image-python310
-
+images: image-nodejs17 image-python310 image-nodejs17ng
 image-python310:
 	docker build -t $(DOCKERHUB_USER)/serverledge-python310 -f images/python310/Dockerfile .
 image-nodejs17:
 	docker build -t $(DOCKERHUB_USER)/serverledge-nodejs17 -f images/nodejs17/Dockerfile .
+image-nodejs17ng:
+	docker build -t $(DOCKERHUB_USER)/serverledge-nodejs17ng -f images/nodejs17ng/Dockerfile .
 
 push-images:
 	docker push $(DOCKERHUB_USER)/serverledge-python310
 	docker push $(DOCKERHUB_USER)/serverledge-nodejs17
+	docker push $(DOCKERHUB_USER)/serverledge-nodejs17ng
 
 test:
 	go test -v ./...

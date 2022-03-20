@@ -116,8 +116,8 @@ func (f *Function) Delete() error {
 	}
 	ctx := context.TODO()
 
-	_, err = cli.Delete(ctx, f.getEtcdKey())
-	if err != nil {
+	dresp, err := cli.Delete(ctx, f.getEtcdKey())
+	if err != nil || dresp.Deleted != 1 {
 		return fmt.Errorf("Failed Delete: %v", err)
 	}
 

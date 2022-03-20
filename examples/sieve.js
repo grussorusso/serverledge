@@ -1,7 +1,17 @@
 // Example ported from TinyFaaS (https://github.com/OpenFogStack/tinyFaaS/blob/master/examples/sieve-of-erasthostenes/index.js)
 //
-module.exports = (ctx, params) => {
-	const max = 1000;
+module.exports = (params, ctx) => {
+	var max;
+
+	console.log(params)
+	max = parseInt(params["n"],10);
+
+	try {
+		max = parseInt(params["n"],10);
+	} catch (err) {
+		max = 1000;
+	}
+
 	let sieve = [], i, j, primes = [];
 	for (i = 2; i <= max; ++i) {
 
@@ -12,7 +22,6 @@ module.exports = (ctx, params) => {
 			}
 		}
 	}
-	
-	//return {body: `<html><body><h3>${primes.toString()}</h3></body></html>`}
-	return 	primes.toString()
+
+	return primes
 }
