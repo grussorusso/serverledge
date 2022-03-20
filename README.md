@@ -48,6 +48,11 @@ time:
 
 	$ bin/serverledge-cli invoke -function func -param ... -qosclass <class> -qosrespt <respt>
 
+You can invoke a function like an asynchronous invocation using `-qosclass async`. Serverledge immediately returns an id. 
+You can use it to retrieve the invocation result from etcd.
+
+    $ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd invoke -function func -param "a:2" -param "b:3" -qosclass async
+
 Get Server Status:
  
     $ bin/serverledge-cli status -host {host ip-address} -port {specific port}
