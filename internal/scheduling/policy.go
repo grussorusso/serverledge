@@ -19,7 +19,7 @@ func (p *DefaultLocalPolicy) Init() {
 }
 
 func (p *DefaultLocalPolicy) OnCompletion(r *scheduledRequest) {
-
+	InitDropManager()
 }
 
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {

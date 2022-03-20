@@ -142,7 +142,8 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
+	//async executor initialization
+	scheduling.InitAsyncExecutor()
 	startAPIServer(e)
 
 }

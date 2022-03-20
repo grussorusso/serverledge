@@ -27,3 +27,4 @@ registry.ttl: 90 #Seconds
 
 #drop management
 policy.drop.expiration: 30 # Seconds
+scheduler.policy: "qosaware"

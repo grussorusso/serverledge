@@ -2,12 +2,12 @@ package scheduling
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/executor"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/container"
-	"github.com/grussorusso/serverledge/internal/executor"
 	"github.com/grussorusso/serverledge/internal/function"
 )
 

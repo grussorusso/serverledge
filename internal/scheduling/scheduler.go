@@ -60,7 +60,7 @@ func Run(p Policy) {
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	log.Printf("New request for '%s' (class: %s, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
-
+	remoteServerUrl := config.GetString(config.CLOUD_URL, "")
 	logger := logging.GetLogger()
 	if !logger.Exists(r.Fun.Name) {
 		logger.InsertNewLog(r.Fun.Name)
@@ -93,6 +93,8 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if schedDecision.action == RETURN_ASYNC {
+		return &function.ExecutionReport{Result: r.AsyncKey}, nil
 	} else {
 		report, err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
@@ -121,7 +123,7 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 }
 
 func dropRequest(r *scheduledRequest) {
-	//dropManager.sendDropAlert() // TODO: cannot be here!
+	dropManager.sendDropAlert()
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 
@@ -147,9 +149,15 @@ func handleCloudOffload(r *scheduledRequest) {
 	handleOffload(r, cloudAddress)
 }
 
+func handleAsync(r *scheduledRequest) {
+	r.decisionChannel <- schedDecision{
+		action: RETURN_ASYNC,
+	}
+}
+
 func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {
 	// Prepare request
-	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
+	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT, AsyncKey: r.AsyncKey}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)

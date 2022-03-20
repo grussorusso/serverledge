@@ -26,14 +26,14 @@ func (i *ParamsFlags) Set(value string) error {
 	return nil
 }
 
-func Invoke(funcName string, qosClass string, qosMaxRespT float64, params ParamsFlags) {
+func Invoke(funcName string, qosClass string, qosMaxRespT float64, params ParamsFlags, asyncKey string) {
 	if len(funcName) < 1 {
 		fmt.Printf("Invalid function name.\n")
 		ExitWithUsage()
 	}
 
 	// Prepare request
-	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(qosClass), QoSMaxRespT: qosMaxRespT, CanDoOffloading: true}
+	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(qosClass), QoSMaxRespT: qosMaxRespT, CanDoOffloading: true, AsyncKey: asyncKey}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()

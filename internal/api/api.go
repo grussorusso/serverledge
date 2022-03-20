@@ -50,7 +50,7 @@ func InvokeFunction(c echo.Context) error {
 	if invocationRequest.QoSMaxRespT != -1 {
 		maxRespTime = invocationRequest.QoSMaxRespT
 	}
-	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
+	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now(), AsyncKey: invocationRequest.AsyncKey}
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = maxRespTime
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
@@ -137,6 +137,8 @@ func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
 		return function.HIGH_PERFORMANCE
 	} else if serviceClass == "availability" {
 		return function.HIGH_AVAILABILITY
+	} else if serviceClass == "async" {
+		return function.ASYNC_INVOCATION
 	} else {
 		return function.LOW
 	}

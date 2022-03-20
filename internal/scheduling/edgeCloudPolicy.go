@@ -23,7 +23,9 @@ func (p *CloudEdgePolicy) OnArrival(r *scheduledRequest) {
 		execLocally(r, containerID, true)
 	} else if handleColdStart(r) {
 		return
-	} else {
+	} else if r.CanDoOffloading {
 		handleCloudOffload(r)
+	} else {
+		dropRequest(r)
 	}
 }

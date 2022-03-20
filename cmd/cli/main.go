@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	var funcName, runtime, handler, customImage, src, qosClass string
+	var funcName, runtime, handler, customImage, src, qosClass, asyncKey string
 	var memory int64
 	var cpuDemand, qosMaxRespT float64
 	var params cli.ParamsFlags = make(map[string]string)
@@ -49,6 +49,7 @@ func main() {
 	flag.Float64Var(&qosMaxRespT, "qosrespt", -1.0, "Max. response time (optional)")
 	flag.StringVar(&qosClass, "qosclass", "", "QoS class (optional)")
 	flag.Var(&params, "param", "Function parameter: <name>:<value>")
+	flag.StringVar(&asyncKey, "asyncKey", "", "optional key for async invocation")
 	flag.Parse()
 
 	if len(os.Args) < 2 {
@@ -58,7 +59,7 @@ func main() {
 	switch {
 
 	case command == "invoke":
-		cli.Invoke(funcName, qosClass, qosMaxRespT, params)
+		cli.Invoke(funcName, qosClass, qosMaxRespT, params, asyncKey)
 	case command == "create":
 		cli.Create(funcName, runtime, customImage, src, handler, memory, cpuDemand)
 	case command == "delete":

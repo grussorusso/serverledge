@@ -1,8 +1,12 @@
 package scheduling
 
 import (
+	"fmt"
+	"github.com/lithammer/shortuuid"
 	"log"
 	"math"
+	"strconv"
+	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -10,8 +14,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 )
-
-var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1323")
 
 // QosAwarePolicy takes care about QoS parameters at fine-grain, it is possible to do Edge-Cloud and Edge-Edge Offloading for better scalability performance
 type QosAwarePolicy struct{}
@@ -31,6 +33,11 @@ func (p *QosAwarePolicy) OnArrival(r *scheduledRequest) {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
 	} else {
+		if r.Class == function.ASYNC_INVOCATION {
+			handleAsyncInvocation(r)
+			return
+		}
+
 		if r.CanDoOffloading {
 			p.takeSchedulingDecision(r)
 		} else {
@@ -67,14 +74,14 @@ func handleHAReq(r *scheduledRequest) {
 	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(localStatus.AvgColdInitTime) ||
 		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) || math.IsNaN(remoteStatus.AvgWarmInitTime) {
 		//not enough information, remote (cloud schedule)
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 	//(cloud) offload takes too long
@@ -114,7 +121,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 	}
 	//cold start takes too long, or it is not possible (resources unavailable)
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
@@ -140,7 +147,7 @@ func handleLowReq(r *scheduledRequest) {
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
 	if math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough remote information, do (cloud) offload opportunistically
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
@@ -159,7 +166,7 @@ func handleLowReq(r *scheduledRequest) {
 	}
 
 	//edge offload not possible
-	handleOffload(r, remoteServerUrl)
+	handleCloudOffload(r)
 }
 
 func handleEdgeOffloading(r *scheduledRequest) (url string) {
@@ -180,4 +187,29 @@ func handleEdgeOffloading(r *scheduledRequest) (url string) {
 		}
 	}
 	return ""
+}
+
+// handleAsyncInvocation
+// Creates a unique identifier used to save the result on etcd.
+// Edge nodes Offload the request to the cloud.
+//Cloud nodes enqueue the request to the asyncExecutor queue
+func handleAsyncInvocation(r *scheduledRequest) {
+	if r.Request.AsyncKey == "" {
+		//setup key used for tacking back the result
+		id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
+		key := fmt.Sprintf("async/%s/%s", registration.Reg.Area, id)
+		r.Request.AsyncKey = key
+	}
+
+	if !r.CanDoOffloading {
+		//enqueue the request
+		AsyncExecutor.requestCh <- r.Request
+	} else {
+		remoteServerUrl := config.GetString(config.CLOUD_URL, "")
+		r.CanDoOffloading = false
+		//offloading directly asynchronously
+		go Offload(r.Request, remoteServerUrl)
+	}
+
+	handleAsync(r)
 }

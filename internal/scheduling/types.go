@@ -23,17 +23,8 @@ type schedDecision struct {
 type action int64
 
 const (
-	DROP                  action = 0
-	EXEC_LOCAL                   = 1
-	EXEC_REMOTE                  = 2
-	BEST_EFFORT_EXECUTION        = 3
-)
-
-type schedulingDecision int64
-
-const (
-	SCHED_DROP   schedulingDecision = 0
-	SCHED_REMOTE                    = 1
-	SCHED_LOCAL                     = 2
-	SCHED_BASIC                     = 3
+	DROP         action = 0
+	EXEC_LOCAL          = 1
+	EXEC_REMOTE         = 2
+	RETURN_ASYNC        = 3
 )

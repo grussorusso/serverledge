@@ -14,6 +14,7 @@ type Request struct {
 	Report  *ExecutionReport
 	RequestQoS
 	CanDoOffloading bool
+	AsyncKey        string //optional only used for async requests
 }
 
 type RequestQoS struct {
@@ -45,6 +46,7 @@ const (
 	LOW               ServiceClass = 0
 	HIGH_PERFORMANCE               = 1
 	HIGH_AVAILABILITY              = 2
+	ASYNC_INVOCATION               = 3
 )
 
 type InvocationRequest struct {
@@ -52,4 +54,5 @@ type InvocationRequest struct {
 	QoSClass        ServiceClass
 	QoSMaxRespT     float64
 	CanDoOffloading bool
+	AsyncKey        string
 }
