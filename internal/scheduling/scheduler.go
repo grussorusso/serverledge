@@ -44,7 +44,6 @@ func Run(p Policy) {
 
 	log.Println("Scheduler started.")
 
-	// TODO: run policy asynchronously with "go ..."
 	var r *scheduledRequest
 	for {
 		select {
@@ -121,7 +120,9 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 }
 
 func dropRequest(r *scheduledRequest) {
-	//dropManager.sendDropAlert() // TODO: cannot be here!
+	if dropManager != nil {
+		dropManager.sendDropAlert() // TODO: this is policy-specific
+	}
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 
