@@ -13,6 +13,7 @@ import (
 
 var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1323")
 
+// QosAwarePolicy takes care about QoS parameters at fine-grain, it is possible to do Edge-Cloud and Edge-Edge Offloading for better scalability performance
 type QosAwarePolicy struct{}
 
 func (p *QosAwarePolicy) Init() {
@@ -63,8 +64,8 @@ func handleHAReq(r *scheduledRequest) {
 	logger := logging.GetLogger()
 	localStatus, _ := logger.GetLocalLogStatus(r.Fun.Name)
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
-	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgWarmInitTime) ||
-		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
+	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(localStatus.AvgColdInitTime) ||
+		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) || math.IsNaN(remoteStatus.AvgWarmInitTime) {
 		//not enough information, remote (cloud schedule)
 		handleOffload(r, remoteServerUrl)
 		return
@@ -72,7 +73,7 @@ func handleHAReq(r *scheduledRequest) {
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
-	if timeOffload <= r.RequestQoS.MaxRespT { // todo add error-gap
+	if timeOffload <= r.RequestQoS.MaxRespT {
 		handleOffload(r, remoteServerUrl)
 		return
 	}
@@ -95,8 +96,8 @@ func handleHighPerfReq(r *scheduledRequest) {
 	logger := logging.GetLogger()
 	localStatus, _ := logger.GetLocalLogStatus(r.Fun.Name)
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
-	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgWarmInitTime) ||
-		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
+	if math.IsNaN(localStatus.AvgExecutionTime) ||
+		math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough information, local schedule with cold start
 		if !handleColdStart(r) {
 			dropRequest(r)
@@ -119,15 +120,15 @@ func handleHighPerfReq(r *scheduledRequest) {
 
 	//timeLocal > r.RequestQoS.MaxRespT && timeOffload > r.RequestQoS.MaxRespT
 	if registration.Reg.RwMtx.TryLock() {
-		defer registration.Reg.RwMtx.Unlock()
 		url := handleEdgeOffloading(r)
 		if url != "" {
 			handleOffload(r, url)
+			registration.Reg.RwMtx.Unlock()
 			return
-		} else {
-			dropRequest(r)
 		}
+		registration.Reg.RwMtx.Unlock()
 	}
+
 	dropRequest(r)
 }
 
@@ -137,7 +138,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 func handleLowReq(r *scheduledRequest) {
 	logger := logging.GetLogger()
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
-	if math.IsNaN(remoteStatus.AvgExecutionTime) {
+	if math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough remote information, do (cloud) offload opportunistically
 		handleOffload(r, remoteServerUrl)
 		return
@@ -148,30 +149,35 @@ func handleLowReq(r *scheduledRequest) {
 	}
 	//not enough resources, try edge-offloading
 	if registration.Reg.RwMtx.TryLock() {
-		defer registration.Reg.RwMtx.Unlock()
 		url := handleEdgeOffloading(r)
 		if url != "" {
 			handleOffload(r, url)
+			registration.Reg.RwMtx.Unlock()
 			return
 		}
+		registration.Reg.RwMtx.Unlock()
 	}
+
 	//edge offload not possible
 	handleOffload(r, remoteServerUrl)
 }
 
 func handleEdgeOffloading(r *scheduledRequest) (url string) {
 	nearbyServersMap := registration.Reg.NearbyServersMap
-	newMap := make(map[string]*registration.StatusInformation)
-	for k, v := range nearbyServersMap {
-		if v.DropCount == 0 {
-			newMap[k] = v
+	if nearbyServersMap == nil {
+		return ""
+	}
+	//first, search for warm container
+	for _, v := range nearbyServersMap {
+		if v.AvailableWarmContainers[r.Fun.Name] != 0 {
+			return v.Url
 		}
 	}
-	for _, v := range newMap {
+	//second, (nobody has warm container) search for available memory
+	for _, v := range nearbyServersMap {
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
 			return v.Url
 		}
 	}
-
 	return ""
 }

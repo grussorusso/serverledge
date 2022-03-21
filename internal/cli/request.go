@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -12,13 +11,13 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 )
 
-type paramsFlags map[string]string
+type ParamsFlags map[string]string
 
-func (i *paramsFlags) String() string {
+func (i *ParamsFlags) String() string {
 	return fmt.Sprintf("%q", *i)
 }
 
-func (i *paramsFlags) Set(value string) error {
+func (i *ParamsFlags) Set(value string) error {
 	tokens := strings.Split(value, ":")
 	if len(tokens) != 2 {
 		return fmt.Errorf("Invalid argument")
@@ -27,30 +26,21 @@ func (i *paramsFlags) Set(value string) error {
 	return nil
 }
 
-func Invoke() {
-	var params paramsFlags = make(map[string]string)
-
-	invokeCmd := flag.NewFlagSet("invoke", flag.ExitOnError)
-	funcName := invokeCmd.String("function", "", "name of the function")
-	qosClass := invokeCmd.String("qosclass", "", "QoS class (optional)")
-	qosMaxRespT := invokeCmd.Float64("qosrespt", -1.0, "Max. response time (optional)")
-	invokeCmd.Var(&params, "param", "Function parameter: <name>:<value>")
-	invokeCmd.Parse(os.Args[2:])
-
-	if len(*funcName) < 1 {
+func Invoke(funcName string, qosClass string, qosMaxRespT float64, params ParamsFlags) {
+	if len(funcName) < 1 {
 		fmt.Printf("Invalid function name.\n")
 		ExitWithUsage()
 	}
 
 	// Prepare request
-	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(*qosClass), QoSMaxRespT: *qosMaxRespT, CanDoOffloading: true}
+	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(qosClass), QoSMaxRespT: qosMaxRespT, CanDoOffloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()
 	}
 
 	// Send invocation request
-	url := fmt.Sprintf("http://%s:%d/invoke/%s", ServerConfig.Host, ServerConfig.Port, *funcName)
+	url := fmt.Sprintf("http://%s:%d/invoke/%s", ServerConfig.Host, ServerConfig.Port, funcName)
 	resp, err := utils.PostJson(url, invocationBody)
 	if err != nil {
 		fmt.Printf("Invocation failed: %v", err)

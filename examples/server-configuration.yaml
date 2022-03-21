@@ -11,7 +11,7 @@ etcd.address: "localhost:2379"
 cloud: true
 
 # container management
-containers.pool.memory: 2048 #MB
+container.pool.memory: 2048 #MB
 container.expiration: 600 # Seconds <----
 janitor.interval: 600 # Seconds <------
 

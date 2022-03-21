@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -139,11 +138,9 @@ func (logPtr *functionLog) updateReport(report *function.ExecutionReport) {
 	if report.OffloadLatency != 0 {
 		// if latency is nonzero the executions takes remotely
 		logPtr.remoteLog.Update(report)
-		log.Printf("remote logging: %v\n", report)
 	} else {
 		// if latency is zero the executions takes locally
 		logPtr.localLog.Update(report)
-		log.Printf(" local logging: %v\n", report)
 	}
 
 }

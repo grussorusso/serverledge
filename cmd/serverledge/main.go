@@ -149,10 +149,15 @@ func main() {
 
 func createSchedulingPolicy() scheduling.Policy {
 	policyConf := config.GetString(config.SCHEDULING_POLICY, "default")
+	log.Printf("%s configuration\n", policyConf)
 	if policyConf == "qosaware" {
 		return &scheduling.QosAwarePolicy{}
 	} else if policyConf == "cloudonly" {
 		return &scheduling.CloudOnlyPolicy{}
+	} else if policyConf == "edgecloud" {
+		return &scheduling.CloudEdgePolicy{}
+	} else if policyConf == "edgeonly" {
+		return &scheduling.EdgePolicy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}
