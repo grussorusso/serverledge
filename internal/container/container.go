@@ -49,7 +49,7 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	postBodyB := bytes.NewBuffer(postBody)
 	resp, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
-	if err != nil {
+	if err != nil || resp == nil {
 		return nil, fmt.Errorf("Request to executor failed: %v", err)
 	}
 	defer resp.Body.Close()

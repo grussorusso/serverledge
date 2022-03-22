@@ -18,8 +18,6 @@ http.createServer(async (request, response) => {
 
 		try {
 			const reqbody = JSON.parse(data);
-			console.log('request ', reqbody);
-
 
 			var handler = reqbody["Handler"]	
 			var handler_dir = reqbody["HandlerDir"]
@@ -40,7 +38,7 @@ http.createServer(async (request, response) => {
 			const duration = (endTime - startTime)/1000.0;
 
 			resp = {}
-			resp["Result"] = JSON.stringify(result);
+			resp["Result"] = result;
 			resp["Duration"] = duration
 			resp["Success"] = true
 
