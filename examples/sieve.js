@@ -3,9 +3,6 @@
 module.exports = (params, ctx) => {
 	var max;
 
-	console.log(params)
-	max = parseInt(params["n"],10);
-
 	try {
 		max = parseInt(params["n"],10);
 	} catch (err) {
