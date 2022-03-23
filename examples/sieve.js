@@ -3,10 +3,10 @@
 module.exports = (params, ctx) => {
 	var max;
 
-	try {
+	if (params["n"] == undefined) {
+		max = 1000
+	} else {
 		max = parseInt(params["n"],10);
-	} catch (err) {
-		max = 1000;
 	}
 
 	let sieve = [], i, j, primes = [];
@@ -20,5 +20,6 @@ module.exports = (params, ctx) => {
 		}
 	}
 
-	return primes
+	result = {"N": max, "Primes": primes.toString()}
+	return result
 }

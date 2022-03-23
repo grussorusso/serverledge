@@ -60,7 +60,7 @@ class Executor(BaseHTTPRequestHandler):
 
             duration = time.time() - t0
 
-            response["Result"] = result
+            response["Result"] = json.dumps(result)
             response["Duration"] = duration
             response["Success"] = True
         except Exception as e:

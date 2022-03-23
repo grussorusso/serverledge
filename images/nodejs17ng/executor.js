@@ -38,7 +38,7 @@ http.createServer(async (request, response) => {
 			const duration = (endTime - startTime)/1000.0;
 
 			resp = {}
-			resp["Result"] = result;
+			resp["Result"] = JSON.stringify(result);
 			resp["Duration"] = duration
 			resp["Success"] = true
 
