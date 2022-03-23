@@ -46,8 +46,6 @@ class Executor(BaseHTTPRequestHandler):
 
         response = {}
 
-        t0 = time.time()
-
         try:
             # Import module
             if not module in executed_modules:
@@ -58,10 +56,7 @@ class Executor(BaseHTTPRequestHandler):
             mod = importlib.import_module(module)
             result = getattr(mod, func_name)(params, context)
 
-            duration = time.time() - t0
-
             response["Result"] = json.dumps(result)
-            response["Duration"] = duration
             response["Success"] = True
         except Exception as e:
             print(e, file=sys.stderr)

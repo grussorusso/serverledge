@@ -28,18 +28,12 @@ http.createServer(async (request, response) => {
 				context = process.env.CONTEXT
 			}
 
-			const startTime = new Date()
-
 			let h = require(path.join(handler_dir, handler))
 
 			result = h(params, context)
 
-			const endTime = new Date()
-			const duration = (endTime - startTime)/1000.0;
-
 			resp = {}
 			resp["Result"] = JSON.stringify(result);
-			resp["Duration"] = duration
 			resp["Success"] = true
 
 			response.writeHead(200, { 'Content-Type': contentType });

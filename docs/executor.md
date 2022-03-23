@@ -44,17 +44,11 @@ The following object is returned upon function completion (or failure):
 type InvocationResult struct {
 	Success  bool
 	Result   string
-	Duration float64
-	CPUTime  float64
 }
 ```
 
 - `Success`: whether the function has been successfully executed.
 
 - `Result`: what the function returned.
-
-- `Duration`: function execution time (in seconds).
-
-- `CPUTime` (optional): CPU time used by the function (in seconds).
 
 

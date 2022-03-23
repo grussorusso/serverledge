@@ -2,9 +2,10 @@ package scheduling
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/executor"
@@ -34,6 +35,8 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 		}
 	}
 
+	t0 := time.Now()
+
 	response, err := container.Execute(contID, &req)
 	if err != nil {
 		return nil, fmt.Errorf("Execution request failed: %v", err)
@@ -44,9 +47,9 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 	}
 
 	r.Report.Result = response.Result
-	r.Report.Duration = response.Duration
+	r.Report.Duration = time.Now().Sub(t0).Seconds()
 	r.Report.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
-	r.Report.CPUTime = response.CPUTime
+	r.Report.CPUTime = -1.0 // TODO
 
 	// notify scheduler
 	completions <- r
