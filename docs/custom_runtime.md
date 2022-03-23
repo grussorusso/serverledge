@@ -30,7 +30,7 @@ in `/executor`, setting it as the container `CMD`.
 As shown above, you also need to set the `CUSTOM_CMD` environment variable 
 specifying the command to be executed by the Executor upon invocation.
 
-# Custom image (the hardest way)
+# Custom image (harder way)
 
 For higher efficiency, you can define your image from scratch implementing
 your own Executor server, which must run within the container and implement

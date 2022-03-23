@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,7 +21,6 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 )
 
 func startAPIServer(e *echo.Echo) {
@@ -75,7 +75,7 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 			// deregister from etcd; server should be unreachable
 			err := r.Deregister()
 			if err != nil {
-				log.Error(err)
+				log.Fatal(err)
 			}
 
 			//logging cleanup; stop all associated threads
@@ -116,14 +116,14 @@ func main() {
 	//todo use this info later on; future work with active remote server selection
 	_, err := registry.GetAll(true)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 		os.Exit(1)
 	}
 
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
 	err = registry.RegisterToEtcd(url)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 		os.Exit(1)
 	}
 
@@ -138,7 +138,7 @@ func main() {
 	if !isInCloud {
 		err = registration.InitEdgeMonitoring(registry)
 		if err != nil {
-			log.Error(err)
+			log.Fatal(err)
 			os.Exit(1)
 		}
 	}

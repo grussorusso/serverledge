@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 )
 
-const appDir = "/app"
 const resultFile = "/tmp/result.json"
 
 func readExecutionResult(resultFile string) string {

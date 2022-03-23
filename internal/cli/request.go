@@ -3,10 +3,11 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/api"
-	"github.com/grussorusso/serverledge/internal/function"
 	"os"
 	"strings"
+
+	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/function"
 
 	"github.com/grussorusso/serverledge/utils"
 )
@@ -19,10 +20,10 @@ func (i *ParamsFlags) String() string {
 
 func (i *ParamsFlags) Set(value string) error {
 	tokens := strings.Split(value, ":")
-	if len(tokens) != 2 {
+	if len(tokens) < 2 {
 		return fmt.Errorf("Invalid argument")
 	}
-	(*i)[tokens[0]] = tokens[1]
+	(*i)[tokens[0]] = strings.Join(tokens[1:], ":")
 	return nil
 }
 
