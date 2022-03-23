@@ -1,40 +1,47 @@
 # Custom image (the easy way)
 
-The easiest way to build a custom function image is by extending one of the
-Serverledge runtime images, e.g., `grussorusso/serverledge-python310`.
+The easiest way to build a custom function image is by leveraging the
+Serverledge base runtime image, i.e., `grussorusso/serverledge-base`.
+This image contains a simple implementation of the [Executor](https://github.com/grussorusso/serverledge/blob/main/docs/executor.md)
+server. When the function is invoked, the Executor runs a user-specified
+command as a new process and sets a few environment variables that may be
+used by the called process.
 
-You can write a `Dockerfile` to extend the image as desired:
+- `PARAMS`: a JSON-encoded representation of the function parameters
+- `RESULT_FILE`: name of the file where the function must write its JSON-encoded result
+- `CONTEXT`: (optional) a JSON-encoded representation of the execution context
 
-	FROM grussorusso/serverledge-python310
+You can write a `Dockerfile` as follows to build your own runtime image, e.g.:
 
-	# Copy/install what you need
-	COPY myfile.py /
-	
-	# This is the command representing your own function
-	ENV CUSTOM_CMD "python /myfile.py" 
+	FROM grussorusso/serverledge-base as BASE
 
-	CMD /executor   # Do not change this line
+	# Extend any image you want, e.g.;
+	FROM tensorflow/tensorflow:latest
 
+	# Required: install the executor as /executor
+	COPY --from=BASE /executor /
+	CMD /executor
+
+	# Required: this is the command representing your function
+	ENV CUSTOM_CMD "python /function.py"
+
+	# Install your code and any dependency, e.g.:
+	RUN pip3 install pillow
+	COPY function.py /
+	# ...
 
 The new function must be created setting `custom` as the desired runtime and
 specifying a `custom_image`.
 
 	bin/serverledge-cli create -function myfunc -memory 256 -runtime custom -custom_image MY_IMAGE_TAG 
 
-# Custom image (a harder way)
+# Custom image (the harder way)
 
-A slightly different approach allows you to build the custom image without 
-building on top of one of the available runtime images.
-In this case, you need to compile and install the Serverledge Executor
-in `/executor`, setting it as the container `CMD`.
-As shown above, you also need to set the `CUSTOM_CMD` environment variable 
-specifying the command to be executed by the Executor upon invocation.
+For higher efficiency, instead of using the default Executor implementation,
+you can define your image from scratch including
+your own Executor server, written in the language you prefer based on
+the same protocol used by the Serverledge Executor.
 
-# Custom image (harder way)
-
-For higher efficiency, you can define your image from scratch implementing
-your own Executor server, which must run within the container and implement
-the same protocol used by the Serverledge Executor component for invocation.
-
-By doing so, you may get rid of some process creation overheads.
+By doing so, you may get rid of some process creation overheads, as
+your function is directly called upon arrival of invocation requests.
 
