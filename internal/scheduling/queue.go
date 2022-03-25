@@ -1,5 +1,7 @@
 package scheduling
 
+import "sync"
+
 type queue interface {
 	Enqueue(r *scheduledRequest) bool
 	Dequeue() *scheduledRequest
@@ -8,6 +10,7 @@ type queue interface {
 
 // FIFOQueue defines a circular queue
 type FIFOQueue struct {
+	sync.Mutex
 	data     []*scheduledRequest
 	capacity int
 	head     int
@@ -31,22 +34,19 @@ func NewFIFOQueue(n int) *FIFOQueue {
 
 // IsEmpty returns true if queue is empty
 func (q *FIFOQueue) IsEmpty() bool {
-	if q.head == q.tail {
-		return true
-	}
-	return false
+	return q.size == 0
 }
 
 // IsFull returns true if queue is full
 func (q *FIFOQueue) IsFull() bool {
-	if q.head == (q.tail+1)%q.capacity {
-		return true
-	}
-	return false
+	return q.size == q.capacity
 }
 
 // Enqueue pushes an element to the back
 func (q *FIFOQueue) Enqueue(v *scheduledRequest) bool {
+	q.Lock()
+	defer q.Unlock()
+
 	if q.IsFull() {
 		return false
 	}
@@ -58,7 +58,10 @@ func (q *FIFOQueue) Enqueue(v *scheduledRequest) bool {
 }
 
 // Dequeue fetches a element from queue
-func (q *FIFOQueue) Dequeue() interface{} {
+func (q *FIFOQueue) Dequeue() *scheduledRequest {
+	q.Lock()
+	defer q.Unlock()
+
 	if q.IsEmpty() {
 		return nil
 	}

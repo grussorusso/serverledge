@@ -64,3 +64,6 @@ const DROP_PERIOD = "policy.drop.expiration"
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
+
+// Capacity of the queue (possibly) used by the scheduler
+const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
