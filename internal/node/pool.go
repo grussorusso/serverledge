@@ -15,7 +15,6 @@ import (
 )
 
 type ContainerPool struct {
-	//	sync.Mutex
 	busy  *list.List // list of ContainerID
 	ready *list.List // list of warmContainer
 }
@@ -88,9 +87,6 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	}
 
 	fp := getFunctionPool(f)
-	/*	fp.Lock()
-		defer fp.Unlock()
-	*/
 	contID, found := fp.acquireReadyContainer()
 	if found {
 		Resources.AvailableCPUs -= f.CPUDemand
@@ -103,19 +99,15 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 
 // ReleaseContainer puts a container in the ready pool for a function.
 func ReleaseContainer(contID container.ContainerID, f *function.Function) {
-	//time.Sleep(15 * time.Second)
 	log.Printf("Container released for %v: %v", f, contID)
 
 	Resources.Lock()
 	defer Resources.Unlock()
 
 	fp := getFunctionPool(f)
-	/*	fp.Lock()
-		defer fp.Unlock()
-	*/
+
 	// setup Expiration as time duration from now
-	//todo adjust default value
-	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 30)) * time.Second
+	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
 	fp.putReadyContainer(contID, time.Now().Add(d).UnixNano())
 
 	// we must update the busy list by removing this element
@@ -149,7 +141,6 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	}
 
 	Resources.Lock()
-	defer Resources.Unlock()
 	// check resources
 	if Resources.AvailableMemMB < fun.MemoryMB {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
@@ -167,18 +158,24 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 
 	Resources.AvailableMemMB -= fun.MemoryMB
 	Resources.AvailableCPUs -= fun.CPUDemand
-	fp := getFunctionPool(fun)
 
 	log.Printf("Acquired resources for new container. Now: %v", Resources)
+	Resources.Unlock()
 
 	contID, err := container.NewContainer(image, fun.TarFunctionCode, &container.ContainerOptions{
 		MemoryMB: fun.MemoryMB,
 	})
+
+	Resources.Lock()
+	defer Resources.Unlock()
 	if err != nil {
 		log.Printf("Failed container creation")
+		Resources.AvailableMemMB += fun.MemoryMB
+		Resources.AvailableCPUs += fun.CPUDemand
 		return "", err
 	}
 
+	fp := getFunctionPool(fun)
 	fp.putBusyContainer(contID) // We immediately mark it as busy
 
 	return contID, nil
