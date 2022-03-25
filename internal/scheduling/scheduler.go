@@ -58,21 +58,17 @@ func Run(p Policy) {
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
-	log.Printf("New request for '%s' (class: %s, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
+	log.Printf("New request for '%s' (class: %d, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
 
 	logger := logging.GetLogger()
 	if !logger.Exists(r.Fun.Name) {
 		logger.InsertNewLog(r.Fun.Name)
 	}
 
-	schedRequest := scheduledRequest{r, make(chan schedDecision, 1)}
-	select { // non-blocking send,if decision is not taken in time drop the request
-	case requests <- &schedRequest:
-		break
-	case <-time.After(time.Duration(r.RequestQoS.MaxRespT) * time.Second):
-		schedRequest.decisionChannel <- schedDecision{action: DROP}
-		break
-	}
+	schedRequest := scheduledRequest{
+		Request:         r,
+		decisionChannel: make(chan schedDecision, 1)}
+	requests <- &schedRequest
 
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel

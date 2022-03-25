@@ -9,6 +9,7 @@ import (
 type scheduledRequest struct {
 	*function.Request
 	decisionChannel chan schedDecision
+	priority        float64
 }
 
 // schedDecision wraps a action made by the scheduler.
