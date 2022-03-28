@@ -50,7 +50,7 @@ func Run(p Policy) {
 		case r = <-requests:
 			go p.OnArrival(r)
 		case r = <-completions:
-			go p.OnCompletion(r)
+			p.OnCompletion(r)
 		}
 	}
 

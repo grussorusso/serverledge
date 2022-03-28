@@ -18,8 +18,13 @@ func (p *DefaultLocalPolicy) Init() {
 }
 
 func (p *DefaultLocalPolicy) OnCompletion(r *scheduledRequest) {
-	// TODO: We must pop from the queue if possible
-	// TODO: To avoid issues, we should have a single thread doing this
+	if p.queue == nil || p.queue.Len() < 1 {
+		return
+	}
+
+	// We must pop from the queue if possible
+	// TODO: if this is a cold start, we either block the
+	// scheduler or need a strategy
 }
 
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
