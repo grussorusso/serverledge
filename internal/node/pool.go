@@ -146,13 +146,13 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 		enoughMem, _ := dismissContainer(fun.MemoryMB)
 		if !enoughMem {
 			log.Printf("Not enough memory for the new container.")
+			Resources.Unlock()
 			return "", OutOfResourcesErr
 		}
-		log.Printf("Not enough memory for the new container.")
-		return "", OutOfResourcesErr
 	}
 	if Resources.AvailableCPUs < fun.CPUDemand {
 		log.Printf("Not enough CPU for the new container.")
+		Resources.Unlock()
 		return "", OutOfResourcesErr
 	}
 
