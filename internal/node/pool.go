@@ -68,6 +68,13 @@ func newFunctionPool(f *function.Function) *ContainerPool {
 	return fp
 }
 
+// AcquireResources reserves the specified amount of cpu and memory if possible.
+func AcquireResources(cpuDemand float64, memDemand int64, destroyContainersIfNeeded bool) bool {
+	Resources.Lock()
+	defer Resources.Unlock()
+	return acquireResources(cpuDemand, memDemand, destroyContainersIfNeeded)
+}
+
 // acquireResources reserves the specified amount of cpu and memory if possible.
 // The function is NOT thread-safe.
 func acquireResources(cpuDemand float64, memDemand int64, destroyContainersIfNeeded bool) bool {

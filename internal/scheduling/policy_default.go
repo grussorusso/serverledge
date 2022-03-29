@@ -44,9 +44,21 @@ func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
 	}
 
 	if errors.Is(err, node.NoWarmFoundErr) {
-		if handleColdStart(req) { // TODO: this will block the thread and the queue
-			log.Printf("Cold start from the queue: %v", *req)
+		if node.AcquireResources(req.Fun.CPUDemand, req.Fun.MemoryMB, true) {
+			log.Printf("[%s] Cold start from the queue", req)
 			p.queue.Dequeue()
+
+			// This avoids blocking the thread during the cold
+			// start, but also allows us to check for resource
+			// availability before dequeueing
+			go func() {
+				newContainer, err := node.NewContainerWithAcquiredResources(req.Fun)
+				if err != nil {
+					dropRequest(req)
+				} else {
+					execLocally(req, newContainer, false)
+				}
+			}()
 			return
 		}
 	} else if errors.Is(err, node.OutOfResourcesErr) {
@@ -58,18 +70,14 @@ func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
 }
 
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
-	log.Printf("[%s] OnArrival", *r)
 	containerID, err := node.AcquireWarmContainer(r.Fun)
 	if err == nil {
-		log.Printf("[%s] Warm", *r)
 		execLocally(r, containerID, true)
 		return
 	}
 
 	if errors.Is(err, node.NoWarmFoundErr) {
-		log.Printf("[%s] Trying Cold Start", *r)
 		if handleColdStart(r) {
-			log.Printf("[%s] Cold Start", *r)
 			return
 		}
 	} else if errors.Is(err, node.OutOfResourcesErr) {
@@ -82,15 +90,13 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 
 	// enqueue if possible
 	if p.queue != nil {
-		log.Printf("[%s] Possible queueing", *r)
 		p.queue.Lock()
 		defer p.queue.Unlock()
 		if p.queue.Enqueue(r) {
-			log.Printf("Added %v to queue (length=%d)", r, p.queue.Len())
+			log.Printf("[%s] Added to queue (length=%d)", r, p.queue.Len())
 			return
 		}
 	}
 
-	log.Printf("[%s] Nothing left but drop", *r)
 	dropRequest(r)
 }
