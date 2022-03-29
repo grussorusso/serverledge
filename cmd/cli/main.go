@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/cli"
-	"github.com/grussorusso/serverledge/internal/config"
 	"os"
 	"strconv"
+
+	"github.com/grussorusso/serverledge/internal/cli"
+	"github.com/grussorusso/serverledge/internal/config"
 )
 
 func main() {

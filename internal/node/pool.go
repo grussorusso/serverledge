@@ -7,10 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/container"
-
 	"github.com/grussorusso/serverledge/internal/config"
-
+	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
@@ -70,6 +68,29 @@ func newFunctionPool(f *function.Function) *ContainerPool {
 	return fp
 }
 
+// acquireResources reserves the specified amount of cpu and memory if possible.
+// The function is NOT thread-safe.
+func acquireResources(cpuDemand float64, memDemand int64) bool {
+	if Resources.AvailableCPUs < cpuDemand {
+		return false
+	}
+	if Resources.AvailableMemMB < memDemand {
+		return false
+	}
+
+	Resources.AvailableCPUs -= cpuDemand
+	Resources.AvailableMemMB -= memDemand
+
+	return true
+}
+
+// releaseResources releases the specified amount of cpu and memory.
+// The function is NOT thread-safe.
+func releaseResources(cpuDemand float64, memDemand int64) {
+	Resources.AvailableCPUs += cpuDemand
+	Resources.AvailableMemMB += memDemand
+}
+
 // AcquireWarmContainer acquires a warm container for a given function (if any).
 // A warm container is in running/paused state and has already been initialized
 // with the function code.
@@ -81,20 +102,19 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	defer Resources.Unlock()
 
-	if Resources.AvailableCPUs < f.CPUDemand {
+	fp := getFunctionPool(f)
+	contID, found := fp.acquireReadyContainer()
+	if !found {
+		return "", NoWarmFoundErr
+	}
+
+	if !acquireResources(f.CPUDemand, 0) {
 		log.Printf("Not enough CPU to start a warm container for %s", f)
 		return "", OutOfResourcesErr
 	}
 
-	fp := getFunctionPool(f)
-	contID, found := fp.acquireReadyContainer()
-	if found {
-		Resources.AvailableCPUs -= f.CPUDemand
-		log.Printf("Acquired resources for warm container. Now: %v", Resources)
-		return contID, nil
-	}
-
-	return "", NoWarmFoundErr
+	log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	return contID, nil
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.

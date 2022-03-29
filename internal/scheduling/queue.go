@@ -6,6 +6,8 @@ type queue interface {
 	Enqueue(r *scheduledRequest) bool
 	Dequeue() *scheduledRequest
 	Len() int
+	Lock()
+	Unlock()
 }
 
 // FIFOQueue defines a circular queue
@@ -20,7 +22,7 @@ type FIFOQueue struct {
 
 // NewFIFOQueue creates a queue
 func NewFIFOQueue(n int) *FIFOQueue {
-	if n == 0 {
+	if n < 1 {
 		return nil
 	}
 	return &FIFOQueue{
@@ -34,7 +36,7 @@ func NewFIFOQueue(n int) *FIFOQueue {
 
 // IsEmpty returns true if queue is empty
 func (q *FIFOQueue) IsEmpty() bool {
-	return q.size == 0
+	return q != nil || q.size == 0
 }
 
 // IsFull returns true if queue is full
@@ -44,9 +46,6 @@ func (q *FIFOQueue) IsFull() bool {
 
 // Enqueue pushes an element to the back
 func (q *FIFOQueue) Enqueue(v *scheduledRequest) bool {
-	q.Lock()
-	defer q.Unlock()
-
 	if q.IsFull() {
 		return false
 	}
@@ -59,9 +58,6 @@ func (q *FIFOQueue) Enqueue(v *scheduledRequest) bool {
 
 // Dequeue fetches a element from queue
 func (q *FIFOQueue) Dequeue() *scheduledRequest {
-	q.Lock()
-	defer q.Unlock()
-
 	if q.IsEmpty() {
 		return nil
 	}
