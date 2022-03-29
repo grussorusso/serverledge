@@ -2,8 +2,9 @@ package function
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/config"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
 )
 
 //Request represents a single function invocation.
@@ -22,7 +23,7 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
-	Arrival        time.Time // this is useful for latency computing
+	Arrival        time.Time // this is useful for latency computation
 	Result         string
 	ResponseTime   float64
 	IsWarmStart    bool
@@ -33,7 +34,7 @@ type ExecutionReport struct {
 }
 
 func (r *Request) String() string {
-	return fmt.Sprintf("Req-%s", r.Fun.Name)
+	return fmt.Sprintf("Rq-%s-%d", r.Fun.Name, r.Arrival.UnixNano())
 }
 
 // MaxRespTime todo adjust response time -> Second default unit

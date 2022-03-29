@@ -54,6 +54,7 @@ func InvokeFunction(c echo.Context) error {
 	r.Class = invocationRequest.QoSClass
 	r.MaxRespT = maxRespTime
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
+
 	report, err := scheduling.SubmitRequest(r)
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")

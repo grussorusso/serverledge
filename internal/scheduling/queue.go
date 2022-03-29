@@ -5,6 +5,7 @@ import "sync"
 type queue interface {
 	Enqueue(r *scheduledRequest) bool
 	Dequeue() *scheduledRequest
+	Front() *scheduledRequest
 	Len() int
 	Lock()
 	Unlock()
@@ -36,7 +37,7 @@ func NewFIFOQueue(n int) *FIFOQueue {
 
 // IsEmpty returns true if queue is empty
 func (q *FIFOQueue) IsEmpty() bool {
-	return q != nil || q.size == 0
+	return q != nil && q.size == 0
 }
 
 // IsFull returns true if queue is full
@@ -64,6 +65,14 @@ func (q *FIFOQueue) Dequeue() *scheduledRequest {
 	v := q.data[q.head]
 	q.head = (q.head + 1) % q.capacity
 	q.size = q.size - 1
+	return v
+}
+
+func (q *FIFOQueue) Front() *scheduledRequest {
+	if q.IsEmpty() {
+		return nil
+	}
+	v := q.data[q.head]
 	return v
 }
 

@@ -70,12 +70,19 @@ func newFunctionPool(f *function.Function) *ContainerPool {
 
 // acquireResources reserves the specified amount of cpu and memory if possible.
 // The function is NOT thread-safe.
-func acquireResources(cpuDemand float64, memDemand int64) bool {
+func acquireResources(cpuDemand float64, memDemand int64, destroyContainersIfNeeded bool) bool {
 	if Resources.AvailableCPUs < cpuDemand {
 		return false
 	}
 	if Resources.AvailableMemMB < memDemand {
-		return false
+		if !destroyContainersIfNeeded {
+			return false
+		}
+
+		enoughMem, _ := dismissContainer(memDemand)
+		if !enoughMem {
+			return false
+		}
 	}
 
 	Resources.AvailableCPUs -= cpuDemand
@@ -108,7 +115,7 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 		return "", NoWarmFoundErr
 	}
 
-	if !acquireResources(f.CPUDemand, 0) {
+	if !acquireResources(f.CPUDemand, 0, false) {
 		log.Printf("Not enough CPU to start a warm container for %s", f)
 		return "", OutOfResourcesErr
 	}
@@ -149,6 +156,23 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 //The container can be directly used to schedule a request, as it is already
 //in the busy pool.
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
+	Resources.Lock()
+	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
+		log.Printf("Not enough resources for the new container.")
+		Resources.Unlock()
+		return "", OutOfResourcesErr
+	}
+
+	log.Printf("Acquired resources for new container. Now: %v", Resources)
+	Resources.Unlock()
+
+	return NewContainerWithAcquiredResources(fun)
+}
+
+// NewContainerWithAcquiredResources spawns a new container for the given
+// function, assuming that the required CPU and memory resources have been
+// already been acquired.
+func NewContainerWithAcquiredResources(fun *function.Function) (container.ContainerID, error) {
 	var image string
 	if fun.Runtime == container.CUSTOM_RUNTIME {
 		image = fun.CustomImage
@@ -159,28 +183,6 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 		}
 		image = runtime.Image
 	}
-
-	Resources.Lock()
-	// check resources
-	if Resources.AvailableMemMB < fun.MemoryMB {
-		enoughMem, _ := dismissContainer(fun.MemoryMB)
-		if !enoughMem {
-			log.Printf("Not enough memory for the new container.")
-			Resources.Unlock()
-			return "", OutOfResourcesErr
-		}
-	}
-	if Resources.AvailableCPUs < fun.CPUDemand {
-		log.Printf("Not enough CPU for the new container.")
-		Resources.Unlock()
-		return "", OutOfResourcesErr
-	}
-
-	Resources.AvailableMemMB -= fun.MemoryMB
-	Resources.AvailableCPUs -= fun.CPUDemand
-
-	log.Printf("Acquired resources for new container. Now: %v", Resources)
-	Resources.Unlock()
 
 	contID, err := container.NewContainer(image, fun.TarFunctionCode, &container.ContainerOptions{
 		MemoryMB: fun.MemoryMB,

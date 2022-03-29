@@ -21,18 +21,18 @@ import (
 )
 
 var requests chan *scheduledRequest
-var completions chan *scheduledRequest
+var completions chan *completion
 
 func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
-	completions = make(chan *scheduledRequest, 500)
+	completions = make(chan *completion, 500)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current Resources resources: %v", node.Resources)
+	log.Printf("Current resources: %v", node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -45,11 +45,13 @@ func Run(p Policy) {
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest
+	var c *completion
 	for {
 		select {
 		case r = <-requests:
 			go p.OnArrival(r)
-		case r = <-completions:
+		case c = <-completions:
+			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(r)
 		}
 	}
@@ -58,7 +60,7 @@ func Run(p Policy) {
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
-	log.Printf("New request for '%s' (class: %d, Max RespT: %f)", r.Fun, r.Class, r.MaxRespT)
+	log.Printf("[%s] New request", r)
 
 	logger := logging.GetLogger()
 	if !logger.Exists(r.Fun.Name) {
@@ -75,12 +77,12 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not schedule the request")
 	}
-	log.Printf("Sched action: %v", schedDecision)
+	log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var report *function.ExecutionReport
 	var err error
 	if schedDecision.action == DROP {
-		log.Printf("Dropping request")
+		log.Printf("[%s] Dropping request", r)
 		return nil, node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
 		log.Printf("CanDoOffloading request")
@@ -104,10 +106,8 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
-	log.Printf("Cold start procedure for: %v", r)
 	newContainer, err := node.NewContainer(r.Fun)
 	if errors.Is(err, node.OutOfResourcesErr) || err != nil {
-		log.Printf("Could not create a new container: %v", err)
 		return false
 	} else {
 		execLocally(r, newContainer, false)

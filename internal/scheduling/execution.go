@@ -5,8 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/node"
-
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/executor"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -16,9 +14,9 @@ const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) (*function.ExecutionReport, error) {
-	defer node.ReleaseContainer(contID, r.Fun)
+	//defer node.ReleaseContainer(contID, r.Fun)
 
-	log.Printf("Invoking function on container: %v", contID)
+	log.Printf("[%s] Executing on container: %v", r, contID)
 
 	var req executor.InvocationRequest
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
@@ -39,7 +37,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 
 	response, err := container.Execute(contID, &req)
 	if err != nil {
-		return nil, fmt.Errorf("Execution request failed: %v", err)
+		return nil, fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
@@ -52,7 +50,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 	r.Report.CPUTime = -1.0 // TODO
 
 	// notify scheduler
-	completions <- r
+	completions <- &completion{scheduledRequest: r, contID: contID}
 
 	return r.Report, nil
 }
