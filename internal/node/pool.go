@@ -35,7 +35,7 @@ func getFunctionPool(f *function.Function) *ContainerPool {
 	return fp
 }
 
-func (fp *ContainerPool) acquireReadyContainer() (container.ContainerID, bool) {
+func (fp *ContainerPool) getWarmContainer() (container.ContainerID, bool) {
 	// TODO: picking most-recent / least-recent container might be better?
 	elem := fp.ready.Front()
 	if elem == nil {
@@ -117,7 +117,7 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	defer Resources.Unlock()
 
 	fp := getFunctionPool(f)
-	contID, found := fp.acquireReadyContainer()
+	contID, found := fp.getWarmContainer()
 	if !found {
 		return "", NoWarmFoundErr
 	}
@@ -135,14 +135,14 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	log.Printf("Container released for %v: %v", f, contID)
 
+	// setup Expiration as time duration from now
+	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
+	expTime := time.Now().Add(d).UnixNano()
+
 	Resources.Lock()
 	defer Resources.Unlock()
 
 	fp := getFunctionPool(f)
-
-	// setup Expiration as time duration from now
-	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
-	fp.putReadyContainer(contID, time.Now().Add(d).UnixNano())
 
 	// we must update the busy list by removing this element
 	elem := fp.busy.Front()
@@ -154,7 +154,9 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 		elem = elem.Next()
 	}
 
-	Resources.AvailableCPUs += f.CPUDemand
+	fp.putReadyContainer(contID, expTime)
+
+	releaseResources(f.CPUDemand, 0)
 
 	log.Printf("Released resources. Now: %v", Resources)
 }
@@ -199,8 +201,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 	defer Resources.Unlock()
 	if err != nil {
 		log.Printf("Failed container creation")
-		Resources.AvailableMemMB += fun.MemoryMB
-		Resources.AvailableCPUs += fun.CPUDemand
+		releaseResources(fun.CPUDemand, fun.MemoryMB)
 		return "", err
 	}
 
@@ -266,7 +267,7 @@ cleanup: // second phase, cleanup
 	return res, nil
 }
 
-// DeleteExpiredContainer is called by the container janitor
+// DeleteExpiredContainer is called by the container cleaner
 // Deletes expired warm container
 func DeleteExpiredContainer() {
 	now := time.Now().UnixNano()
@@ -281,12 +282,12 @@ func DeleteExpiredContainer() {
 			if now > warmed.Expiration {
 				temp := elem
 				elem = elem.Next()
-				log.Printf("janitor: Removing container with ID %s\n", warmed.contID)
+				log.Printf("cleaner: Removing container %s\n", warmed.contID)
 				pool.ready.Remove(temp) // remove the expired element
 
 				memory, _ := container.GetMemoryMB(warmed.contID)
 				container.Destroy(warmed.contID)
-				Resources.AvailableMemMB += memory
+				releaseResources(0, memory)
 				log.Printf("Released resources. Now: %v", Resources)
 
 			} else {
@@ -335,10 +336,10 @@ func ShutdownAllContainers() {
 }
 
 // WarmStatus foreach function returns the corresponding number of warm container available
-func WarmStatus() (warmPool map[string]int) {
+func WarmStatus() map[string]int {
 	Resources.RLock()
 	defer Resources.RUnlock()
-	warmPool = make(map[string]int)
+	warmPool := make(map[string]int)
 	for funcName, pool := range Resources.ContainerPools {
 		warmPool[funcName] = pool.ready.Len()
 	}
