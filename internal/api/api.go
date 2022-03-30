@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
@@ -39,7 +40,7 @@ func InvokeFunction(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "")
 	}
 
-	var invocationRequest function.InvocationRequest
+	var invocationRequest client.InvocationRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", c.Request().Body)
@@ -51,7 +52,7 @@ func InvokeFunction(c echo.Context) error {
 		maxRespTime = invocationRequest.QoSMaxRespT
 	}
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
-	r.Class = invocationRequest.QoSClass
+	r.Class = function.ServiceClass(invocationRequest.QoSClass)
 	r.MaxRespT = maxRespTime
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/grussorusso/serverledge/internal/api"
-	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/client"
 
 	"github.com/grussorusso/serverledge/utils"
 )
@@ -34,7 +34,11 @@ func Invoke(funcName string, qosClass string, qosMaxRespT float64, params Params
 	}
 
 	// Prepare request
-	request := function.InvocationRequest{Params: params, QoSClass: api.DecodeServiceClass(qosClass), QoSMaxRespT: qosMaxRespT, CanDoOffloading: true}
+	request := client.InvocationRequest{
+		Params:          params,
+		QoSClass:        int64(api.DecodeServiceClass(qosClass)),
+		QoSMaxRespT:     qosMaxRespT,
+		CanDoOffloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		ExitWithUsage()

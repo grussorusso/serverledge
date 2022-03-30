@@ -47,10 +47,3 @@ const (
 	HIGH_PERFORMANCE               = 1
 	HIGH_AVAILABILITY              = 2
 )
-
-type InvocationRequest struct {
-	Params          map[string]string
-	QoSClass        ServiceClass
-	QoSMaxRespT     float64
-	CanDoOffloading bool
-}

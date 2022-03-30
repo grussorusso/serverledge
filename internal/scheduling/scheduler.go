@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -146,7 +147,7 @@ func handleCloudOffload(r *scheduledRequest) {
 
 func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {
 	// Prepare request
-	request := function.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
+	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)
