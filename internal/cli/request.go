@@ -8,40 +8,38 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/client"
+	"github.com/spf13/cobra"
 
 	"github.com/grussorusso/serverledge/utils"
 )
 
-type ParamsFlags map[string]string
-
-func (i *ParamsFlags) String() string {
-	return fmt.Sprintf("%q", *i)
-}
-
-func (i *ParamsFlags) Set(value string) error {
-	tokens := strings.Split(value, ":")
-	if len(tokens) < 2 {
-		return fmt.Errorf("Invalid argument")
-	}
-	(*i)[tokens[0]] = strings.Join(tokens[1:], ":")
-	return nil
-}
-
-func Invoke(funcName string, qosClass string, qosMaxRespT float64, params ParamsFlags) {
+func invoke(cmd *cobra.Command, args []string) {
 	if len(funcName) < 1 {
 		fmt.Printf("Invalid function name.\n")
-		ExitWithUsage()
+		cmd.Help()
+		return
+	}
+
+	paramsMap := make(map[string]string)
+	for _, rawParam := range params {
+		tokens := strings.Split(rawParam, ":")
+		if len(tokens) < 2 {
+			cmd.Help()
+			return
+		}
+		paramsMap[tokens[0]] = strings.Join(tokens[1:], ":")
 	}
 
 	// Prepare request
 	request := client.InvocationRequest{
-		Params:          params,
+		Params:          paramsMap,
 		QoSClass:        int64(api.DecodeServiceClass(qosClass)),
 		QoSMaxRespT:     qosMaxRespT,
 		CanDoOffloading: true}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
-		ExitWithUsage()
+		cmd.Help()
+		return
 	}
 
 	// Send invocation request
