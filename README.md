@@ -24,43 +24,47 @@ $ make
 
 ## Running (single node deployment)
 
-You need an **etcd** server to be up and running. To quickly start a local
+You need an **etcd** server to run Serverledge. To quickly start a local
 server:
 
-	$ ./scripts/start-etcd.sh
+	$ ./scripts/start-etcd.sh   # stop it with ./scripts/stop-etcd.sh
 
-Start the server:
+Start a Serverledge node:
 
 	$ bin/serverledge
 
-> Note: in the following commands parameters order is not important
+Register a function `func` from example code:
 
-Create a function `func` from example code, you can optionally specify host and port number:
+	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" 
 
-	$ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd create -function func -memory 600 -src examples/hello.py -runtime python310 -handler "hello.handler" 
+Invoke `func` with parameters `a=2` and `b=3`:
 
-Invoke a function `func` with parameters `a=2` and `b=3`, you can optionally specify host and port number:
+	$ bin/serverledge-cli invoke -f func -p "a:2" -p "b:3"
 
-	$ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd invoke -function func -param "a:2" -param "b:3"
+A QoS class and a maximum desired response time can be optionally associated
+with invocation requests, as follows:
 
-You can optionally specify a QoS class name and a maximum requested response
-time:
+	$ bin/serverledge-cli invoke -f func -p ... --class <QoS class> --respt <max resp. time>
 
-	$ bin/serverledge-cli invoke -function func -param ... -qosclass <class> -qosrespt <respt>
-
-Get Server Status:
- 
-    $ bin/serverledge-cli status -host {host ip-address} -port {specific port}
-
-
-To shutdown the etcd server:
-
-	$ ./scripts/stop-etcd.sh
 
 ## Distributed Deployment
 
 [This repository](https://github.com/grussorusso/serverledge-deploy) provides an Ansible playbook to deploy Serverledge in an 
 Edge-Cloud environment.
+
+In this case, you can instruct `serverledge-cli` to
+connect to a node other than `localhost` or use a non-default port
+by means of environment variables or command-line options:
+
+- Use `--host <HOST>` (or `-H <HOST>`) and/or `--port <PORT>` (or, `-P <PORT>`)
+to specify the server
+host and port on the command line
+- Alternatively, you can set the environment variables
+`SERVERLEDGE_HOST` and/or `SERVERLEDGE_PORT`, which are read by the client.
+
+Example:
+ 
+    $ bin/serverledge-cli status -H <host ip-address> -P <port number>
 
 ## Configuration
 
@@ -76,13 +80,6 @@ server:
 	$ bin/serverledge <config file>
 
 Supported configuration keys are defined in `internal/config/keys.go`.
-
-## Using the CLI with a remote server
-
-You can append the options `-host HOST` and `-port PORT` to specify the server
-host and port. Alternatively, you can set the environment variables
-`SERVERLEDGE_HOST` and/or `SERVERLEDGE_PORT`, which are read by the client.
-
 
 ## Writing functions
 
@@ -109,10 +106,14 @@ Available runtime: `nodejs17` (NodeJS 17)
 Specify the handler as `<script_file_name>.js` (e.g., `myfile.js`).
 An example is given in `examples/sieve.js`.
 
-Create a function sieve:
+Create a function `sieve`:
 
-    $ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd create -function sieve -memory 128 -src examples/sieve.js -runtime nodejs17 -handler "sieve.js"
+    $ bin/serverledge-cli create -f sieve --memory 128 --src examples/sieve.js --runtime nodejs17 --handler "sieve.js"
 
-Invoke sieve function: 
+Invoke `sieve`: 
 
-    $ bin/serverledge-cli -host 0.0.0.0 -port 1323 -cmd invoke -function sieve 
+    $ bin/serverledge-cli invoke -f sieve 
+
+### Custom function runtimes
+
+Follow [these instructions](./docs/custom_runtime.md).
