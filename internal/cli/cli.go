@@ -68,8 +68,8 @@ func Init() {
 
 	rootCmd.AddCommand(invokeCmd)
 	invokeCmd.Flags().StringVarP(&funcName, "function", "f", "", "name of the function")
-	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "maxRespT", "", -1.0, "Max. response time (optional)")
-	invokeCmd.Flags().StringVarP(&qosClass, "qosClass", "c", "", "QoS class (optional)")
+	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "resptime", "", -1.0, "Max. response time (optional)")
+	invokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
 	invokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Function parameter: <name>:<value>")
 
 	rootCmd.AddCommand(createCmd)
