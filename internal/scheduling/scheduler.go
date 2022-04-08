@@ -119,9 +119,6 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 }
 
 func dropRequest(r *scheduledRequest) {
-	if dropManager != nil {
-		dropManager.sendDropAlert() // TODO: this is policy-specific
-	}
 	r.decisionChannel <- schedDecision{action: DROP}
 }
 

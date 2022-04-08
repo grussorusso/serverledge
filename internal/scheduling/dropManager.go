@@ -1,10 +1,11 @@
 package scheduling
 
 import (
-	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/node"
 	"sync/atomic"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/node"
 )
 
 type DropManager struct {
@@ -13,18 +14,15 @@ type DropManager struct {
 	expiration int64
 }
 
-var dropManager *DropManager
-var expirationInterval = time.Duration(config.GetInt(config.DROP_PERIOD, 30))
-
-func InitDropManager() {
-	dropManager = &DropManager{
+func InitDropManager() *DropManager {
+	dropManager := &DropManager{
 		dropCount:  0,
 		dropChan:   make(chan time.Time, 1),
 		expiration: time.Now().UnixNano(),
 	}
 
 	go dropManager.dropRun()
-
+	return dropManager
 }
 
 func (d *DropManager) sendDropAlert() {
@@ -40,6 +38,7 @@ func (d *DropManager) sendDropAlert() {
 }
 
 func (d *DropManager) dropRun() {
+	var expirationInterval = time.Duration(config.GetInt(config.DROP_PERIOD, 30))
 	ticker := time.NewTicker(time.Duration(config.GetInt(config.DROP_PERIOD, 30)) * time.Second)
 	for {
 		select {
