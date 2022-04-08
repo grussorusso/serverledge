@@ -1,17 +1,13 @@
 package scheduling
 
 import (
-	"log"
-	"math"
-
-	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"log"
+	"math"
 )
-
-var remoteServerUrl = config.GetString(config.CLOUD_URL, "http://127.0.0.1:1323")
 
 // QosAwarePolicy takes care about QoS parameters at fine-grain, it is possible to do Edge-Cloud and Edge-Edge Offloading for better scalability performance
 type QosAwarePolicy struct{}
@@ -65,16 +61,16 @@ func handleHAReq(r *scheduledRequest) {
 	localStatus, _ := logger.GetLocalLogStatus(r.Fun.Name)
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
 	if math.IsNaN(localStatus.AvgExecutionTime) || math.IsNaN(localStatus.AvgColdInitTime) ||
-		math.IsNaN(remoteStatus.AvgColdInitTime) || math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) || math.IsNaN(remoteStatus.AvgWarmInitTime) {
+		math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough information, remote (cloud schedule)
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
 	timeLocal = localStatus.AvgColdInitTime + localStatus.AvgExecutionTime
 	timeOffload = (remoteStatus.AvgColdInitTime+remoteStatus.AvgWarmInitTime)/float64(2) + remoteStatus.AvgExecutionTime + remoteStatus.AvgOffloadingLatency
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 	//(cloud) offload takes too long
@@ -114,7 +110,7 @@ func handleHighPerfReq(r *scheduledRequest) {
 	}
 	//cold start takes too long, or it is not possible (resources unavailable)
 	if timeOffload <= r.RequestQoS.MaxRespT {
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
@@ -140,7 +136,7 @@ func handleLowReq(r *scheduledRequest) {
 	remoteStatus, _ := logger.GetRemoteLogStatus(r.Fun.Name)
 	if math.IsNaN(remoteStatus.AvgExecutionTime) || math.IsNaN(remoteStatus.AvgOffloadingLatency) {
 		//not enough remote information, do (cloud) offload opportunistically
-		handleOffload(r, remoteServerUrl)
+		handleCloudOffload(r)
 		return
 	}
 
@@ -159,7 +155,7 @@ func handleLowReq(r *scheduledRequest) {
 	}
 
 	//edge offload not possible
-	handleOffload(r, remoteServerUrl)
+	handleCloudOffload(r)
 }
 
 func handleEdgeOffloading(r *scheduledRequest) (url string) {
@@ -169,13 +165,15 @@ func handleEdgeOffloading(r *scheduledRequest) (url string) {
 	}
 	//first, search for warm container
 	for _, v := range nearbyServersMap {
-		if v.AvailableWarmContainers[r.Fun.Name] != 0 {
+		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
+			r.Report.Action = "EDGE_OFFLOAD"
 			return v.Url
 		}
 	}
 	//second, (nobody has warm container) search for available memory
 	for _, v := range nearbyServersMap {
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
+			r.Report.Action = "EDGE_OFFLOAD"
 			return v.Url
 		}
 	}

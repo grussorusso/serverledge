@@ -31,6 +31,8 @@ type ExecutionReport struct {
 	OffloadLatency float64
 	Duration       float64
 	CPUTime        float64
+	RequestType    ServiceClass
+	Action         string
 }
 
 func (r *Request) String() string {

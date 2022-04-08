@@ -68,6 +68,8 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 		logger.InsertNewLog(r.Fun.Name)
 	}
 
+	remoteServerUrl := config.GetString(config.CLOUD_URL, "")
+
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}

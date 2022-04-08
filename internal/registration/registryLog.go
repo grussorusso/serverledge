@@ -29,7 +29,8 @@ func InitEdgeMonitoring(r *Registry) (e error) {
 
 	// start listening for incoming udp connections; use case: edge-nodes request for status infos
 	go UDPStatusServer()
-
+	//complete monitoring phase at startup
+	monitoring()
 	go runMonitor()
 	return nil
 }
