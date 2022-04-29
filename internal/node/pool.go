@@ -187,6 +187,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 		image = fun.CustomImage
 	} else {
 		runtime, ok := container.RuntimeToInfo[fun.Runtime]
+		log.Printf("Unknown runtime: %s", fun.Runtime)
 		if !ok {
 			return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
 		}
@@ -197,10 +198,13 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 		MemoryMB: fun.MemoryMB,
 	})
 
+	if err != nil {
+		log.Printf("Failed container creation: %v", err)
+	}
+
 	Resources.Lock()
 	defer Resources.Unlock()
 	if err != nil {
-		log.Printf("Failed container creation")
 		releaseResources(fun.CPUDemand, fun.MemoryMB)
 		return "", err
 	}

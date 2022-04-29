@@ -111,6 +111,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	newContainer, err := node.NewContainer(r.Fun)
 	if errors.Is(err, node.OutOfResourcesErr) || err != nil {
+		log.Printf("Cold start failed: %v", err)
 		return false
 	} else {
 		execLocally(r, newContainer, false)

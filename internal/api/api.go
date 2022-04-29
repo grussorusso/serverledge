@@ -11,6 +11,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
@@ -98,6 +99,15 @@ func CreateFunction(c echo.Context) error {
 	}
 
 	log.Printf("New request: creation of %s", f.Name)
+
+	// Check that the selected runtime exists
+	if f.Runtime != container.CUSTOM_RUNTIME {
+		_, ok := container.RuntimeToInfo[f.Runtime]
+		if !ok {
+			return c.JSON(http.StatusNotFound, "Invalid runtime.")
+		}
+	}
+
 	err = f.SaveToEtcd()
 	if err != nil {
 		log.Printf("Failed creation: %v", err)
