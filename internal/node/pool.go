@@ -187,8 +187,8 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 		image = fun.CustomImage
 	} else {
 		runtime, ok := container.RuntimeToInfo[fun.Runtime]
-		log.Printf("Unknown runtime: %s", fun.Runtime)
 		if !ok {
+			log.Printf("Unknown runtime: %s", fun.Runtime)
 			return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
 		}
 		image = runtime.Image

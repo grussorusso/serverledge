@@ -44,7 +44,7 @@ func InvokeFunction(c echo.Context) error {
 	var invocationRequest client.InvocationRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", c.Request().Body)
+		log.Printf("Could not parse request: %v", err)
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
