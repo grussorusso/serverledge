@@ -164,6 +164,6 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 	body, _ := ioutil.ReadAll(resp.Body)
 	json.Unmarshal(body, &report)
 
-	report.OffloadLatency = report.Arrival.Sub(sendingTime).Seconds()
+	report.OffloadLatency = r.Arrival.Sub(sendingTime).Seconds()
 	return &report, nil
 }
