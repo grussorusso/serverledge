@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/container"
@@ -14,9 +13,7 @@ const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) (*function.ExecutionReport, error) {
-	//defer node.ReleaseContainer(contID, r.Fun)
-
-	log.Printf("[%s] Executing on container: %v", r, contID)
+	//log.Printf("[%s] Executing on container: %v", r, contID)
 
 	var req executor.InvocationRequest
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {

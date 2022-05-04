@@ -66,21 +66,6 @@ func InvokeFunction(c echo.Context) error {
 	} else {
 		return c.JSON(http.StatusOK, report)
 	}
-
-	//result, err := scheduling.Schedule(r)
-	//if err == nil {
-	//	log.Printf("Request OK: %v", result)
-	//	return c.JSON(http.StatusOK, result)
-	//} else if offloading {
-	//	// offloading to handle missing resource status
-	//	res, err := scheduling.Offload(r)
-	//	defer res.Body.Close()
-	//	if err == nil {
-	//		body, _ := ioutil.ReadAll(res.Body)
-	//		log.Printf("CanDoOffloading Request status OK: %s", string(body))
-	//		return c.JSON(http.StatusOK, string(body))
-	//	}
-	//}
 }
 
 // CreateFunction handles a function creation request.

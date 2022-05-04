@@ -123,18 +123,16 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	}
 
 	if !acquireResources(f.CPUDemand, 0, false) {
-		log.Printf("Not enough CPU to start a warm container for %s", f)
+		//log.Printf("Not enough CPU to start a warm container for %s", f)
 		return "", OutOfResourcesErr
 	}
 
-	log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	//log.Printf("Acquired resources for warm container. Now: %v", Resources)
 	return contID, nil
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
 func ReleaseContainer(contID container.ContainerID, f *function.Function) {
-	log.Printf("Container released for %v: %v", f, contID)
-
 	// setup Expiration as time duration from now
 	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
 	expTime := time.Now().Add(d).UnixNano()
@@ -158,7 +156,7 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 
 	releaseResources(f.CPUDemand, 0)
 
-	log.Printf("Released resources. Now: %v", Resources)
+	//log.Printf("Released resources. Now: %v", Resources)
 }
 
 //NewContainer creates and starts a new container for the given function.
@@ -167,12 +165,12 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
-		log.Printf("Not enough resources for the new container.")
+		//log.Printf("Not enough resources for the new container.")
 		Resources.Unlock()
 		return "", OutOfResourcesErr
 	}
 
-	log.Printf("Acquired resources for new container. Now: %v", Resources)
+	//log.Printf("Acquired resources for new container. Now: %v", Resources)
 	Resources.Unlock()
 
 	return NewContainerWithAcquiredResources(fun)
@@ -266,7 +264,6 @@ cleanup: // second phase, cleanup
 		}
 
 		res = true
-		log.Printf("Released resources. Now: %v", Resources)
 	}
 	return res, nil
 }

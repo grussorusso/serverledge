@@ -61,8 +61,6 @@ func Run(p Policy) {
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
-	log.Printf("[%s] New request", r)
-
 	logger := logging.GetLogger()
 	if !logger.Exists(r.Fun.Name) {
 		logger.InsertNewLog(r.Fun.Name)
@@ -80,15 +78,15 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not schedule the request")
 	}
-	log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var report *function.ExecutionReport
 	var err error
 	if schedDecision.action == DROP {
-		log.Printf("[%s] Dropping request", r)
+		//log.Printf("[%s] Dropping request", r)
 		return nil, node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
-		log.Printf("Offloading request")
+		//log.Printf("Offloading request")
 		report, err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return nil, err
