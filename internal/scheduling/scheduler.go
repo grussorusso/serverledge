@@ -26,6 +26,8 @@ var completions chan *completion
 
 var executionLogEnabled bool
 
+var offloadingClient *http.Client
+
 func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
@@ -43,6 +45,15 @@ func Run(p Policy) {
 
 	//janitor periodically remove expired warm container
 	node.GetJanitorInstance()
+
+	// TODO
+	tr := &http.Transport{
+		MaxIdleConns:        2500,
+		MaxIdleConnsPerHost: 2500,
+		MaxConnsPerHost:     0,
+		IdleConnTimeout:     30 * time.Minute,
+	}
+	offloadingClient = &http.Client{Transport: tr}
 
 	// initialize scheduling policy
 	p.Init()
@@ -159,7 +170,7 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 		return nil, err
 	}
 	sendingTime := time.Now() // used to compute latency later on
-	resp, err := http.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
+	resp, err := offloadingClient.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
 		bytes.NewBuffer(invocationBody))
 
 	if err != nil {
