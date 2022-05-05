@@ -42,6 +42,7 @@ const REGISTRY_AREA = "registry.area"
 
 // logger-interval: deletes all expired reports
 const LOGGER_CLEANUP_INTERVAL = "logging.cleanInterval"
+const LOGGER_UPDATE_ENABLED = "logging.enabled"
 
 //default expiration time for execution-report
 const REPORT_EXPIRATION = "logging.expiration"

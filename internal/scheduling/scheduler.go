@@ -24,6 +24,8 @@ import (
 var requests chan *scheduledRequest
 var completions chan *completion
 
+var executionLogEnabled bool
+
 func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
@@ -34,6 +36,8 @@ func Run(p Policy) {
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
+
+	executionLogEnabled = config.GetBool(config.LOGGER_UPDATE_ENABLED, true)
 
 	container.InitDockerContainerFactory()
 
@@ -61,9 +65,12 @@ func Run(p Policy) {
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
-	logger := logging.GetLogger()
-	if !logger.Exists(r.Fun.Name) {
-		logger.InsertNewLog(r.Fun.Name)
+	var logger *logging.Logger = nil
+	if executionLogEnabled {
+		logger = logging.GetLogger()
+		if !logger.Exists(r.Fun.Name) {
+			logger.InsertNewLog(r.Fun.Name)
+		}
 	}
 
 	remoteServerUrl := config.GetString(config.CLOUD_URL, "")
@@ -97,7 +104,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 			return nil, err
 		}
 	}
-	if !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
+	if executionLogEnabled && !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
 		err = logger.SendReport(report, r.Fun.Name)
 		if err != nil {
 			log.Printf("unable to update log")
@@ -164,6 +171,10 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 	body, _ := ioutil.ReadAll(resp.Body)
 	json.Unmarshal(body, &report)
 
-	report.OffloadLatency = r.Arrival.Sub(sendingTime).Seconds()
+	// TODO: check how this is used in the QoSAware policy
+	// It was originially computed as "report.Arrival - sendingTime"
+	report.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - report.Duration - report.InitTime
+	report.Action = "O"
+
 	return &report, nil
 }
