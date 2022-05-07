@@ -177,6 +177,10 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 		log.Print(err)
 		return nil, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Remote returned: %v", resp.StatusCode)
+	}
+
 	defer resp.Body.Close()
 	var report function.ExecutionReport
 	body, _ := ioutil.ReadAll(resp.Body)
