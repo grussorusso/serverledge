@@ -101,7 +101,7 @@ func invoke(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	paramsMap := make(map[string]string)
+	paramsMap := make(map[string]interface{})
 	for _, rawParam := range params {
 		tokens := strings.Split(rawParam, ":")
 		if len(tokens) < 2 {

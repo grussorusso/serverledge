@@ -10,7 +10,7 @@ import (
 //Request represents a single function invocation.
 type Request struct {
 	Fun     *Function
-	Params  map[string]string
+	Params  map[string]interface{}
 	Arrival time.Time
 	Report  *ExecutionReport
 	RequestQoS
