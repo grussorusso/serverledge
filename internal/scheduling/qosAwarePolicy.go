@@ -174,14 +174,12 @@ func handleEdgeOffloading(r *scheduledRequest) (url string) {
 	//first, search for warm container
 	for _, v := range nearbyServersMap {
 		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
-			r.Report.Action = "EDGE_OFFLOAD"
 			return v.Url
 		}
 	}
 	//second, (nobody has warm container) search for available memory
 	for _, v := range nearbyServersMap {
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
-			r.Report.Action = "EDGE_OFFLOAD"
 			return v.Url
 		}
 	}
