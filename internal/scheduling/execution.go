@@ -34,10 +34,14 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 
 	response, err := container.Execute(contID, &req)
 	if err != nil {
+		// notify scheduler
+		completions <- &completion{scheduledRequest: r, contID: contID}
 		return nil, fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
+		// notify scheduler
+		completions <- &completion{scheduledRequest: r, contID: contID}
 		return nil, fmt.Errorf("Function execution failed")
 	}
 

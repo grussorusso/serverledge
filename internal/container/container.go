@@ -73,7 +73,7 @@ func Destroy(id ContainerID) error {
 }
 
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, error) {
-	const maxRetries = 3
+	const maxRetries = 10
 	const backoff = 300 * time.Millisecond
 
 	var err error
@@ -82,6 +82,8 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 		resp, err := http.Post(url, "application/json", body)
 		if err == nil {
 			return resp, err
+		} else {
+			log.Printf("POST failed: %v", err)
 		}
 
 		time.Sleep(backoff)
