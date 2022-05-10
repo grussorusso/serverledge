@@ -46,7 +46,6 @@ func Run(p Policy) {
 	//janitor periodically remove expired warm container
 	node.GetJanitorInstance()
 
-	// TODO
 	tr := &http.Transport{
 		MaxIdleConns:        2500,
 		MaxIdleConnsPerHost: 2500,
@@ -121,6 +120,7 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 			log.Printf("unable to update log")
 		}
 	}
+	report.RequestType = r.Class
 	return report, nil
 }
 

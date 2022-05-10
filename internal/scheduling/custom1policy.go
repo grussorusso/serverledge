@@ -23,14 +23,14 @@ func (p *Custom1Policy) OnArrival(r *scheduledRequest) {
 	} else if handleColdStart(r) {
 		return
 	} else if r.CanDoOffloading && r.RequestQoS.Class == function.HIGH_PERFORMANCE {
-		handleCloudOffload(r)
-	} else if r.CanDoOffloading {
 		url := handleEdgeOffloading(r)
 		if url != "" {
 			handleOffload(r, url)
 		} else {
 			dropRequest(r)
 		}
+	} else if r.CanDoOffloading {
+		handleCloudOffload(r)
 	} else {
 		dropRequest(r)
 	}
