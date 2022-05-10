@@ -39,18 +39,18 @@ func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, e
 
 // Execute interacts with the Executor running in the container to invoke the
 // function through a HTTP request.
-func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.InvocationResult, error) {
+func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.InvocationResult, time.Duration, error) {
 	ipAddr, err := cf.GetIPAddress(contID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to retrieve IP address for container: %v", err)
+		return nil, 0, fmt.Errorf("Failed to retrieve IP address for container: %v", err)
 	}
 
 	postBody, _ := json.Marshal(req)
 	postBodyB := bytes.NewBuffer(postBody)
-	resp, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
+	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
 	if err != nil || resp == nil {
-		return nil, fmt.Errorf("Request to executor failed: %v", err)
+		return nil, waitDuration, fmt.Errorf("Request to executor failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -58,10 +58,10 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	response := &executor.InvocationResult{}
 	err = d.Decode(response)
 	if err != nil {
-		return nil, fmt.Errorf("Parsing executor response failed: %v", err)
+		return nil, waitDuration, fmt.Errorf("Parsing executor response failed: %v", err)
 	}
 
-	return response, nil
+	return response, waitDuration, nil
 }
 
 func GetMemoryMB(id ContainerID) (int64, error) {
@@ -72,22 +72,24 @@ func Destroy(id ContainerID) error {
 	return cf.Destroy(id)
 }
 
-func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, error) {
+func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
 	const maxRetries = 10
 	const backoff = 300 * time.Millisecond
+	var totalWait = 0 * time.Millisecond
 
 	var err error
 
 	for retry := 1; retry <= maxRetries; retry++ {
 		resp, err := http.Post(url, "application/json", body)
 		if err == nil {
-			return resp, err
+			return resp, totalWait, err
 		} else {
 			log.Printf("POST failed: %v", err)
 		}
 
 		time.Sleep(backoff)
+		totalWait = totalWait + backoff
 	}
 
-	return nil, err
+	return nil, totalWait, err
 }

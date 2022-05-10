@@ -32,7 +32,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 
 	t0 := time.Now()
 
-	response, err := container.Execute(contID, &req)
+	response, invocationWait, err := container.Execute(contID, &req)
 	if err != nil {
 		// notify scheduler
 		completions <- &completion{scheduledRequest: r, contID: contID}
@@ -46,9 +46,13 @@ func Execute(contID container.ContainerID, r *scheduledRequest) (*function.Execu
 	}
 
 	r.Report.Result = response.Result
-	r.Report.Duration = time.Now().Sub(t0).Seconds()
+	r.Report.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.Report.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 	r.Report.CPUTime = -1.0 // TODO
+
+	// initializing containers may require invocation retries, adding
+	// latency
+	r.Report.InitTime += invocationWait.Seconds()
 
 	// notify scheduler
 	completions <- &completion{scheduledRequest: r, contID: contID}
