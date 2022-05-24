@@ -21,7 +21,7 @@ An `InvocationRequest` has the following fields:
 ```
 type InvocationRequest struct {
 	Command    []string
-	Params     map[string]string
+	Params     map[string]interface{}
 	Handler    string
 	HandlerDir string
 }

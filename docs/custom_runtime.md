@@ -7,7 +7,7 @@ server. When the function is invoked, the Executor runs a user-specified
 command as a new process and sets a few environment variables that may be
 used by the called process.
 
-- `PARAMS`: a JSON-encoded representation of the function parameters
+- `PARAMS_FILE`: path of a file containing JSON-marshaled function parameters
 - `RESULT_FILE`: name of the file where the function must write its JSON-encoded result
 - `CONTEXT`: (optional) a JSON-encoded representation of the execution context
 

@@ -12,7 +12,8 @@ import (
 	"io/ioutil"
 )
 
-const resultFile = "/tmp/result.json"
+const resultFile = "/tmp/_executor_result.json"
+const paramsFile = "/tmp/_executor.params"
 
 func readExecutionResult(resultFile string) string {
 	content, err := ioutil.ReadFile(resultFile)
@@ -40,10 +41,16 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	os.Setenv("HANDLER_DIR", req.HandlerDir)
 	params := req.Params
 	if params == nil {
-		os.Setenv("PARAMS", "{}")
+		os.Setenv("PARAMS_FILE", "")
 	} else {
 		paramsB, _ := json.Marshal(req.Params)
-		os.Setenv("PARAMS", string(paramsB))
+		err := os.WriteFile(paramsFile, paramsB, 0644)
+		if err != nil {
+			log.Printf("Could not write parameters to %s", paramsFile)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		os.Setenv("PARAMS_FILE", paramsFile)
 	}
 
 	// Exec handler process
