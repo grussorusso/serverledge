@@ -59,6 +59,7 @@ var funcName, runtime, handler, customImage, src, qosClass string
 var memory int64
 var cpuDemand, qosMaxRespT float64
 var params []string
+var paramsFile string
 var verbose bool
 
 func Init() {
@@ -71,6 +72,7 @@ func Init() {
 	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "resptime", "", -1.0, "Max. response time (optional)")
 	invokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
 	invokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Function parameter: <name>:<value>")
+	invokeCmd.Flags().StringVarP(&paramsFile, "params_file", "j", "", "File containing parameters (JSON)")
 
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&funcName, "function", "f", "", "name of the function")
@@ -101,14 +103,33 @@ func invoke(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	// Parse parameters
 	paramsMap := make(map[string]interface{})
-	for _, rawParam := range params {
-		tokens := strings.Split(rawParam, ":")
-		if len(tokens) < 2 {
-			cmd.Help()
-			return
+
+	// Parameters can be specified either via file ("--params_file") or via cli ("--param")
+	if len(params) > 0 && len(paramsFile) > 0 {
+		fmt.Println("Parameters must be specified using either --param OR --params_file")
+		os.Exit(1)
+	}
+	if len(params) > 0 {
+		for _, rawParam := range params {
+			tokens := strings.Split(rawParam, ":")
+			if len(tokens) < 2 {
+				cmd.Help()
+				return
+			}
+			paramsMap[tokens[0]] = strings.Join(tokens[1:], ":")
 		}
-		paramsMap[tokens[0]] = strings.Join(tokens[1:], ":")
+	}
+	if len(paramsFile) > 0 {
+		jsonFile, err := os.Open(paramsFile)
+		defer jsonFile.Close()
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		err = json.Unmarshal(byteValue, &paramsMap)
+		if err != nil {
+			fmt.Printf("Could not parse JSON-encoded parameters from '%s'\n", paramsFile)
+			os.Exit(1)
+		}
 	}
 
 	// Prepare request

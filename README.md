@@ -37,9 +37,21 @@ Register a function `func` from example code:
 
 	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" 
 
-Invoke `func` with parameters `a=2` and `b=3`:
+Invoke `func` with arguments `a=2` and `b=3`:
 
 	$ bin/serverledge-cli invoke -f func -p "a:2" -p "b:3"
+
+For non-trivial inputs, it is recommended to specify function arguments through a
+JSON file, instead of using the `-p` flag, as follows:
+
+	$ bin/serverledge-cli invoke -f func --params_file input.json
+
+where `input.json` may contain:
+
+	{
+		"a": 2,
+		"b": 3
+	}
 
 A QoS class and a maximum desired response time can be optionally associated
 with invocation requests, as follows:
