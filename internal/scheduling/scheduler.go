@@ -183,7 +183,9 @@ func Offload(r *function.Request, serverUrl string) error {
 	var response function.Response
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	json.Unmarshal(body, &response)
+	if err = json.Unmarshal(body, &response); err != nil {
+		return err
+	}
 	r.ExecReport = response.ExecutionReport
 
 	// TODO: check how this is used in the QoSAware policy
