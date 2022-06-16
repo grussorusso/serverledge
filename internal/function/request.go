@@ -23,7 +23,6 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
-	Arrival        time.Time // this is useful for latency computation
 	Result         string
 	ResponseTime   float64
 	IsWarmStart    bool
@@ -31,8 +30,7 @@ type ExecutionReport struct {
 	OffloadLatency float64
 	Duration       float64
 	CPUTime        float64
-	RequestType    ServiceClass
-	Action         string
+	SchedAction    string
 }
 
 func (r *Request) String() string {

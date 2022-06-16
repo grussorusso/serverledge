@@ -120,7 +120,6 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 			log.Printf("unable to update log")
 		}
 	}
-	report.RequestType = r.Class
 	return report, nil
 }
 
@@ -141,7 +140,7 @@ func dropRequest(r *scheduledRequest) {
 
 func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart, Arrival: r.Arrival}
+	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart}
 
 	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
@@ -189,7 +188,7 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"
 	report.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - report.Duration - report.InitTime
-	report.Action = "O"
+	report.SchedAction = "O"
 
 	return &report, nil
 }
