@@ -58,7 +58,7 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		return c.JSON(http.StatusOK, r.ExecReport)
+		return c.JSON(http.StatusOK, function.Response{ExecutionReport: r.ExecReport})
 	}
 }
 

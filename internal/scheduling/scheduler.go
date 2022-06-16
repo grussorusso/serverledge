@@ -180,9 +180,11 @@ func Offload(r *function.Request, serverUrl string) error {
 		return fmt.Errorf("Remote returned: %v", resp.StatusCode)
 	}
 
+	var response function.Response
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	json.Unmarshal(body, &r.ExecReport)
+	json.Unmarshal(body, &response)
+	r.ExecReport = response.ExecutionReport
 
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"

@@ -31,6 +31,10 @@ type ExecutionReport struct {
 	SchedAction    string
 }
 
+type Response struct {
+	ExecutionReport
+}
+
 func (r *Request) String() string {
 	return fmt.Sprintf("Rq-%s-%d", r.Fun.Name, r.Arrival.UnixNano())
 }
