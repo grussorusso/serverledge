@@ -124,8 +124,6 @@ func (f *Function) Delete() error {
 	// Remove the function from the local cache
 	cache.GetCacheInstance().Delete(f.Name)
 
-	// TODO: remove all existing WARM container
-
 	return nil
 }
 

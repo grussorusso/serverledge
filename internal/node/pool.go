@@ -299,6 +299,30 @@ func DeleteExpiredContainer() {
 
 }
 
+// ShutdownWarmContainersFor destroys warm containers of a given function
+func ShutdownWarmContainersFor(f *function.Function) {
+	Resources.Lock()
+	defer Resources.Unlock()
+
+	fp, ok := Resources.ContainerPools[f.Name]
+	if !ok {
+		return
+	}
+
+	elem := fp.ready.Front()
+	for ok := elem != nil; ok; ok = elem != nil {
+		warmed := elem.Value.(warmContainer)
+		temp := elem
+		elem = elem.Next()
+		log.Printf("Removing container with ID %s\n", warmed.contID)
+		fp.ready.Remove(temp)
+
+		memory, _ := container.GetMemoryMB(warmed.contID)
+		container.Destroy(warmed.contID)
+		Resources.AvailableMemMB += memory
+	}
+}
+
 // ShutdownAllContainers destroys all container (usually on termination)
 func ShutdownAllContainers() {
 	Resources.Lock()

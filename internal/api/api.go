@@ -123,6 +123,10 @@ func DeleteFunction(c echo.Context) error {
 		log.Printf("Failed deletion: %v", err)
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
+
+	// Delete local warm containers
+	node.ShutdownWarmContainersFor(&f)
+
 	response := struct{ Deleted string }{f.Name}
 	return c.JSON(http.StatusOK, response)
 }
