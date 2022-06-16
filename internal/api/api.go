@@ -4,11 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"time"
-
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
@@ -16,10 +11,21 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/utils"
+	"io"
+	"log"
+	"net/http"
+	"sync"
+	"time"
 
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
 )
+
+var requestsPool = sync.Pool{
+	New: func() any {
+		return new(function.Request)
+	},
+}
 
 // GetFunctions handles a request to list the function available in the system.
 func GetFunctions(c echo.Context) error {
@@ -32,8 +38,6 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
-	//handle missing parameters with default ones
-	maxRespTime := function.MaxRespTime // default maxRespTime
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
@@ -48,23 +52,27 @@ func InvokeFunction(c echo.Context) error {
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
-	//update QoS parameters if any
-	if invocationRequest.QoSMaxRespT != -1 {
-		maxRespTime = invocationRequest.QoSMaxRespT
-	}
-	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
+	r := requestsPool.Get().(*function.Request)
+	defer requestsPool.Put(r)
+	r.Fun = fun
+	r.Params = invocationRequest.Params
+	r.Arrival = time.Now()
 	r.Class = function.ServiceClass(invocationRequest.QoSClass)
-	r.MaxRespT = maxRespTime
+	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
+	// init fields if possibly not overwritten later
+	r.ExecReport.SchedAction = ""
+	r.ExecReport.OffloadLatency = 0.0
 
-	report, err := scheduling.SubmitRequest(r)
+	err = scheduling.SubmitRequest(r)
+
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
 		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		return c.JSON(http.StatusOK, report)
+		return c.JSON(http.StatusOK, function.Response{ExecutionReport: r.ExecReport})
 	}
 }
 
