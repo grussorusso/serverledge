@@ -32,8 +32,6 @@ func GetFunctions(c echo.Context) error {
 
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
-	//handle missing parameters with default ones
-	maxRespTime := function.MaxRespTime // default maxRespTime
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
@@ -48,23 +46,19 @@ func InvokeFunction(c echo.Context) error {
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
-	//update QoS parameters if any
-	if invocationRequest.QoSMaxRespT != -1 {
-		maxRespTime = invocationRequest.QoSMaxRespT
-	}
 	r := &function.Request{Fun: fun, Params: invocationRequest.Params, Arrival: time.Now()}
 	r.Class = function.ServiceClass(invocationRequest.QoSClass)
-	r.MaxRespT = maxRespTime
+	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 
-	report, err := scheduling.SubmitRequest(r)
+	err = scheduling.SubmitRequest(r)
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
 		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		return c.JSON(http.StatusOK, report)
+		return c.JSON(http.StatusOK, r.ExecReport)
 	}
 }
 

@@ -74,7 +74,7 @@ func Run(p Policy) {
 }
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
-func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
+func SubmitRequest(r *function.Request) error {
 	var logger *logging.Logger = nil
 	if executionLogEnabled {
 		logger = logging.GetLogger()
@@ -93,34 +93,33 @@ func SubmitRequest(r *function.Request) (*function.ExecutionReport, error) {
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		return nil, fmt.Errorf("could not schedule the request")
+		return fmt.Errorf("could not schedule the request")
 	}
 	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
-	var report *function.ExecutionReport
 	var err error
 	if schedDecision.action == DROP {
 		//log.Printf("[%s] Dropping request", r)
-		return nil, node.OutOfResourcesErr
+		return node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
 		//log.Printf("Offloading request")
-		report, err = Offload(r, schedDecision.remoteHost)
+		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else {
-		report, err = Execute(schedDecision.contID, &schedRequest)
+		err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if executionLogEnabled && !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
-		err = logger.SendReport(report, r.Fun.Name)
+		err = logger.SendReport(&r.ExecReport, r.Fun.Name)
 		if err != nil {
 			log.Printf("unable to update log")
 		}
 	}
-	return report, nil
+	return nil
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
@@ -140,7 +139,8 @@ func dropRequest(r *scheduledRequest) {
 
 func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.Report = &function.ExecutionReport{InitTime: initTime, IsWarmStart: warmStart}
+	r.ExecReport.InitTime = initTime
+	r.ExecReport.IsWarmStart = warmStart
 
 	decision := schedDecision{action: EXEC_LOCAL, contID: c}
 	r.decisionChannel <- decision
@@ -160,13 +160,13 @@ func handleCloudOffload(r *scheduledRequest) {
 	handleOffload(r, cloudAddress)
 }
 
-func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, error) {
+func Offload(r *function.Request, serverUrl string) error {
 	// Prepare request
 	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)
-		return nil, err
+		return err
 	}
 	sendingTime := time.Now() // used to compute latency later on
 	resp, err := offloadingClient.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
@@ -174,21 +174,20 @@ func Offload(r *function.Request, serverUrl string) (*function.ExecutionReport, 
 
 	if err != nil {
 		log.Print(err)
-		return nil, err
+		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Remote returned: %v", resp.StatusCode)
+		return fmt.Errorf("Remote returned: %v", resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
-	var report function.ExecutionReport
 	body, _ := ioutil.ReadAll(resp.Body)
-	json.Unmarshal(body, &report)
+	json.Unmarshal(body, &r.ExecReport)
 
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"
-	report.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - report.Duration - report.InitTime
-	report.SchedAction = "O"
+	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
+	r.ExecReport.SchedAction = "O"
 
-	return &report, nil
+	return nil
 }

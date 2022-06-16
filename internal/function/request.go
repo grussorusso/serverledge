@@ -3,16 +3,14 @@ package function
 import (
 	"fmt"
 	"time"
-
-	"github.com/grussorusso/serverledge/internal/config"
 )
 
 //Request represents a single function invocation.
 type Request struct {
-	Fun     *Function
-	Params  map[string]interface{}
-	Arrival time.Time
-	Report  *ExecutionReport
+	Fun        *Function
+	Params     map[string]interface{}
+	Arrival    time.Time
+	ExecReport ExecutionReport
 	RequestQoS
 	CanDoOffloading bool
 }
@@ -36,9 +34,6 @@ type ExecutionReport struct {
 func (r *Request) String() string {
 	return fmt.Sprintf("Rq-%s-%d", r.Fun.Name, r.Arrival.UnixNano())
 }
-
-// MaxRespTime todo adjust response time -> Second default unit
-var MaxRespTime = config.GetFloat("max.response.time", 20) //in Seconds
 
 type ServiceClass int64
 

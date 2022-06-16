@@ -31,7 +31,7 @@ type LogStatus struct {
 func (l *Log) Update(e *function.ExecutionReport) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
-	//insert new Report in the ring
+	//insert new ExecReport in the ring
 	l.reportBuffer[l.ringPointer].report = e
 	l.reportBuffer[l.ringPointer].expiration = time.Now().Add(time.Duration(config.GetInt(config.REPORT_EXPIRATION, 3)) * time.Minute).UnixNano()
 	l.ringPointer = (l.ringPointer + 1) % Capacity
