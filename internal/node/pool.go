@@ -287,10 +287,9 @@ func DeleteExpiredContainer() {
 				pool.ready.Remove(temp) // remove the expired element
 
 				memory, _ := container.GetMemoryMB(warmed.contID)
-				container.Destroy(warmed.contID)
 				releaseResources(0, memory)
+				container.Destroy(warmed.contID)
 				log.Printf("Released resources. Now: %v", Resources)
-
 			} else {
 				elem = elem.Next()
 			}
@@ -300,6 +299,7 @@ func DeleteExpiredContainer() {
 }
 
 // ShutdownWarmContainersFor destroys warm containers of a given function
+// Actual termination happens asynchronously.
 func ShutdownWarmContainersFor(f *function.Function) {
 	Resources.Lock()
 	defer Resources.Unlock()
@@ -308,6 +308,8 @@ func ShutdownWarmContainersFor(f *function.Function) {
 	if !ok {
 		return
 	}
+
+	containersToDelete := make([]container.ContainerID, 1)
 
 	elem := fp.ready.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
@@ -318,9 +320,20 @@ func ShutdownWarmContainersFor(f *function.Function) {
 		fp.ready.Remove(temp)
 
 		memory, _ := container.GetMemoryMB(warmed.contID)
-		container.Destroy(warmed.contID)
 		Resources.AvailableMemMB += memory
+		containersToDelete = append(containersToDelete, warmed.contID)
 	}
+
+	go func(contIDs []container.ContainerID) {
+		for _, contID := range contIDs {
+			// No need to update available resources here
+			if err := container.Destroy(contID); err != nil {
+				log.Printf("An error occurred while deleting %s: %v", contID, err)
+			} else {
+				log.Printf("Deleted %s", contID)
+			}
+		}
+	}(containersToDelete)
 }
 
 // ShutdownAllContainers destroys all container (usually on termination)
