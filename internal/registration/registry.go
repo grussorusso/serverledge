@@ -24,11 +24,11 @@ func (r *Registry) getEtcdKey(id string) (key string) {
 }
 
 // RegisterToEtcd make a registration to the local Area; etcd put operation is performed
-func (r *Registry) RegisterToEtcd(hostport string) (e error) {
+func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
-		return UnavailableClientErr
+		return "", UnavailableClientErr
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
@@ -38,7 +38,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 	resp, err := etcdClient.Grant(ctx, int64(TTL))
 	if err != nil {
 		log.Fatal(err)
-		return err
+		return "", err
 	}
 
 	log.Printf("Registration key: %s\n", r.Key)
@@ -46,7 +46,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
-		return IdRegistrationErr
+		return "", IdRegistrationErr
 	}
 
 	cancelCtx, _ := context.WithCancel(etcdClient.Ctx())
@@ -55,7 +55,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 	keepAliveCh, err := etcdClient.KeepAlive(cancelCtx, resp.ID)
 	if err != nil || keepAliveCh == nil {
 		log.Fatal(KeepAliveErr)
-		return KeepAliveErr
+		return "", KeepAliveErr
 	}
 
 	go func() {
@@ -65,7 +65,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (e error) {
 		}
 	}()
 
-	return nil
+	return r.Key, nil
 }
 
 //GetAll is used to obtain the list of  other server's addresses under a specific local Area

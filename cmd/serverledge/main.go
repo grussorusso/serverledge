@@ -121,11 +121,12 @@ func main() {
 	}
 
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
-	err = registry.RegisterToEtcd(url)
+	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
+	node.NodeIdentifier = myKey
 
 	e := echo.New()
 

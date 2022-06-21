@@ -48,7 +48,7 @@ func main() {
 	region := config.GetString(config.REGISTRY_AREA, "ROME")
 	registry := &registration.Registry{Area: "lb/" + region}
 	hostport := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
-	if err := registry.RegisterToEtcd(hostport); err != nil {
+	if _, err := registry.RegisterToEtcd(hostport); err != nil {
 		log.Printf("Could not register to Etcd: %v", err)
 	}
 

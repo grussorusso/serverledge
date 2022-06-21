@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
@@ -11,11 +17,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/utils"
-	"io"
-	"log"
-	"net/http"
-	"sync"
-	"time"
 
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
@@ -60,6 +61,7 @@ func InvokeFunction(c echo.Context) error {
 	r.Class = function.ServiceClass(invocationRequest.QoSClass)
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
+	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0

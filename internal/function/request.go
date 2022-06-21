@@ -7,6 +7,7 @@ import (
 
 //Request represents a single function invocation.
 type Request struct {
+	ReqId      string
 	Fun        *Function
 	Params     map[string]interface{}
 	Arrival    time.Time
@@ -36,7 +37,7 @@ type Response struct {
 }
 
 func (r *Request) String() string {
-	return fmt.Sprintf("Rq-%s-%d", r.Fun.Name, r.Arrival.UnixNano())
+	return fmt.Sprintf("Rq-%s", r.Fun.Name, r.ReqId)
 }
 
 type ServiceClass int64
