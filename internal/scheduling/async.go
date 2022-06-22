@@ -39,14 +39,4 @@ func publishAsyncResponse(reqId string, response function.Response) {
 		log.Fatal(err)
 		return
 	}
-
-	//res, err := etcdClient.Get(ctx, key)
-	//if err != nil {
-	//	log.Fatal(err)
-	//	return
-	//}
-	//payload = res.Kvs[0].Value
-	//var newResp function.Response
-	//json.Unmarshal(payload, &newResp)
-	//log.Printf("%v", newResp)
 }

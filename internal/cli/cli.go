@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/client"
@@ -29,6 +32,12 @@ var invokeCmd = &cobra.Command{
 	Use:   "invoke",
 	Short: "Invokes a function",
 	Run:   invoke,
+}
+
+var pollCmd = &cobra.Command{
+	Use:   "poll",
+	Short: "Polls the result of an asynchronous invocation",
+	Run:   poll,
 }
 
 var createCmd = &cobra.Command{
@@ -56,6 +65,7 @@ var statusCmd = &cobra.Command{
 }
 
 var funcName, runtime, handler, customImage, src, qosClass string
+var requestId string
 var memory int64
 var cpuDemand, qosMaxRespT float64
 var params []string
@@ -91,6 +101,9 @@ func Init() {
 	rootCmd.AddCommand(listCmd)
 
 	rootCmd.AddCommand(statusCmd)
+
+	rootCmd.AddCommand(pollCmd)
+	pollCmd.Flags().StringVarP(&requestId, "request", "", "", "ID of the async request")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -265,4 +278,34 @@ func getStatus(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
+}
+
+func poll(cmd *cobra.Command, args []string) {
+	if len(requestId) < 1 {
+		cmd.Help()
+		os.Exit(1)
+	}
+
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Fatal("Could not connect to Etcd")
+		return
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+
+	key := fmt.Sprintf("async/%s", requestId)
+	res, err := etcdClient.Get(ctx, key)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	if len(res.Kvs) == 1 {
+		payload := res.Kvs[0].Value
+		fmt.Println(string(payload))
+	} else {
+		fmt.Println("{}")
+		os.Exit(5)
+	}
 }
