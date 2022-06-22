@@ -34,6 +34,7 @@ type ExecutionReport struct {
 }
 
 type Response struct {
+	Success bool
 	ExecutionReport
 }
 
