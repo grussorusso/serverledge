@@ -60,6 +60,7 @@ var memory int64
 var cpuDemand, qosMaxRespT float64
 var params []string
 var paramsFile string
+var asyncInvocation bool
 var verbose bool
 
 func Init() {
@@ -73,6 +74,7 @@ func Init() {
 	invokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
 	invokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Function parameter: <name>:<value>")
 	invokeCmd.Flags().StringVarP(&paramsFile, "params_file", "j", "", "File containing parameters (JSON)")
+	invokeCmd.Flags().BoolVarP(&asyncInvocation, "async", "a", false, "Asynchronous invocation")
 
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&funcName, "function", "f", "", "name of the function")
@@ -137,7 +139,8 @@ func invoke(cmd *cobra.Command, args []string) {
 		Params:          paramsMap,
 		QoSClass:        int64(api.DecodeServiceClass(qosClass)),
 		QoSMaxRespT:     qosMaxRespT,
-		CanDoOffloading: true}
+		CanDoOffloading: true,
+		Async:           asyncInvocation}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		cmd.Help()

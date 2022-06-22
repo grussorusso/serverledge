@@ -24,6 +24,7 @@ import (
 var requests chan *scheduledRequest
 var completions chan *completion
 
+var remoteServerUrl string
 var executionLogEnabled bool
 
 var offloadingClient *http.Client
@@ -57,6 +58,8 @@ func Run(p Policy) {
 	// initialize scheduling policy
 	p.Init()
 
+	remoteServerUrl = config.GetString(config.CLOUD_URL, "")
+
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest
@@ -82,8 +85,6 @@ func SubmitRequest(r *function.Request) error {
 			logger.InsertNewLog(r.Fun.Name)
 		}
 	}
-
-	remoteServerUrl := config.GetString(config.CLOUD_URL, "")
 
 	schedRequest := scheduledRequest{
 		Request:         r,
@@ -120,6 +121,42 @@ func SubmitRequest(r *function.Request) error {
 		}
 	}
 	return nil
+}
+
+// SubmitAsyncRequest submits a newly arrived async request for scheduling and execution
+func SubmitAsyncRequest(r *function.Request) {
+	schedRequest := scheduledRequest{
+		Request:         r,
+		decisionChannel: make(chan schedDecision, 1)}
+	requests <- &schedRequest
+
+	// wait on channel for scheduling action
+	schedDecision, ok := <-schedRequest.decisionChannel
+	if !ok {
+		// TODO: could not schedule the request
+		// TODO: post result
+		return
+	}
+
+	var err error
+	if schedDecision.action == DROP {
+		// TODO: could not schedule the request
+		// TODO: post result
+	} else if schedDecision.action == EXEC_REMOTE {
+		//log.Printf("Offloading request")
+		err = OffloadAsync(r, schedDecision.remoteHost)
+		if err != nil {
+			// TODO: could not offload the request
+			// TODO: post result
+		}
+	} else {
+		err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			// TODO: could not offload the request
+			// TODO: post result
+		}
+		// TODO: post result
+	}
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
