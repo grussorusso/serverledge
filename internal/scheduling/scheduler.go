@@ -11,7 +11,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/logging"
 
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -35,8 +34,6 @@ func Run(p Policy) {
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
-
-	executionLogEnabled = config.GetBool(config.LOGGER_UPDATE_ENABLED, false)
 
 	container.InitDockerContainerFactory()
 
@@ -74,14 +71,6 @@ func Run(p Policy) {
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) error {
-	var logger *logging.Logger = nil
-	if executionLogEnabled {
-		logger = logging.GetLogger()
-		if !logger.Exists(r.Fun.Name) {
-			logger.InsertNewLog(r.Fun.Name)
-		}
-	}
-
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
@@ -108,12 +97,6 @@ func SubmitRequest(r *function.Request) error {
 		err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
 			return err
-		}
-	}
-	if executionLogEnabled && !(schedDecision.action == EXEC_REMOTE && schedDecision.remoteHost != remoteServerUrl) {
-		err = logger.SendReport(&r.ExecReport, r.Fun.Name)
-		if err != nil {
-			log.Printf("unable to update log")
 		}
 	}
 	return nil

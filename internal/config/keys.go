@@ -40,13 +40,6 @@ const IS_IN_CLOUD = "cloud"
 // the area wich the server belongs to
 const REGISTRY_AREA = "registry.area"
 
-// logger-interval: deletes all expired reports
-const LOGGER_CLEANUP_INTERVAL = "logging.cleanInterval"
-const LOGGER_UPDATE_ENABLED = "logging.enabled"
-
-//default expiration time for execution-report
-const REPORT_EXPIRATION = "logging.expiration"
-
 // short period: retrieve information about nearby edge-servers
 const REG_NEARBY_INTERVAL = "registry.nearby.interval"
 
@@ -58,9 +51,6 @@ const REGISTRATION_TTL = "registry.ttl"
 
 // port for udp status listener
 const LISTEN_UDP_PORT = "registry.udp.port"
-
-// drop period in Seconds
-const DROP_PERIOD = "policy.drop.expiration"
 
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"

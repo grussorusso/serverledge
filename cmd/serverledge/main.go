@@ -15,7 +15,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/grussorusso/serverledge/utils"
@@ -79,8 +78,6 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 				log.Fatal(err)
 			}
 
-			//logging cleanup; stop all associated threads
-			logging.GetLogger().CleanUpLog()
 			//stop container janitor
 			node.StopJanitor()
 
