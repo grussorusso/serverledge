@@ -31,6 +31,12 @@ var invokeCmd = &cobra.Command{
 	Run:   invoke,
 }
 
+var pollCmd = &cobra.Command{
+	Use:   "poll",
+	Short: "Polls the result of an asynchronous invocation",
+	Run:   poll,
+}
+
 var createCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Registers a new function",
@@ -56,10 +62,12 @@ var statusCmd = &cobra.Command{
 }
 
 var funcName, runtime, handler, customImage, src, qosClass string
+var requestId string
 var memory int64
 var cpuDemand, qosMaxRespT float64
 var params []string
 var paramsFile string
+var asyncInvocation bool
 var verbose bool
 
 func Init() {
@@ -73,6 +81,7 @@ func Init() {
 	invokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
 	invokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Function parameter: <name>:<value>")
 	invokeCmd.Flags().StringVarP(&paramsFile, "params_file", "j", "", "File containing parameters (JSON)")
+	invokeCmd.Flags().BoolVarP(&asyncInvocation, "async", "a", false, "Asynchronous invocation")
 
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&funcName, "function", "f", "", "name of the function")
@@ -89,6 +98,9 @@ func Init() {
 	rootCmd.AddCommand(listCmd)
 
 	rootCmd.AddCommand(statusCmd)
+
+	rootCmd.AddCommand(pollCmd)
+	pollCmd.Flags().StringVarP(&requestId, "request", "", "", "ID of the async request")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -137,7 +149,8 @@ func invoke(cmd *cobra.Command, args []string) {
 		Params:          paramsMap,
 		QoSClass:        int64(api.DecodeServiceClass(qosClass)),
 		QoSMaxRespT:     qosMaxRespT,
-		CanDoOffloading: true}
+		CanDoOffloading: true,
+		Async:           asyncInvocation}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		cmd.Help()
@@ -259,6 +272,21 @@ func getStatus(cmd *cobra.Command, args []string) {
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Printf("Invocation failed: %v", err)
+		os.Exit(2)
+	}
+	utils.PrintJsonResponse(resp.Body)
+}
+
+func poll(cmd *cobra.Command, args []string) {
+	if len(requestId) < 1 {
+		cmd.Help()
+		os.Exit(1)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/poll/%s", ServerConfig.Host, ServerConfig.Port, requestId)
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Printf("Polling request failed: %v\n", err)
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)

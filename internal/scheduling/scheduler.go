@@ -24,6 +24,7 @@ import (
 var requests chan *scheduledRequest
 var completions chan *completion
 
+var remoteServerUrl string
 var executionLogEnabled bool
 
 var offloadingClient *http.Client
@@ -57,6 +58,8 @@ func Run(p Policy) {
 	// initialize scheduling policy
 	p.Init()
 
+	remoteServerUrl = config.GetString(config.CLOUD_URL, "")
+
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest
@@ -82,8 +85,6 @@ func SubmitRequest(r *function.Request) error {
 			logger.InsertNewLog(r.Fun.Name)
 		}
 	}
-
-	remoteServerUrl := config.GetString(config.CLOUD_URL, "")
 
 	schedRequest := scheduledRequest{
 		Request:         r,
@@ -120,6 +121,38 @@ func SubmitRequest(r *function.Request) error {
 		}
 	}
 	return nil
+}
+
+// SubmitAsyncRequest submits a newly arrived async request for scheduling and execution
+func SubmitAsyncRequest(r *function.Request) {
+	schedRequest := scheduledRequest{
+		Request:         r,
+		decisionChannel: make(chan schedDecision, 1)}
+	requests <- &schedRequest
+
+	// wait on channel for scheduling action
+	schedDecision, ok := <-schedRequest.decisionChannel
+	if !ok {
+		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		return
+	}
+
+	var err error
+	if schedDecision.action == DROP {
+		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+	} else if schedDecision.action == EXEC_REMOTE {
+		//log.Printf("Offloading request")
+		err = OffloadAsync(r, schedDecision.remoteHost)
+		if err != nil {
+			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		}
+	} else {
+		err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		}
+		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+	}
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
@@ -193,5 +226,31 @@ func Offload(r *function.Request, serverUrl string) error {
 	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 	r.ExecReport.SchedAction = "O"
 
+	return nil
+}
+
+func OffloadAsync(r *function.Request, serverUrl string) error {
+	// Prepare request
+	request := client.InvocationRequest{Params: r.Params,
+		QoSClass:    int64(r.Class),
+		QoSMaxRespT: r.MaxRespT,
+		Async:       true}
+	invocationBody, err := json.Marshal(request)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	resp, err := offloadingClient.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
+		bytes.NewBuffer(invocationBody))
+
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Remote returned: %v", resp.StatusCode)
+	}
+
+	// there is nothing to wait for
 	return nil
 }

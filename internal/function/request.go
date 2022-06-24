@@ -14,6 +14,7 @@ type Request struct {
 	ExecReport ExecutionReport
 	RequestQoS
 	CanDoOffloading bool
+	Async           bool
 }
 
 type RequestQoS struct {
@@ -33,7 +34,12 @@ type ExecutionReport struct {
 }
 
 type Response struct {
+	Success bool
 	ExecutionReport
+}
+
+type AsyncResponse struct {
+	ReqId string
 }
 
 func (r *Request) String() string {

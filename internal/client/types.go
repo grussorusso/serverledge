@@ -5,4 +5,5 @@ type InvocationRequest struct {
 	QoSClass        int64
 	QoSMaxRespT     float64
 	CanDoOffloading bool
+	Async           bool
 }
