@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,6 +82,36 @@ func InvokeFunction(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "")
 	} else {
 		return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
+	}
+}
+
+// PollAsyncResult checks for the result of an asynchronous invocation.
+func PollAsyncResult(c echo.Context) error {
+	reqId := c.Param("reqId")
+	if len(reqId) < 0 {
+		return c.JSON(http.StatusNotFound, "")
+	}
+
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Println("Could not connect to Etcd")
+		return c.JSON(http.StatusInternalServerError, "")
+	}
+
+	ctx := context.Background()
+
+	key := fmt.Sprintf("async/%s", reqId)
+	res, err := etcdClient.Get(ctx, key)
+	if err != nil {
+		log.Println(err)
+		return c.JSON(http.StatusInternalServerError, "")
+	}
+
+	if len(res.Kvs) == 1 {
+		payload := res.Kvs[0].Value
+		return c.JSONBlob(http.StatusOK, payload)
+	} else {
+		return c.JSON(http.StatusNotFound, "")
 	}
 }
 

@@ -1,16 +1,13 @@
 package cli
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/client"
@@ -286,26 +283,11 @@ func poll(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	etcdClient, err := utils.GetEtcdClient()
+	url := fmt.Sprintf("http://%s:%d/poll/%s", ServerConfig.Host, ServerConfig.Port, requestId)
+	resp, err := http.Get(url)
 	if err != nil {
-		log.Fatal("Could not connect to Etcd")
-		return
+		fmt.Printf("Polling request failed: %v\n", err)
+		os.Exit(2)
 	}
-
-	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-
-	key := fmt.Sprintf("async/%s", requestId)
-	res, err := etcdClient.Get(ctx, key)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	if len(res.Kvs) == 1 {
-		payload := res.Kvs[0].Value
-		fmt.Println(string(payload))
-	} else {
-		fmt.Println("{}")
-		os.Exit(5)
-	}
+	utils.PrintJsonResponse(resp.Body)
 }

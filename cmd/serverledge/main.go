@@ -31,6 +31,7 @@ func startAPIServer(e *echo.Echo) {
 	e.POST("/create", api.CreateFunction)
 	e.POST("/delete", api.DeleteFunction)
 	e.GET("/function", api.GetFunctions)
+	e.GET("/poll/:reqId", api.PollAsyncResult)
 	e.GET("/status", api.GetServerStatus)
 
 	// Start server
