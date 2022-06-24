@@ -53,16 +53,20 @@ where `input.json` may contain:
 		"b": 3
 	}
 
-A QoS class and a maximum desired response time can be optionally associated
-with invocation requests, as follows:
+Functions can be also invoked asynchronously using the `--async` flag:
 
-	$ bin/serverledge-cli invoke -f func -p ... --class <QoS class> --respt <max resp. time>
+	$ bin/serverledge-cli invoke -f func --async
+
+The server will reply with a `requestID`, which can be used by the client to
+poll for the execution result:
+
+	$ bin/serverledge-cli poll --request <requestID>
 
 
 ## Distributed Deployment
 
-[This repository](https://github.com/grussorusso/serverledge-deploy) provides an Ansible playbook to deploy Serverledge in an 
-Edge-Cloud environment.
+[This repository](https://github.com/grussorusso/serverledge-deploy) provides an
+Ansible playbook to deploy Serverledge in a distributed configuration.
 
 In this case, you can instruct `serverledge-cli` to
 connect to a node other than `localhost` or use a non-default port
@@ -117,14 +121,6 @@ Available runtime: `nodejs17` (NodeJS 17)
 
 Specify the handler as `<script_file_name>.js` (e.g., `myfile.js`).
 An example is given in `examples/sieve.js`.
-
-Create a function `sieve`:
-
-    $ bin/serverledge-cli create -f sieve --memory 128 --src examples/sieve.js --runtime nodejs17 --handler "sieve.js"
-
-Invoke `sieve`: 
-
-    $ bin/serverledge-cli invoke -f sieve 
 
 ### Custom function runtimes
 
