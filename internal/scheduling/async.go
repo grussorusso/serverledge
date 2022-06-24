@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
@@ -19,7 +18,7 @@ func publishAsyncResponse(reqId string, response function.Response) {
 		return
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx := context.Background()
 
 	resp, err := etcdClient.Grant(ctx, 1800)
 	if err != nil {
