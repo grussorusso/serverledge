@@ -8,7 +8,6 @@ import (
 type CloudEdgePolicy struct{}
 
 func (p *CloudEdgePolicy) Init() {
-	InitDropManager()
 }
 
 func (p *CloudEdgePolicy) OnCompletion(r *scheduledRequest) {

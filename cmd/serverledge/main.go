@@ -15,7 +15,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/logging"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/grussorusso/serverledge/utils"
@@ -79,8 +78,6 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 				log.Fatal(err)
 			}
 
-			//logging cleanup; stop all associated threads
-			logging.GetLogger().CleanUpLog()
 			//stop container janitor
 			node.StopJanitor()
 
@@ -152,9 +149,7 @@ func main() {
 func createSchedulingPolicy() scheduling.Policy {
 	policyConf := config.GetString(config.SCHEDULING_POLICY, "default")
 	log.Printf("Configured policy: %s\n", policyConf)
-	if policyConf == "qosaware" {
-		return &scheduling.QosAwarePolicy{}
-	} else if policyConf == "cloudonly" {
+	if policyConf == "cloudonly" {
 		return &scheduling.CloudOnlyPolicy{}
 	} else if policyConf == "edgecloud" {
 		return &scheduling.CloudEdgePolicy{}

@@ -10,7 +10,6 @@ import (
 type EdgePolicy struct{}
 
 func (p *EdgePolicy) Init() {
-	InitDropManager()
 }
 
 func (p *EdgePolicy) OnCompletion(r *scheduledRequest) {
@@ -19,7 +18,7 @@ func (p *EdgePolicy) OnCompletion(r *scheduledRequest) {
 
 func (p *EdgePolicy) OnArrival(r *scheduledRequest) {
 	if r.CanDoOffloading {
-		url := handleEdgeOffloading(r)
+		url := pickEdgeNodeForOffloading(r)
 		if url != "" {
 			handleOffload(r, url)
 			return

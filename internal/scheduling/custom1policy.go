@@ -23,7 +23,7 @@ func (p *Custom1Policy) OnArrival(r *scheduledRequest) {
 	} else if handleColdStart(r) {
 		return
 	} else if r.CanDoOffloading && r.RequestQoS.Class == function.HIGH_PERFORMANCE {
-		url := handleEdgeOffloading(r)
+		url := pickEdgeNodeForOffloading(r)
 		if url != "" {
 			handleOffload(r, url)
 		} else {
