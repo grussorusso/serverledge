@@ -40,7 +40,7 @@ func Run(p Policy) {
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
 
-	executionLogEnabled = config.GetBool(config.LOGGER_UPDATE_ENABLED, true)
+	executionLogEnabled = config.GetBool(config.LOGGER_UPDATE_ENABLED, false)
 
 	container.InitDockerContainerFactory()
 
