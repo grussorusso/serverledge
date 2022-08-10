@@ -52,6 +52,12 @@ const REGISTRATION_TTL = "registry.ttl"
 // port for udp status listener
 const LISTEN_UDP_PORT = "registry.udp.port"
 
+// enable metrics system
+const METRICS_ENABLED = "metrics.enabled"
+
+const METRICS_PROMETHEUS_HOST = "metrics.prometheus.host"
+const METRICS_PROMETHEUS_PORT = "metrics.prometheus.port"
+
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
