@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -64,6 +65,10 @@ func Run(p Policy) {
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(r)
+
+			if metrics.Enabled {
+				metrics.CompletedInvocations.Inc()
+			}
 		}
 	}
 

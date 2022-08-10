@@ -127,7 +127,7 @@ func main() {
 	}
 	node.NodeIdentifier = myKey
 
-	metrics.Init()
+	go metrics.Init()
 
 	e := echo.New()
 
