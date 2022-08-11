@@ -8,7 +8,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grussorusso/serverledge/internal/config"
 
@@ -64,6 +66,14 @@ func Run(p Policy) {
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(r)
+
+			if metrics.Enabled {
+				metrics.CompletedInvocations.With(
+					prometheus.Labels{"function": r.Fun.Name}).Inc()
+				if r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+					metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
+				}
+			}
 		}
 	}
 

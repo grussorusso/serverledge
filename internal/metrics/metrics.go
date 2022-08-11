@@ -1,0 +1,58 @@
+package metrics
+
+import (
+	"log"
+
+	"net/http"
+
+	"github.com/grussorusso/serverledge/internal/config"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var Enabled bool
+var registry = prometheus.NewRegistry()
+
+func Init() {
+	if config.GetBool(config.METRICS_ENABLED, false) {
+		log.Println("Metrics enabled.")
+		Enabled = true
+	} else {
+		Enabled = false
+		return
+	}
+
+	registerGlobalMetrics()
+
+	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+		EnableOpenMetrics: true})
+	http.Handle("/metrics", handler)
+	http.ListenAndServe(":2112", nil)
+}
+
+// Global metrics
+var (
+	CompletedInvocations = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "sedge_completed_total",
+		Help: "The total number of completed function invocations",
+	}, []string{"function"})
+	ExecutionTimes = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "sedge_exectime",
+		Help:    "Function duration",
+		Buckets: durationBuckets,
+	},
+		[]string{"function"})
+)
+
+var durationBuckets = []float64{0.002, 0.005, 0.010, 0.02, 0.03, 0.05, 0.1, 0.15, 0.3, 0.6, 1.0}
+
+func AddFunctionDurationValue(funcName string, duration float64) {
+	ExecutionTimes.With(prometheus.Labels{"function": funcName}).Observe(duration)
+}
+
+func registerGlobalMetrics() {
+	registry.MustRegister(CompletedInvocations)
+	registry.MustRegister(ExecutionTimes)
+}
