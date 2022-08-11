@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/client"
-	"github.com/grussorusso/serverledge/internal/function"
-	"github.com/grussorusso/serverledge/internal/registration"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/grussorusso/serverledge/internal/client"
+	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/registration"
 )
+
+const SCHED_ACTION_OFFLOAD = "O"
 
 func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	nearbyServersMap := registration.Reg.NearbyServersMap
@@ -64,7 +67,7 @@ func Offload(r *function.Request, serverUrl string) error {
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"
 	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
-	r.ExecReport.SchedAction = "O"
+	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
 	return nil
 }

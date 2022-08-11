@@ -8,12 +8,13 @@ server:
 
 	$ curl 127.0.0.1:2112/metrics 
 
-Example output:
 
-	# HELP sedge_completed_total The total number of completed function invocations
-	# TYPE sedge_completed_total counter
-	sedge_completed_total 2
+## Available metrics
 
+A few metrics are currently exposed (just for demonstration purposes):
+
+- `sedge_completed_total`: number of completed invocations (Counter, per function)
+- `sedge_exectime`: execution time for each function (Histogram, per function)
 
 ## References
 
