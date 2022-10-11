@@ -74,7 +74,7 @@ func Destroy(id ContainerID) error {
 
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
 	const maxRetries = 15
-	const backoffMillis = 50
+	var backoffMillis = 25
 	var totalWaitMillis = 0
 
 	var err error
@@ -91,6 +91,10 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 
 		time.Sleep(time.Duration(backoffMillis * int(time.Millisecond)))
 		totalWaitMillis += backoffMillis
+
+		if backoffMillis <= 200 {
+			backoffMillis *= 2
+		}
 	}
 
 	return nil, time.Duration(totalWaitMillis * int(time.Millisecond)), err
