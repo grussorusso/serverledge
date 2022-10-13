@@ -69,6 +69,10 @@ func Offload(r *function.Request, serverUrl string) error {
 	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
+	//TODO temp
+	log.Printf("Completed offloaded execution of %s took %f\n", r.Fun.Name, r.ExecReport.ResponseTime)
+	Completed(r, true)
+
 	return nil
 }
 

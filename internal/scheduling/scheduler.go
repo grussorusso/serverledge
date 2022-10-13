@@ -54,6 +54,9 @@ func Run(p Policy) {
 
 	remoteServerUrl = config.GetString(config.CLOUD_URL, "")
 
+	//TODO right place?
+	go InitDecisionEngine()
+
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest

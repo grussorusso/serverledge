@@ -12,7 +12,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
-//NewContainer creates and starts a new container.
+// NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
 	if err != nil {
@@ -73,7 +73,8 @@ func Destroy(id ContainerID) error {
 }
 
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
-	const maxRetries = 15
+	//EDITED original 15
+	const maxRetries = 50
 	const backoffMillis = 50
 	var totalWaitMillis = 0
 

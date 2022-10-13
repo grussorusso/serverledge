@@ -1,0 +1,12 @@
+metrics:
+  enabled: true
+container:
+  pool:
+    cpus: 4
+    memory: 2048
+api:
+  port: 1325
+cloud: true
+registry:
+  udp:
+    port: 9878
