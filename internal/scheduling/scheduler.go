@@ -33,6 +33,8 @@ func Run(p Policy) {
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
+	node.Resources.MaxMemMB = node.Resources.AvailableMemMB
+	node.Resources.MaxCPUs = node.Resources.AvailableCPUs
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
 
@@ -53,9 +55,6 @@ func Run(p Policy) {
 	p.Init()
 
 	remoteServerUrl = config.GetString(config.CLOUD_URL, "")
-
-	//TODO right place?
-	go InitDecisionEngine()
 
 	log.Println("Scheduler started.")
 
@@ -98,9 +97,10 @@ func SubmitRequest(r *function.Request) error {
 	if schedDecision.action == DROP {
 		//log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
-	} else if schedDecision.action == EXEC_REMOTE {
+	} else if schedDecision.action == EXEC_REMOTE ||
+		schedDecision.action == EXEC_NEIGHBOUR {
 		//log.Printf("Offloading request")
-		err = Offload(r, schedDecision.remoteHost)
+		err = Offload(r, schedDecision.remoteHost, schedDecision.action)
 		if err != nil {
 			return err
 		}
@@ -169,10 +169,10 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	r.decisionChannel <- decision
 }
 
-func handleOffload(r *scheduledRequest, serverHost string) {
+func handleOffload(r *scheduledRequest, serverHost string, act action) {
 	r.CanDoOffloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
-		action:     EXEC_REMOTE,
+		action:     act,
 		contID:     "",
 		remoteHost: serverHost,
 	}
@@ -180,5 +180,9 @@ func handleOffload(r *scheduledRequest, serverHost string) {
 
 func handleCloudOffload(r *scheduledRequest) {
 	cloudAddress := config.GetString(config.CLOUD_URL, "")
-	handleOffload(r, cloudAddress)
+	handleOffload(r, cloudAddress, EXEC_REMOTE)
+}
+
+func handleEdgeOffload(r *scheduledRequest, serverHost string) {
+	handleOffload(r, serverHost, EXEC_NEIGHBOUR)
 }

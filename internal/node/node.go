@@ -14,6 +14,8 @@ type NodeResources struct {
 	sync.RWMutex
 	AvailableMemMB int64
 	AvailableCPUs  float64
+	MaxMemMB       int64
+	MaxCPUs        float64
 	DropCount      int64
 	ContainerPools map[string]*ContainerPool
 }

@@ -109,6 +109,14 @@ func PollAsyncResult(c echo.Context) error {
 
 	if len(res.Kvs) == 1 {
 		payload := res.Kvs[0].Value
+		var resp function.Response
+		err := json.Unmarshal(payload, &resp)
+		if err == nil {
+			scheduling.UpdateDataAsync(resp, reqId)
+		} else {
+			log.Println(err)
+		}
+
 		return c.JSONBlob(http.StatusOK, payload)
 	} else {
 		return c.JSON(http.StatusNotFound, "")

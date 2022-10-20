@@ -4,6 +4,8 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
+	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,8 +18,9 @@ const (
 )
 
 const (
-	LOCAL = 0
-	CLOUD = 1
+	LOCAL     = 0
+	CLOUD     = 1
+	NEIGHBOUR = 2
 )
 
 const rttPoints = 10
@@ -26,16 +29,16 @@ const initPoints = 10
 type functionInfo struct {
 	name string
 	//Number of function requests
-	count [2]int
+	count [3]int
 	//Mean duration time
-	meanDuration [2]float64
+	meanDuration [3]float64
 	//Variance of the duration time
-	varianceDuration [2]float64
+	varianceDuration [3]float64
 	//Number of requests that missed the deadline TODO percentage?
-	missed [2]int
+	missed [3]int
 	//Rolling average of init times when cold start
-	initTime  [2][initPoints]float64
-	initIndex [2]int
+	initTime  [3][initPoints]float64
+	initIndex [3]int
 }
 
 var mut sync.Mutex
@@ -48,33 +51,65 @@ var rttIndex = 0
 const arrivalWindow = 5
 
 var arrivalList = createExpiringList(time.Second * arrivalWindow)
-var arrivalChannel = make(chan *scheduledRequest, 10)
+var arrivalChannel = make(chan *scheduledRequest, 50)
 
-func Decide(r *scheduledRequest) int {
+func Decide(r *scheduledRequest) (int, string) {
 	name := r.Fun.Name
 
 	arrivalChannel <- r
 
 	fInfo, prs := m[name]
 
+	//HIGH PERFORMANCE?
+	/*
+		if r.RequestQoS.Class == function.HIGH_PERFORMANCE {
+			return EXEC_CLOUD_REQUEST
+		}
+	*/
+
+	log.Printf("Prob LOCAL time greater than CLOUD is: %f\n",
+		normalCumulativeDistribution(
+			0,
+			fInfo.meanDuration[LOCAL]-(fInfo.meanDuration[CLOUD]+getRTT()),
+			fInfo.varianceDuration[LOCAL]+fInfo.varianceDuration[CLOUD]))
+	log.Printf("Utilizations:\n\tMem: %f\n\tCPU:%f\n",
+		float64(node.Resources.AvailableMemMB)/float64(node.Resources.MaxMemMB),
+		node.Resources.AvailableCPUs/node.Resources.MaxCPUs)
+	log.Printf("Warm servers in cloud %d\n", getWarmContainersInCloud(r))
+
 	//If there isn't enough data execute locally
 	if !prs {
-		return EXEC_LOCAL_REQUEST
+		return EXEC_LOCAL_REQUEST, ""
 	}
+
+	//Return the URL as the output, maybe support multiple clouds
+	url, edgeRtt := getEdgeNodeOffloadingRtt(r)
+
+	log.Printf("Searching for edge offloading %f - %s\n", edgeRtt, url)
 
 	//If the QoS is too stringent to offload try to execute in local node TODO Is it correct?
 	if r.RequestQoS.MaxRespT != -1 && r.RequestQoS.MaxRespT < getRTT() {
 		r.CanDoOffloading = false
-		return EXEC_LOCAL_REQUEST
+		return EXEC_LOCAL_REQUEST, ""
 	}
 
 	_, isWarm := node.WarmStatus()[name]
 
-	//If there aren't enough resources for cold start execute in the cloud
+	//If there aren't enough resources for cold start offload
 	//TODO sync this operation?
 	if r.CanDoOffloading && !isWarm && node.Resources.AvailableCPUs < r.Fun.CPUDemand &&
 		node.Resources.AvailableMemMB < r.Fun.MemoryMB {
-		return EXEC_CLOUD_REQUEST
+		if url == "" ||
+			fInfo.meanDuration[NEIGHBOUR]+edgeRtt > fInfo.meanDuration[CLOUD]+getRTT()+getInitTime(name, CLOUD) {
+			return EXEC_CLOUD_REQUEST, ""
+		} else {
+			return EXEC_NEIGHBOUR_REQUEST, url
+		}
+	}
+
+	//If there are warm containers in the cloud might be advantageous to offload
+	if r.CanDoOffloading && !isWarm && getRTT() < getInitTime(name, LOCAL) {
+		return EXEC_CLOUD_REQUEST, ""
 	}
 
 	var coldStartTime float64
@@ -88,10 +123,18 @@ func Decide(r *scheduledRequest) int {
 	if r.CanDoOffloading &&
 		fInfo.meanDuration[LOCAL]+coldStartTime > fInfo.meanDuration[CLOUD]+getRTT()+getInitTime(name, CLOUD) &&
 		fInfo.missed[CLOUD] < fInfo.missed[LOCAL] {
-		return EXEC_CLOUD_REQUEST
+		return EXEC_CLOUD_REQUEST, ""
 	}
 
-	return EXEC_LOCAL_REQUEST
+	return EXEC_LOCAL_REQUEST, ""
+}
+
+// Probability (X LOCAL time, Y CLOUD time) P(X > Y) = P(X - Y > 0) = P(Z > 0)
+// mean = meanx - meany, var = varx + vary
+// X and Y are normally distributed?
+func normalCumulativeDistribution(x float64, mean float64, variance float64) float64 {
+	t := (x - mean) / (math.Sqrt(variance) * math.Sqrt2)
+	return 0.5 * (1 + math.Erf(t))
 }
 
 func InitDecisionEngine() {
@@ -104,7 +147,8 @@ func listHandler() {
 	var r *scheduledRequest
 	for {
 		r = <-arrivalChannel
-		arrivalList.Add(r.Fun.Name, r.Arrival)
+		//r.Arrival Or time.now?
+		arrivalList.Add(r.Fun.Name, time.Now())
 	}
 }
 
@@ -118,12 +162,14 @@ func janitor() {
 
 func ShowData() {
 	for {
+		log.Println("---------------------REPORT---------------------")
 		log.Println(m)
 		log.Println(node.WarmStatus())
 		log.Printf("Offload latency %f\n", getRTT())
 		log.Printf("Init latency %f\n", getInitTime("sleep1", LOCAL))
 		log.Println(arrivalList.GetList())
-		log.Printf("Available CPU: %f Mem: %d MB", node.Resources.AvailableCPUs, node.Resources.AvailableMemMB)
+		log.Println(node.Resources.String())
+		//log.Println(registration.Reg.CloudServersMap)
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -142,6 +188,11 @@ func getInitTime(name string, offload int) float64 {
 	sum := 0.0
 	x := initPoints
 
+	_, prs := m[name]
+	if !prs {
+		return -1
+	}
+
 	//Rolling average not complete
 	if m[name].count[offload] < initPoints {
 		x = m[name].count[offload]
@@ -155,7 +206,7 @@ func getInitTime(name string, offload int) float64 {
 }
 
 // Completed TODO sync or single thread posting in a channel?
-func Completed(r *function.Request, offloaded bool) {
+func Completed(r *function.Request, offloaded int) {
 	go updateData(r, offloaded)
 }
 
@@ -164,22 +215,61 @@ func Delete(name string) {
 	delete(m, name)
 }
 
-func updateData(r *function.Request, offloaded bool) {
-	name := r.Fun.Name
+// TODO Use reqID to get missing informations?
+func UpdateDataAsync(resp function.Response, reqId string) {
 	var off int
 
-	if offloaded {
-		off = CLOUD
-	} else {
+	//TODO not really correct as offloading to neighbour is not considered
+	if resp.OffloadLatency == 0 {
 		off = LOCAL
+	} else {
+		off = CLOUD
 	}
 
-	if offloaded {
-		rtt[rttIndex] = r.ExecReport.OffloadLatency
+	name := reqId[:strings.LastIndex(reqId, "-")]
+
+	mut.Lock()
+
+	if off == CLOUD {
+		rtt[rttIndex] = resp.OffloadLatency
 		rttIndex = (rttIndex + 1) % rttPoints
 	}
 
+	fInfo, prs := m[name]
+
+	if !prs {
+		fInfo = functionInfo{name: name}
+	}
+
+	if !resp.IsWarmStart {
+		fInfo.initTime[off][fInfo.initIndex[off]] = resp.InitTime
+		fInfo.initIndex[off] = (fInfo.initIndex[off] + 1) % initPoints
+	}
+
+	fInfo.count[off] = fInfo.count[off] + 1
+
+	//Welford mean and variance
+	diff := resp.Duration - fInfo.meanDuration[off]
+	fInfo.meanDuration[off] = fInfo.meanDuration[off] +
+		(1/float64(fInfo.count[off]))*(diff)
+	diff2 := resp.Duration - fInfo.meanDuration[off]
+
+	fInfo.varianceDuration[off] = (diff * diff2) / float64(fInfo.count[off])
+
+	m[name] = fInfo
+
+	mut.Unlock()
+}
+
+func updateData(r *function.Request, location int) {
+	name := r.Fun.Name
+
 	mut.Lock()
+
+	if location != LOCAL {
+		rtt[rttIndex] = r.ExecReport.OffloadLatency
+		rttIndex = (rttIndex + 1) % rttPoints
+	}
 
 	fInfo, prs := m[name]
 
@@ -188,24 +278,24 @@ func updateData(r *function.Request, offloaded bool) {
 	}
 
 	if !r.ExecReport.IsWarmStart {
-		fInfo.initTime[off][fInfo.initIndex[off]] = r.ExecReport.InitTime
-		fInfo.initIndex[off] = (fInfo.initIndex[off] + 1) % initPoints
+		fInfo.initTime[location][fInfo.initIndex[location]] = r.ExecReport.InitTime
+		fInfo.initIndex[location] = (fInfo.initIndex[location] + 1) % initPoints
 	}
 
-	fInfo.count[off] = fInfo.count[off] + 1
-	log.Printf("Completed %t-%d in %f deadline is %f\n", offloaded, off, r.ExecReport.Duration, r.RequestQoS.MaxRespT)
+	fInfo.count[location] = fInfo.count[location] + 1
+	log.Printf("Completed %d in %f deadline is %f\n", location, r.ExecReport.Duration, r.RequestQoS.MaxRespT)
 
-	//One-pass mean and variance
-	diff := r.ExecReport.Duration - fInfo.meanDuration[off]
-	fInfo.meanDuration[off] = fInfo.meanDuration[off] +
-		(1/float64(fInfo.count[off]))*(diff)
-	diff2 := r.ExecReport.Duration - fInfo.meanDuration[off]
+	//Welford mean and variance
+	diff := r.ExecReport.Duration - fInfo.meanDuration[location]
+	fInfo.meanDuration[location] = fInfo.meanDuration[location] +
+		(1/float64(fInfo.count[location]))*(diff)
+	diff2 := r.ExecReport.Duration - fInfo.meanDuration[location]
 
-	fInfo.varianceDuration[off] = (diff * diff2) / float64(fInfo.count[off])
+	fInfo.varianceDuration[location] = (diff * diff2) / float64(fInfo.count[location])
 
 	if r.RequestQoS.MaxRespT != -1 && r.ExecReport.ResponseTime > r.RequestQoS.MaxRespT {
 		log.Println("MISSED DEADLINE")
-		fInfo.missed[off]++
+		fInfo.missed[location]++
 	}
 
 	m[name] = fInfo

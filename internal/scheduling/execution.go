@@ -54,7 +54,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	r.ExecReport.InitTime += invocationWait.Seconds()
 
 	//TODO right place?
-	Completed(r.Request, false)
+	Completed(r.Request, LOCAL)
 	// notify scheduler
 	completions <- &completion{scheduledRequest: r, contID: contID}
 

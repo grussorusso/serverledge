@@ -1,7 +1,6 @@
 package scheduling
 
 import (
-	"log"
 	"time"
 )
 
@@ -73,8 +72,6 @@ func (e *ExpiringList) DeleteExpired(now time.Time) {
 			tmp = tmp[:p]
 		}
 	}
-
-	log.Printf("Index is: %d\n", index)
 
 	e.list = e.list[index:]
 }

@@ -160,8 +160,8 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.EdgePolicy{}
 	} else if policyConf == "custom1" {
 		return &scheduling.Custom1Policy{}
-	} else if policyConf == "customferra" {
-		return &scheduling.CustomFerraPolicy{}
+	} else if policyConf == "customCloudOffload" {
+		return &scheduling.CustomCloudOffloadPolicy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

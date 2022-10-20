@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"time"
 
@@ -36,7 +37,56 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	return ""
 }
 
-func Offload(r *function.Request, serverUrl string) error {
+func getWarmContainersInCloud(r *scheduledRequest) int {
+	cloudServersMap := registration.Reg.CloudServersMap
+
+	sum := 0
+	for _, v := range cloudServersMap {
+		sum += v.AvailableWarmContainers[r.Fun.Name]
+	}
+
+	return sum
+}
+
+func getEdgeNodeOffloadingRtt(r *scheduledRequest) (string, float64) {
+	nearbyServersMap := registration.Reg.NearbyServersMap
+	if nearbyServersMap == nil {
+		return "", -1
+	}
+	//first, search for warm container
+	min := math.MaxFloat64
+	key := ""
+
+	for k, v := range nearbyServersMap {
+		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
+			rtt := float64(registration.Reg.Client.DistanceTo(&v.Coordinates) / time.Millisecond)
+
+			if rtt < min {
+				min = rtt
+				key = k
+			}
+		}
+	}
+
+	//second, (nobody has warm container) search for available memory
+	for k, v := range nearbyServersMap {
+		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
+			rtt := float64(registration.Reg.Client.DistanceTo(&v.Coordinates) / time.Millisecond)
+
+			if rtt < min {
+				min = rtt
+				key = k
+			}
+		}
+	}
+
+	if key == "" {
+		return "", -1
+	}
+	return nearbyServersMap[key].Url, min / 1000
+}
+
+func Offload(r *function.Request, serverUrl string, act action) error {
 	// Prepare request
 	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
@@ -70,8 +120,13 @@ func Offload(r *function.Request, serverUrl string) error {
 	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
 	//TODO temp
-	log.Printf("Completed offloaded execution of %s took %f\n", r.Fun.Name, r.ExecReport.ResponseTime)
-	Completed(r, true)
+	log.Printf("Completed offloaded (%s) execution of %s took %f\n", serverUrl, r.Fun.Name, r.ExecReport.ResponseTime)
+
+	if act == EXEC_NEIGHBOUR {
+		Completed(r, NEIGHBOUR)
+	} else {
+		Completed(r, CLOUD)
+	}
 
 	return nil
 }
