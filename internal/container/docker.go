@@ -58,7 +58,12 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		Resources: container.Resources{Memory: opts.MemoryMB * 1048576}, // convert to bytes
 	}, nil, nil, "")
 
-	return resp.ID, err
+	id := resp.ID
+
+	r, err := cf.cli.ContainerInspect(cf.ctx, id)
+	log.Printf("Container %s has name %s", id, r.Name)
+
+	return id, err
 }
 
 func (cf *DockerFactory) CopyToContainer(contID ContainerID, content io.Reader, destPath string) error {
