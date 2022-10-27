@@ -15,9 +15,9 @@ func (p *CustomCloudOffloadPolicy) OnCompletion(r *scheduledRequest) {
 }
 
 func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
-	dec, url := Decide(r)
+	dec := Decide(r)
 
-	if dec == EXEC_LOCAL_REQUEST {
+	if dec == EXECUTE_REQUEST {
 		containerID, err := node.AcquireWarmContainer(r.Fun)
 		if err == nil {
 			execLocally(r, containerID, true)
@@ -28,16 +28,36 @@ func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
 		} else {
 			dropRequest(r)
 		}
-	} else if dec == EXEC_CLOUD_REQUEST {
+	} else if dec == OFFLOAD_REQUEST {
 		handleCloudOffload(r)
-	} else if dec == EXEC_NEIGHBOUR_REQUEST {
-		if url != "" {
-			handleEdgeOffload(r, url)
-			return
-		}
-
-		dropRequest(r)
 	} else if dec == DROP_REQUEST {
 		dropRequest(r)
 	}
+	/*
+		dec, url := Decide(r)
+
+		if dec == EXEC_LOCAL_REQUEST {
+			containerID, err := node.AcquireWarmContainer(r.Fun)
+			if err == nil {
+				execLocally(r, containerID, true)
+			} else if handleColdStart(r) {
+				return
+			} else if r.CanDoOffloading {
+				handleCloudOffload(r)
+			} else {
+				dropRequest(r)
+			}
+		} else if dec == EXEC_CLOUD_REQUEST {
+			handleCloudOffload(r)
+		} else if dec == EXEC_NEIGHBOUR_REQUEST {
+			if url != "" {
+				handleEdgeOffload(r, url)
+				return
+			}
+
+			dropRequest(r)
+		} else if dec == DROP_REQUEST {
+			dropRequest(r)
+		}
+	*/
 }

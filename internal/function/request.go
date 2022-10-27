@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//Request represents a single function invocation.
+// Request represents a single function invocation.
 type Request struct {
 	ReqId      string
 	Fun        *Function
@@ -18,8 +18,9 @@ type Request struct {
 }
 
 type RequestQoS struct {
-	Class    ServiceClass
-	MaxRespT float64
+	Class        ServiceClass
+	ClassService QoSClass
+	MaxRespT     float64
 }
 
 type ExecutionReport struct {
@@ -44,6 +45,37 @@ type AsyncResponse struct {
 
 func (r *Request) String() string {
 	return fmt.Sprintf("Rq-%s", r.Fun.Name, r.ReqId)
+}
+
+/*
+type ServiceClass struct {
+	name                string
+	utility             float64
+	maximumResponseTime float64
+	completedPercentage float64
+}
+*/
+
+type QoSClass struct {
+	Name                string
+	Utility             float64
+	MaximumResponseTime float64 `default:"-1"`
+	CompletedPercentage float64 `default:"0"`
+}
+
+func (r Request) GetMaxRT() float64 {
+	//Permit lower response time?
+
+	//
+	if r.RequestQoS.ClassService.MaximumResponseTime < 0 {
+		return r.RequestQoS.MaxRespT
+	}
+
+	if r.RequestQoS.MaxRespT > r.RequestQoS.ClassService.MaximumResponseTime {
+		return r.RequestQoS.MaxRespT
+	} else {
+		return r.RequestQoS.ClassService.MaximumResponseTime
+	}
 }
 
 type ServiceClass int64

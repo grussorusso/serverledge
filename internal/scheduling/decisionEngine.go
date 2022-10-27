@@ -4,286 +4,221 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
-	"math"
-	"strings"
-	"sync"
+	"math/rand"
 	"time"
 )
 
 const (
-	DROP_REQUEST           = 0
-	EXEC_LOCAL_REQUEST     = 1
-	EXEC_CLOUD_REQUEST     = 2
-	EXEC_NEIGHBOUR_REQUEST = 3
+	LOCAL     = 0
+	OFFLOADED = 1
 )
 
 const (
-	LOCAL     = 0
-	CLOUD     = 1
-	NEIGHBOUR = 2
+	DROP_REQUEST    = 0
+	EXECUTE_REQUEST = 1
+	OFFLOAD_REQUEST = 2
 )
 
-const rttPoints = 10
-const initPoints = 10
+var startingExecuteProb = 0.5
+var startingOffloadProb = 0.5
+var evaluationInterval = 5
 
+var rGen *rand.Rand
+
+// TODO consider classes
 type functionInfo struct {
 	name string
 	//Number of function requests
-	count [3]int
+	count [2]int
 	//Mean duration time
-	meanDuration [3]float64
+	meanDuration [2]float64
 	//Variance of the duration time
-	varianceDuration [3]float64
-	//Number of requests that missed the deadline TODO percentage?
-	missed [3]int
-	//Rolling average of init times when cold start
-	initTime  [3][initPoints]float64
-	initIndex [3]int
+	varianceDuration [2]float64
+	//Number of requests that missed the deadline
+	missed int
+	//Offload latency
+	offloadTime float64
+	//Average of init times when cold start
+	initTime float64
+	//TODO consider classes
+	probExecute float64
+	probOffload float64
+	probDrop    float64
+	//
+	arrivals        float64
+	invokingClasses []function.QoSClass
 }
 
-var mut sync.Mutex
+type completedRequest struct {
+	*function.Request
+	location int
+}
 
-var m = make(map[string]functionInfo)
+type arrivalRequest struct {
+	function string
+	class    string
+}
 
-var rtt [rttPoints]float64
-var rttIndex = 0
+var m = make(map[string]map[string]*functionInfo)
 
-const arrivalWindow = 5
+// TODO edit buffer?
+var arrivalChannel = make(chan arrivalRequest, 10)
 
-var arrivalList = createExpiringList(time.Second * arrivalWindow)
-var arrivalChannel = make(chan *scheduledRequest, 50)
+var requestChannel = make(chan completedRequest, 10)
 
-func Decide(r *scheduledRequest) (int, string) {
+func Decide(r *scheduledRequest) int {
 	name := r.Fun.Name
+	class := r.ClassService
 
-	arrivalChannel <- r
+	prob := rGen.Float64()
 
-	fInfo, prs := m[name]
+	log.Printf("Request with class %s#%f#%f#%f\n", class.Name,
+		class.Utility, r.GetMaxRT(), class.CompletedPercentage)
 
-	//HIGH PERFORMANCE?
-	/*
-		if r.RequestQoS.Class == function.HIGH_PERFORMANCE {
-			return EXEC_CLOUD_REQUEST
-		}
-	*/
+	var pe float64
+	var po float64
+	var pd float64
 
-	log.Printf("Prob LOCAL time greater than CLOUD is: %f\n",
-		normalCumulativeDistribution(
-			0,
-			fInfo.meanDuration[LOCAL]-(fInfo.meanDuration[CLOUD]+getRTT()),
-			fInfo.varianceDuration[LOCAL]+fInfo.varianceDuration[CLOUD]))
-	log.Printf("Utilizations:\n\tMem: %f\n\tCPU:%f\n",
-		float64(node.Resources.AvailableMemMB)/float64(node.Resources.MaxMemMB),
-		node.Resources.AvailableCPUs/node.Resources.MaxCPUs)
-	log.Printf("Warm servers in cloud %d\n", getWarmContainersInCloud(r))
+	arrivalChannel <- arrivalRequest{function: name, class: class.Name}
 
-	//If there isn't enough data execute locally
+	fInfo, prs := m[name][class.Name]
 	if !prs {
-		return EXEC_LOCAL_REQUEST, ""
-	}
-
-	//Return the URL as the output, maybe support multiple clouds
-	url, edgeRtt := getEdgeNodeOffloadingRtt(r)
-
-	log.Printf("Searching for edge offloading %f - %s\n", edgeRtt, url)
-
-	//If the QoS is too stringent to offload try to execute in local node TODO Is it correct?
-	if r.RequestQoS.MaxRespT != -1 && r.RequestQoS.MaxRespT < getRTT() {
-		r.CanDoOffloading = false
-		return EXEC_LOCAL_REQUEST, ""
-	}
-
-	_, isWarm := node.WarmStatus()[name]
-
-	//If there aren't enough resources for cold start offload
-	//TODO sync this operation?
-	if r.CanDoOffloading && !isWarm && node.Resources.AvailableCPUs < r.Fun.CPUDemand &&
-		node.Resources.AvailableMemMB < r.Fun.MemoryMB {
-		if url == "" ||
-			fInfo.meanDuration[NEIGHBOUR]+edgeRtt > fInfo.meanDuration[CLOUD]+getRTT()+getInitTime(name, CLOUD) {
-			return EXEC_CLOUD_REQUEST, ""
-		} else {
-			return EXEC_NEIGHBOUR_REQUEST, url
-		}
-	}
-
-	//If there are warm containers in the cloud might be advantageous to offload
-	if r.CanDoOffloading && !isWarm && getRTT() < getInitTime(name, LOCAL) {
-		return EXEC_CLOUD_REQUEST, ""
-	}
-
-	var coldStartTime float64
-	if isWarm {
-		coldStartTime = 0
+		pe = startingExecuteProb
+		po = startingOffloadProb
+		pd = 1 - (pe + po)
 	} else {
-		coldStartTime = getInitTime(name, LOCAL)
+		pe = fInfo.probExecute
+		po = fInfo.probOffload
+		pd = fInfo.probDrop
 	}
 
-	//If the average duration is shorter in the cloud execute in the cloud
-	if r.CanDoOffloading &&
-		fInfo.meanDuration[LOCAL]+coldStartTime > fInfo.meanDuration[CLOUD]+getRTT()+getInitTime(name, CLOUD) &&
-		fInfo.missed[CLOUD] < fInfo.missed[LOCAL] {
-		return EXEC_CLOUD_REQUEST, ""
+	//warmNumber, isWarm := node.WarmStatus()[name]
+	if !r.CanDoOffloading {
+		pd = pd / (pd + pe)
+		pe = pe / (pd + pe)
+		po = 0
+	} else if node.Resources.AvailableCPUs < r.Fun.CPUDemand &&
+		node.Resources.AvailableMemMB < r.Fun.MemoryMB {
+		pd = pd / (pd + po)
+		po = po / (pd + po)
+		pe = 0
 	}
 
-	return EXEC_LOCAL_REQUEST, ""
-}
-
-// Probability (X LOCAL time, Y CLOUD time) P(X > Y) = P(X - Y > 0) = P(Z > 0)
-// mean = meanx - meany, var = varx + vary
-// X and Y are normally distributed?
-func normalCumulativeDistribution(x float64, mean float64, variance float64) float64 {
-	t := (x - mean) / (math.Sqrt(variance) * math.Sqrt2)
-	return 0.5 * (1 + math.Erf(t))
+	if prob <= pe {
+		log.Println("Execute LOCAL")
+		return EXECUTE_REQUEST
+	} else if prob <= pe+po {
+		log.Println("Execute OFFLOAD")
+		return OFFLOAD_REQUEST
+	} else {
+		log.Println("Execute DROP")
+		return DROP_REQUEST
+	}
 }
 
 func InitDecisionEngine() {
+	s := rand.NewSource(time.Now().UnixNano())
+	rGen = rand.New(s)
+
 	go ShowData()
-	go janitor()
-	go listHandler()
+	go handler()
 }
 
-func listHandler() {
-	var r *scheduledRequest
+func handler() {
+	evaluationTicker :=
+		time.NewTicker(time.Duration(evaluationInterval) * time.Second)
+
 	for {
-		r = <-arrivalChannel
-		//r.Arrival Or time.now?
-		arrivalList.Add(r.Fun.Name, time.Now())
+		select {
+		case _ = <-evaluationTicker.C:
+			s := rand.NewSource(time.Now().UnixNano())
+			rGen = rand.New(s)
+			log.Println("Evaluating")
+			for f, functionMap := range m {
+				for c, finfo := range functionMap {
+					log.Printf("Arrival of %s-%s: %f\n", f, c, finfo.arrivals/float64(evaluationInterval))
+				}
+			}
+
+			updateProbabilities()
+
+			//Reset Map
+			for _, functionMap := range m {
+				for _, finfo := range functionMap {
+					finfo.arrivals = 0
+				}
+			}
+		case r := <-requestChannel:
+			updateData(r)
+		case arr := <-arrivalChannel:
+			fMap, prs := m[arr.function]
+			if !prs {
+				m[arr.function] = make(map[string]*functionInfo)
+			}
+
+			fInfo, prs := fMap[arr.class]
+			if !prs {
+				fInfo = &functionInfo{name: arr.function,
+					probExecute: startingExecuteProb,
+					probOffload: startingOffloadProb,
+					probDrop:    1 - (startingExecuteProb + startingOffloadProb),
+					arrivals:    0}
+			}
+
+			fInfo.arrivals++
+			m[arr.function][arr.class] = fInfo
+		}
 	}
 }
 
-func janitor() {
-	for {
-		time.Sleep(5 * time.Second)
+func updateProbabilities() {
 
-		arrivalList.DeleteExpired(time.Now())
-	}
 }
 
 func ShowData() {
 	for {
-		log.Println("---------------------REPORT---------------------")
-		log.Println(m)
-		log.Println(node.WarmStatus())
-		log.Printf("Offload latency %f\n", getRTT())
-		log.Printf("Init latency %f\n", getInitTime("sleep1", LOCAL))
-		log.Println(arrivalList.GetList())
-		log.Println(node.Resources.String())
-		//log.Println(registration.Reg.CloudServersMap)
 		time.Sleep(5 * time.Second)
+		for _, functionMap := range m {
+			for _, finfo := range functionMap {
+				log.Println(finfo)
+			}
+		}
 	}
 }
 
-func getRTT() float64 {
-	sum := 0.0
-
-	for i := 0; i < rttPoints; i++ {
-		sum += rtt[i]
-	}
-
-	return sum / rttPoints
-}
-
-func getInitTime(name string, offload int) float64 {
-	sum := 0.0
-	x := initPoints
-
-	_, prs := m[name]
-	if !prs {
-		return -1
-	}
-
-	//Rolling average not complete
-	if m[name].count[offload] < initPoints {
-		x = m[name].count[offload]
-	}
-
-	for i := 0; i < x; i++ {
-		sum += m[name].initTime[offload][i]
-	}
-
-	return sum / float64(x)
-}
-
-// Completed TODO sync or single thread posting in a channel?
 func Completed(r *function.Request, offloaded int) {
-	go updateData(r, offloaded)
+	requestChannel <- completedRequest{
+		Request:  r,
+		location: offloaded,
+	}
 }
 
-// Delete TODO modify API to call this function when a function is deleted
+// Delete TODO handle delete, delete from other nodes?
 func Delete(name string) {
 	delete(m, name)
 }
 
-// TODO Use reqID to get missing informations?
+// UpdateDataAsync TODO handle async interaction
 func UpdateDataAsync(resp function.Response, reqId string) {
-	var off int
 
-	//TODO not really correct as offloading to neighbour is not considered
-	if resp.OffloadLatency == 0 {
-		off = LOCAL
-	} else {
-		off = CLOUD
-	}
-
-	name := reqId[:strings.LastIndex(reqId, "-")]
-
-	mut.Lock()
-
-	if off == CLOUD {
-		rtt[rttIndex] = resp.OffloadLatency
-		rttIndex = (rttIndex + 1) % rttPoints
-	}
-
-	fInfo, prs := m[name]
-
-	if !prs {
-		fInfo = functionInfo{name: name}
-	}
-
-	if !resp.IsWarmStart {
-		fInfo.initTime[off][fInfo.initIndex[off]] = resp.InitTime
-		fInfo.initIndex[off] = (fInfo.initIndex[off] + 1) % initPoints
-	}
-
-	fInfo.count[off] = fInfo.count[off] + 1
-
-	//Welford mean and variance
-	diff := resp.Duration - fInfo.meanDuration[off]
-	fInfo.meanDuration[off] = fInfo.meanDuration[off] +
-		(1/float64(fInfo.count[off]))*(diff)
-	diff2 := resp.Duration - fInfo.meanDuration[off]
-
-	fInfo.varianceDuration[off] = (diff * diff2) / float64(fInfo.count[off])
-
-	m[name] = fInfo
-
-	mut.Unlock()
 }
 
-func updateData(r *function.Request, location int) {
+func updateData(r completedRequest) {
 	name := r.Fun.Name
+	class := r.ClassService.Name
 
-	mut.Lock()
+	location := r.location
 
-	if location != LOCAL {
-		rtt[rttIndex] = r.ExecReport.OffloadLatency
-		rttIndex = (rttIndex + 1) % rttPoints
-	}
-
-	fInfo, prs := m[name]
-
+	fInfo, prs := m[name][class]
 	if !prs {
-		fInfo = functionInfo{name: name}
-	}
-
-	if !r.ExecReport.IsWarmStart {
-		fInfo.initTime[location][fInfo.initIndex[location]] = r.ExecReport.InitTime
-		fInfo.initIndex[location] = (fInfo.initIndex[location] + 1) % initPoints
+		log.Println("Not exist")
+		fInfo = &functionInfo{name: name,
+			probExecute: startingExecuteProb,
+			probOffload: startingOffloadProb,
+			probDrop:    1 - (startingExecuteProb + startingOffloadProb)}
 	}
 
 	fInfo.count[location] = fInfo.count[location] + 1
-	log.Printf("Completed %d in %f deadline is %f\n", location, r.ExecReport.Duration, r.RequestQoS.MaxRespT)
 
 	//Welford mean and variance
 	diff := r.ExecReport.Duration - fInfo.meanDuration[location]
@@ -293,12 +228,19 @@ func updateData(r *function.Request, location int) {
 
 	fInfo.varianceDuration[location] = (diff * diff2) / float64(fInfo.count[location])
 
-	if r.RequestQoS.MaxRespT != -1 && r.ExecReport.ResponseTime > r.RequestQoS.MaxRespT {
-		log.Println("MISSED DEADLINE")
-		fInfo.missed[location]++
+	if !r.ExecReport.IsWarmStart {
+		diff := r.ExecReport.InitTime - fInfo.initTime
+		fInfo.initTime = fInfo.initTime +
+			(1/float64(fInfo.count[location]))*(diff)
 	}
 
-	m[name] = fInfo
+	if r.ExecReport.OffloadLatency != 0 {
+		diff := r.ExecReport.OffloadLatency - fInfo.offloadTime
+		fInfo.offloadTime = fInfo.offloadTime +
+			(1/float64(fInfo.count[location]))*(diff)
+	}
 
-	mut.Unlock()
+	if r.ExecReport.ResponseTime > r.GetMaxRT() {
+		fInfo.missed++
+	}
 }

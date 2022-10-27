@@ -86,9 +86,9 @@ func getEdgeNodeOffloadingRtt(r *scheduledRequest) (string, float64) {
 	return nearbyServersMap[key].Url, min / 1000
 }
 
-func Offload(r *function.Request, serverUrl string, act action) error {
+func Offload(r *function.Request, serverUrl string) error {
 	// Prepare request
-	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
+	request := client.InvocationRequest{Params: r.Params, QoSClass: r.RequestQoS.ClassService.Name, QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)
@@ -122,19 +122,15 @@ func Offload(r *function.Request, serverUrl string, act action) error {
 	//TODO temp
 	log.Printf("Completed offloaded (%s) execution of %s took %f\n", serverUrl, r.Fun.Name, r.ExecReport.ResponseTime)
 
-	if act == EXEC_NEIGHBOUR {
-		Completed(r, NEIGHBOUR)
-	} else {
-		Completed(r, CLOUD)
-	}
+	Completed(r, OFFLOADED)
 
 	return nil
 }
 
 func OffloadAsync(r *function.Request, serverUrl string) error {
 	// Prepare request
+	//QoSClass:    int64(r.Class),
 	request := client.InvocationRequest{Params: r.Params,
-		QoSClass:    int64(r.Class),
 		QoSMaxRespT: r.MaxRespT,
 		Async:       true}
 	invocationBody, err := json.Marshal(request)

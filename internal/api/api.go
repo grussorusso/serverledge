@@ -59,7 +59,15 @@ func InvokeFunction(c echo.Context) error {
 	r.Fun = fun
 	r.Params = invocationRequest.Params
 	r.Arrival = time.Now()
-	r.Class = function.ServiceClass(invocationRequest.QoSClass)
+
+	//r.Class = function.ServiceClass(invocationRequest.QoSClass)
+	class, prs := scheduling.Classes[invocationRequest.QoSClass]
+	if !prs {
+		log.Printf("Request %s class not found\n", invocationRequest.QoSClass)
+		class = scheduling.DefaultClass
+	}
+	r.ClassService = class
+
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	r.Async = invocationRequest.Async

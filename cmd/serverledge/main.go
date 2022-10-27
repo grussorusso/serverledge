@@ -95,10 +95,16 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 
 func main() {
 	configFileName := ""
+
 	if len(os.Args) > 1 {
 		configFileName = os.Args[1]
 	}
 	config.ReadConfiguration(configFileName)
+
+	configClassesFileName := ""
+	if len(os.Args) > 2 {
+		configClassesFileName = os.Args[2]
+	}
 
 	//setting up cache parameters
 	cacheSetup()
@@ -134,6 +140,7 @@ func main() {
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler(registry, e)
 
+	scheduling.ReadClassesConfiguration(configClassesFileName)
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
