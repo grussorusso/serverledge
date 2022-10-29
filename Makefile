@@ -3,7 +3,7 @@ BIN=bin
 all: serverledge executor serverledge-cli lb
 
 serverledge:
-	CGO_ENABLED=0 go build -o $(BIN)/$@ cmd/$@/main.go
+	go build -o $(BIN)/$@ cmd/$@/main.go
 
 lb:
 	CGO_ENABLED=0 go build -o $(BIN)/$@ cmd/$@/main.go

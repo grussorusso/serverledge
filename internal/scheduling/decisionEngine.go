@@ -21,7 +21,9 @@ const (
 
 var startingExecuteProb = 0.5
 var startingOffloadProb = 0.5
-var evaluationInterval = 5
+
+// TODO add to config
+var evaluationInterval = 10
 
 var rGen *rand.Rand
 
@@ -45,8 +47,25 @@ type functionInfo struct {
 	probOffload float64
 	probDrop    float64
 	//
-	arrivals        float64
-	invokingClasses []function.QoSClass
+	probCold float64
+	//
+	arrivals     float64
+	arrivalCount float64
+	memory       int64
+	cpu          float64
+}
+
+type classFunctionInfo struct {
+	*functionInfo
+	//
+	probExecute float64
+	probOffload float64
+	probDrop    float64
+	//
+	probCold float64
+	//
+	arrivals     float64
+	arrivalCount float64
 }
 
 type completedRequest struct {
@@ -55,11 +74,12 @@ type completedRequest struct {
 }
 
 type arrivalRequest struct {
-	function string
-	class    string
+	*scheduledRequest
+	class string
 }
 
-var m = make(map[string]map[string]*functionInfo)
+var m = make(map[string]map[string]*classFunctionInfo)
+var functionMap = make(map[string]functionInfo)
 
 // TODO edit buffer?
 var arrivalChannel = make(chan arrivalRequest, 10)
@@ -79,18 +99,20 @@ func Decide(r *scheduledRequest) int {
 	var po float64
 	var pd float64
 
-	arrivalChannel <- arrivalRequest{function: name, class: class.Name}
+	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	fInfo, prs := m[name][class.Name]
+	cFInfo, prs := m[name][class.Name]
 	if !prs {
 		pe = startingExecuteProb
 		po = startingOffloadProb
 		pd = 1 - (pe + po)
 	} else {
-		pe = fInfo.probExecute
-		po = fInfo.probOffload
-		pd = fInfo.probDrop
+		pe = cFInfo.probExecute
+		po = cFInfo.probOffload
+		pd = cFInfo.probDrop
 	}
+
+	log.Println("Probabilities are", pe, po, pd)
 
 	//warmNumber, isWarm := node.WarmStatus()[name]
 	if !r.CanDoOffloading {
@@ -142,37 +164,62 @@ func handler() {
 
 			updateProbabilities()
 
+			//TODO uncomment this
 			//Reset Map
+
 			for _, functionMap := range m {
 				for _, finfo := range functionMap {
-					finfo.arrivals = 0
+					finfo.arrivalCount = 0
 				}
 			}
+
 		case r := <-requestChannel:
 			updateData(r)
 		case arr := <-arrivalChannel:
-			fMap, prs := m[arr.function]
+			name := arr.Fun.Name
+
+			fInfo, prs := functionMap[name]
 			if !prs {
-				m[arr.function] = make(map[string]*functionInfo)
+				fInfo = functionInfo{
+					name:     name,
+					memory:   arr.Fun.MemoryMB,
+					cpu:      arr.Fun.CPUDemand,
+					probCold: 1}
+
+				functionMap[name] = fInfo
 			}
 
-			fInfo, prs := fMap[arr.class]
+			log.Println("CPIIIU: ", arr.Fun.CPUDemand)
+
+			fMap, prs := m[name]
 			if !prs {
-				fInfo = &functionInfo{name: arr.function,
-					probExecute: startingExecuteProb,
-					probOffload: startingOffloadProb,
-					probDrop:    1 - (startingExecuteProb + startingOffloadProb),
-					arrivals:    0}
+				m[name] = make(map[string]*classFunctionInfo)
 			}
 
-			fInfo.arrivals++
-			m[arr.function][arr.class] = fInfo
+			cFInfo, prs := fMap[arr.class]
+			if !prs {
+				cFInfo = &classFunctionInfo{functionInfo: &fInfo,
+					probExecute:  startingExecuteProb,
+					probOffload:  startingOffloadProb,
+					probDrop:     1 - (startingExecuteProb + startingOffloadProb),
+					arrivals:     0,
+					arrivalCount: 0}
+			}
+
+			cFInfo.arrivalCount++
+			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
+			m[name][arr.class] = cFInfo
 		}
 	}
 }
 
 func updateProbabilities() {
-
+	grr, prs := m["sleep1"]["default"]
+	log.Println(m)
+	if prs {
+		log.Println(grr.meanDuration)
+	}
+	SolveProbabilities(m)
 }
 
 func ShowData() {
@@ -211,11 +258,8 @@ func updateData(r completedRequest) {
 
 	fInfo, prs := m[name][class]
 	if !prs {
-		log.Println("Not exist")
-		fInfo = &functionInfo{name: name,
-			probExecute: startingExecuteProb,
-			probOffload: startingOffloadProb,
-			probDrop:    1 - (startingExecuteProb + startingOffloadProb)}
+		log.Fatal("MISSING FUNCTION INFO")
+		return
 	}
 
 	fInfo.count[location] = fInfo.count[location] + 1
