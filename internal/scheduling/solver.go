@@ -118,7 +118,6 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 				0,
 				1}...)
 
-		log.Println("CPU: ", cFInfo.cpu)
 		memoryConstraintEntries = append(memoryConstraintEntries, []golp.Entry{{getShareIndex(i), float64(cFInfo.memory)}}...)
 
 		//TODO functions can have 0 CPU demand?

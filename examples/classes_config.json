@@ -5,6 +5,7 @@
   },
   {
     "name": "class1",
-    "utility": 1
+    "utility": 1,
+    "MaximumResponseTime": 20
   }
 ]

@@ -24,6 +24,8 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
+	Name           string
+	Class          string
 	Result         string
 	ResponseTime   float64
 	IsWarmStart    bool

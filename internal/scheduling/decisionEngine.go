@@ -214,23 +214,20 @@ func handler() {
 }
 
 func updateProbabilities() {
-	grr, prs := m["sleep1"]["default"]
-	log.Println(m)
-	if prs {
-		log.Println(grr.meanDuration)
-	}
 	SolveProbabilities(m)
 }
 
 func ShowData() {
-	for {
-		time.Sleep(5 * time.Second)
-		for _, functionMap := range m {
-			for _, finfo := range functionMap {
-				log.Println(finfo)
+	/*
+		for {
+			time.Sleep(5 * time.Second)
+			for _, functionMap := range m {
+				for _, finfo := range functionMap {
+					log.Println(finfo)
+				}
 			}
 		}
-	}
+	*/
 }
 
 func Completed(r *function.Request, offloaded int) {
@@ -245,9 +242,51 @@ func Delete(name string) {
 	delete(m, name)
 }
 
-// UpdateDataAsync TODO handle async interaction
-func UpdateDataAsync(resp function.Response, reqId string) {
+// UpdateDataAsync
+func UpdateDataAsync(r function.Response) {
+	name := r.Name
+	class := r.Class
 
+	var location int
+
+	if r.OffloadLatency != 0 {
+		location = LOCAL
+	} else {
+		location = OFFLOADED
+	}
+
+	fInfo, prs := m[name][class]
+	if !prs {
+		//log.Fatal("MISSING FUNCTION INFO")
+		return
+	}
+
+	fInfo.count[location] = fInfo.count[location] + 1
+
+	//Welford mean and variance
+	diff := r.Duration - fInfo.meanDuration[location]
+	fInfo.meanDuration[location] = fInfo.meanDuration[location] +
+		(1/float64(fInfo.count[location]))*(diff)
+	diff2 := r.Duration - fInfo.meanDuration[location]
+
+	fInfo.varianceDuration[location] = (diff * diff2) / float64(fInfo.count[location])
+
+	if !r.IsWarmStart {
+		diff := r.InitTime - fInfo.initTime
+		fInfo.initTime = fInfo.initTime +
+			(1/float64(fInfo.count[location]))*(diff)
+	}
+
+	if r.OffloadLatency != 0 {
+		diff := r.OffloadLatency - fInfo.offloadTime
+		fInfo.offloadTime = fInfo.offloadTime +
+			(1/float64(fInfo.count[location]))*(diff)
+	}
+
+	//TODO maybe remove
+	if r.ResponseTime > Classes[class].MaximumResponseTime {
+		fInfo.missed++
+	}
 }
 
 func updateData(r completedRequest) {

@@ -61,10 +61,12 @@ func InvokeFunction(c echo.Context) error {
 	r.Arrival = time.Now()
 
 	//r.Class = function.ServiceClass(invocationRequest.QoSClass)
-	class, prs := scheduling.Classes[invocationRequest.QoSClass]
+	className := invocationRequest.QoSClass
+	class, prs := scheduling.Classes[className]
 	if !prs {
 		log.Printf("Request %s class not found\n", invocationRequest.QoSClass)
 		class = scheduling.DefaultClass
+		className = "default"
 	}
 	r.ClassService = class
 
@@ -73,6 +75,8 @@ func InvokeFunction(c echo.Context) error {
 	r.Async = invocationRequest.Async
 	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
+	r.ExecReport.Name = funcName
+	r.ExecReport.Class = className
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0
 
@@ -120,7 +124,7 @@ func PollAsyncResult(c echo.Context) error {
 		var resp function.Response
 		err := json.Unmarshal(payload, &resp)
 		if err == nil {
-			scheduling.UpdateDataAsync(resp, reqId)
+			scheduling.UpdateDataAsync(resp)
 		} else {
 			log.Println(err)
 		}

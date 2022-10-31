@@ -3,7 +3,7 @@ metrics:
 container:
   pool:
     cpus: 4
-    memory: 2048
+    memory: 10000
 api:
   port: 1325
 cloud: true
