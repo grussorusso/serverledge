@@ -27,6 +27,7 @@ var evaluationInterval = 10
 
 var rGen *rand.Rand
 
+/*
 // TODO consider classes
 type functionInfo struct {
 	name string
@@ -54,6 +55,7 @@ type functionInfo struct {
 	memory       int64
 	cpu          float64
 }
+*/
 
 type classFunctionInfo struct {
 	*functionInfo
@@ -68,6 +70,29 @@ type classFunctionInfo struct {
 	arrivalCount float64
 }
 
+type functionInfo struct {
+	name string
+	//Number of function requests
+	count [2]int
+	//Mean duration time
+	meanDuration [2]float64
+	//Variance of the duration time
+	varianceDuration [2]float64
+	//Number of requests that missed the deadline
+	missed int
+	//Offload latency
+	offloadTime float64
+	//Average of init times when cold start
+	initTime float64
+	//
+	memory int64
+	cpu    float64
+	//
+	probCold float64
+	//
+	invokingClasses map[string]*classFunctionInfo
+}
+
 type completedRequest struct {
 	*function.Request
 	location int
@@ -78,8 +103,9 @@ type arrivalRequest struct {
 	class string
 }
 
-var m = make(map[string]map[string]*classFunctionInfo)
-var functionMap = make(map[string]functionInfo)
+var m = make(map[string]*functionInfo)
+
+//var functionMap = make(map[string]functionInfo)
 
 // TODO edit buffer?
 var arrivalChannel = make(chan arrivalRequest, 10)
@@ -99,17 +125,26 @@ func Decide(r *scheduledRequest) int {
 	var po float64
 	var pd float64
 
+	var cFInfo *classFunctionInfo
+
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	cFInfo, prs := m[name][class.Name]
+	invClasses, prs := m[name]
 	if !prs {
 		pe = startingExecuteProb
 		po = startingOffloadProb
 		pd = 1 - (pe + po)
 	} else {
-		pe = cFInfo.probExecute
-		po = cFInfo.probOffload
-		pd = cFInfo.probDrop
+		cFInfo, prs = invClasses.invokingClasses[class.Name]
+		if !prs {
+			pe = startingExecuteProb
+			po = startingOffloadProb
+			pd = 1 - (pe + po)
+		} else {
+			pe = cFInfo.probExecute
+			po = cFInfo.probOffload
+			pd = cFInfo.probDrop
+		}
 	}
 
 	log.Println("Probabilities are", pe, po, pd)
@@ -156,8 +191,8 @@ func handler() {
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
-			for f, functionMap := range m {
-				for c, finfo := range functionMap {
+			for f, functionInfoA := range m {
+				for c, finfo := range functionInfoA.invokingClasses {
 					log.Printf("Arrival of %s-%s: %f\n", f, c, finfo.arrivals/float64(evaluationInterval))
 				}
 			}
@@ -167,9 +202,10 @@ func handler() {
 			//TODO uncomment this
 			//Reset Map
 
-			for _, functionMap := range m {
-				for _, finfo := range functionMap {
-					finfo.arrivalCount = 0
+			for _, fInfo := range m {
+				for _, cFInfo := range fInfo.invokingClasses {
+					cFInfo.arrivalCount = 0
+					cFInfo.arrivals = 0
 				}
 			}
 
@@ -178,27 +214,23 @@ func handler() {
 		case arr := <-arrivalChannel:
 			name := arr.Fun.Name
 
-			fInfo, prs := functionMap[name]
+			fInfo, prs := m[name]
 			if !prs {
-				fInfo = functionInfo{
-					name:     name,
-					memory:   arr.Fun.MemoryMB,
-					cpu:      arr.Fun.CPUDemand,
-					probCold: 1}
+				fInfo = &functionInfo{
+					name:            name,
+					memory:          arr.Fun.MemoryMB,
+					cpu:             arr.Fun.CPUDemand,
+					probCold:        1,
+					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				functionMap[name] = fInfo
+				m[name] = fInfo
 			}
 
 			log.Println("CPIIIU: ", arr.Fun.CPUDemand)
 
-			fMap, prs := m[name]
+			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
-				m[name] = make(map[string]*classFunctionInfo)
-			}
-
-			cFInfo, prs := fMap[arr.class]
-			if !prs {
-				cFInfo = &classFunctionInfo{functionInfo: &fInfo,
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
 					probExecute:  startingExecuteProb,
 					probOffload:  startingOffloadProb,
 					probDrop:     1 - (startingExecuteProb + startingOffloadProb),
@@ -208,7 +240,7 @@ func handler() {
 
 			cFInfo.arrivalCount++
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
-			m[name][arr.class] = cFInfo
+			fInfo.invokingClasses[arr.class] = cFInfo
 		}
 	}
 }
@@ -255,7 +287,7 @@ func UpdateDataAsync(r function.Response) {
 		location = OFFLOADED
 	}
 
-	fInfo, prs := m[name][class]
+	fInfo, prs := m[name]
 	if !prs {
 		//log.Fatal("MISSING FUNCTION INFO")
 		return
@@ -291,11 +323,10 @@ func UpdateDataAsync(r function.Response) {
 
 func updateData(r completedRequest) {
 	name := r.Fun.Name
-	class := r.ClassService.Name
 
 	location := r.location
 
-	fInfo, prs := m[name][class]
+	fInfo, prs := m[name]
 	if !prs {
 		log.Fatal("MISSING FUNCTION INFO")
 		return

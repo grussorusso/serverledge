@@ -7,16 +7,18 @@ import (
 	"time"
 )
 
-var numberOfInstances int
+var numberOfFunctionClass int
 var functionPColdMap = make(map[string]int)
 
-type fInfoWithClass struct {
+var debug = true
+
+type cFInfoWithClass struct {
 	*classFunctionInfo
 	class string
 }
 
 func getPColdIndex(name string) int {
-	return numberOfInstances*4 + functionPColdMap[name]
+	return numberOfFunctionClass*4 + functionPColdMap[name]
 }
 
 func getPExecutionIndex(index int) int {
@@ -35,26 +37,27 @@ func getShareIndex(index int) int {
 	return index*4 + 3
 }
 
-// TODO separate pcold
-func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
+func SolveProbabilities(m map[string]*functionInfo) {
 	if len(m) == 0 {
 		return
 	}
 
-	list := make([]fInfoWithClass, 0)
+	list := make([]cFInfoWithClass, 0)
 
 	objectiveFunctionEntries := make([]float64, 0)
 	memoryConstraintEntries := make([]golp.Entry, 0)
 	cpuConstraintEntries := make([]golp.Entry, 0)
 
 	classMap := make(map[string][]*classFunctionInfo)
+	//functionMap := make(map[string]*functionInfo)
+
 	functionPdIndex := make(map[string]int)
 
 	functionNumber := len(m)
 
-	for _, submap := range m {
-		for class, cFInfo := range submap {
-			list = append(list, fInfoWithClass{cFInfo, class})
+	for _, fInfo := range m {
+		for class, cFInfo := range fInfo.invokingClasses {
+			list = append(list, cFInfoWithClass{cFInfo, class})
 
 			classFunctionList, prs := classMap[class]
 			if !prs {
@@ -66,19 +69,21 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 
 			classMap[class] = classFunctionList
 		}
+
+		//functionMap[fName] = fInfo
 	}
 
-	numberOfInstances = len(list)
+	numberOfFunctionClass = len(list)
 
 	index := 0
 	for fName := range m {
-		functionPColdMap[fName] = numberOfInstances*4 + index
+		functionPColdMap[fName] = numberOfFunctionClass*4 + index
 
 		index++
 	}
 
 	//4 for every function, class pair and one pcold for each function
-	lp := golp.NewLP(0, numberOfInstances*4+functionNumber)
+	lp := golp.NewLP(0, numberOfFunctionClass*4+functionNumber)
 
 	// 0 pe
 	// 1 po
@@ -86,10 +91,17 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 	// 3 x
 	for i := range list {
 		//Probability constraints
-		//TODO needed if the sum is < 1?
 		cFInfo := list[i]
 
+		if debug {
+			lp.SetColName(getPExecutionIndex(i), "PE"+list[i].name)
+			lp.SetColName(getPOffloadIndex(i), "PO"+list[i].name)
+			lp.SetColName(getPDropIndex(i), "PD"+list[i].name)
+			lp.SetColName(getShareIndex(i), "X"+list[i].name)
+		}
+
 		//Probability constraints
+		//TODO needed if the sum is < 1?
 		lp.AddConstraintSparse([]golp.Entry{{getPExecutionIndex(i), 1.0}}, golp.LE, 1)
 		lp.AddConstraintSparse([]golp.Entry{{getPOffloadIndex(i), 1.0}}, golp.LE, 1)
 		lp.AddConstraintSparse([]golp.Entry{{getPDropIndex(i), 1.0}}, golp.LE, 1)
@@ -111,12 +123,11 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 				golp.LE, Classes[cFInfo.class].MaximumResponseTime)
 		}
 
-		log.Println(cFInfo.arrivals, Classes[cFInfo.class].Utility)
 		objectiveFunctionEntries = append(objectiveFunctionEntries,
 			[]float64{cFInfo.arrivals * Classes[cFInfo.class].Utility,
 				cFInfo.arrivals * Classes[cFInfo.class].Utility,
 				0,
-				1}...)
+				0}...)
 
 		memoryConstraintEntries = append(memoryConstraintEntries, []golp.Entry{{getShareIndex(i), float64(cFInfo.memory)}}...)
 
@@ -143,8 +154,12 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 		lp.AddConstraintSparse(classConstraintEntries, golp.LE, (1-Classes[k].CompletedPercentage)*arrivalSum)
 	}
 
-	for _, index := range functionPColdMap {
+	for fName, index := range functionPColdMap {
 		lp.AddConstraintSparse([]golp.Entry{{index, 1.0}}, golp.LE, 1)
+
+		if debug {
+			lp.SetColName(index, "PC"+fName)
+		}
 
 		objectiveFunctionEntries = append(objectiveFunctionEntries, 1)
 	}
@@ -170,59 +185,20 @@ func SolveProbabilities(m map[string]map[string]*classFunctionInfo) {
 	for i := range list {
 		fInfo := list[i]
 
-		fInfo.probExecute = vars[i*5]
-		fInfo.probOffload = vars[i*5+1]
-		fInfo.probDrop = vars[i*5+2]
+		fInfo.probExecute = vars[getPExecutionIndex(i)]
+		fInfo.probOffload = vars[getPOffloadIndex(i)]
+		fInfo.probDrop = vars[getPDropIndex(i)]
 	}
 
-	log.Println(lp.WriteToString())
-	log.Printf("Resolution took %s", elapsed)
-	log.Println("Var: ", vars)
-	log.Println("Sol type: ", sol)
-	log.Println("Optimum: ", lp.Objective())
+	for name, index := range functionPColdMap {
+		m[name].probCold = vars[index]
+	}
+
+	if debug {
+		log.Println(lp.WriteToString())
+		log.Printf("Resolution took %s", elapsed)
+		log.Println("Var: ", vars)
+		log.Println("Sol type: ", sol)
+		log.Println("Optimum: ", lp.Objective())
+	}
 }
-
-/*
-func Solve() {
-	lp := golp.NewLP(0, 5)
-
-	lp.AddConstraint([]float64{1, 1, 1, 0, 0}, golp.EQ, 1)
-
-	lp.AddConstraint([]float64{1.0, 0, 0, 0, 0}, golp.LE, 1)
-	lp.AddConstraint([]float64{0, 1.0, 0, 0, 0}, golp.LE, 1)
-	lp.AddConstraint([]float64{0, 0, 1.0, 0, 0}, golp.LE, 1)
-	lp.AddConstraint([]float64{0, 0, 0, 1.0, 0}, golp.LE, 1)
-
-	lp.AddConstraintSparse([]golp.Entry{{0, 1.0}}, golp.LE, 1)
-
-	lp.AddConstraint([]float64{0, 0, 0, 0, memory}, golp.LE, maxMemory)
-	lp.AddConstraint([]float64{0, 0, 0, 0, cpu}, golp.LE, maxCpu)
-
-	lp.AddConstraint([]float64{serviceTime * arrivals, 0, 0, 0, -1}, golp.LE, 0)
-
-	lp.AddConstraint([]float64{serviceTime, cloudServiceTime + offloadingTime, 0, initTime, 0}, golp.LE, maxServiceTime)
-
-	lp.AddConstraint([]float64{0, 0, arrivals, 0, 0}, golp.LE, (1-minExecuted)*arrivals)
-
-	lp.SetObjFn([]float64{arrivals * utility, arrivals * utility, 0, 1, 0})
-	lp.SetMaximize()
-
-	start := time.Now()
-	lp.Solve()
-	elapsed := time.Since(start)
-
-	log.Printf("Resolution took %s", elapsed)
-
-	vars := lp.Variables()
-	log.Printf("Rows: %d Cols: %d\n", lp.NumRows(), lp.NumCols())
-	log.Printf("PE %.3f\n", vars[0])
-	log.Printf("PO  %.3f\n", vars[1])
-	log.Printf("PD %.3f\n", vars[2])
-	log.Printf("PC  %.3f\n", vars[3])
-	log.Printf("X  %.3f\n", vars[4])
-	log.Printf("For %.2f\n", lp.Objective())
-	log.Println(vars)
-	log.Println(lp.WriteToString())
-}
-
-*/
