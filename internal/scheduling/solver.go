@@ -4,6 +4,7 @@ import (
 	"github.com/draffensperger/golp"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
+	"math"
 	"time"
 )
 
@@ -49,7 +50,6 @@ func SolveProbabilities(m map[string]*functionInfo) {
 	cpuConstraintEntries := make([]golp.Entry, 0)
 
 	classMap := make(map[string][]*classFunctionInfo)
-	//functionMap := make(map[string]*functionInfo)
 
 	functionPdIndex := make(map[string]int)
 
@@ -69,8 +69,6 @@ func SolveProbabilities(m map[string]*functionInfo) {
 
 			classMap[class] = classFunctionList
 		}
-
-		//functionMap[fName] = fInfo
 	}
 
 	numberOfFunctionClass = len(list)
@@ -85,19 +83,15 @@ func SolveProbabilities(m map[string]*functionInfo) {
 	//4 for every function, class pair and one pcold for each function
 	lp := golp.NewLP(0, numberOfFunctionClass*4+functionNumber)
 
-	// 0 pe
-	// 1 po
-	// 2 pd
-	// 3 x
 	for i := range list {
 		//Probability constraints
 		cFInfo := list[i]
 
 		if debug {
-			lp.SetColName(getPExecutionIndex(i), "PE"+list[i].name)
-			lp.SetColName(getPOffloadIndex(i), "PO"+list[i].name)
-			lp.SetColName(getPDropIndex(i), "PD"+list[i].name)
-			lp.SetColName(getShareIndex(i), "X"+list[i].name)
+			lp.SetColName(getPExecutionIndex(i), "PE"+list[i].name+list[i].class)
+			lp.SetColName(getPOffloadIndex(i), "PO"+list[i].name+list[i].class)
+			lp.SetColName(getPDropIndex(i), "PD"+list[i].name+list[i].class)
+			lp.SetColName(getShareIndex(i), "X"+list[i].name+list[i].class)
 		}
 
 		//Probability constraints
@@ -183,14 +177,20 @@ func SolveProbabilities(m map[string]*functionInfo) {
 	vars := lp.Variables()
 
 	for i := range list {
-		fInfo := list[i]
+		cFInfo := list[i]
 
-		fInfo.probExecute = vars[getPExecutionIndex(i)]
-		fInfo.probOffload = vars[getPOffloadIndex(i)]
-		fInfo.probDrop = vars[getPDropIndex(i)]
+		cFInfo.probExecute = vars[getPExecutionIndex(i)]
+		cFInfo.probOffload = vars[getPOffloadIndex(i)]
+		cFInfo.probDrop = vars[getPDropIndex(i)]
+		cFInfo.share = vars[getShareIndex(i)]
 	}
 
 	for name, index := range functionPColdMap {
+		_, prs := m[name]
+		if !prs {
+			continue
+		}
+
 		m[name].probCold = vars[index]
 	}
 
@@ -201,4 +201,49 @@ func SolveProbabilities(m map[string]*functionInfo) {
 		log.Println("Sol type: ", sol)
 		log.Println("Optimum: ", lp.Objective())
 	}
+}
+
+func ErlangB(m int, a float64) float64 {
+	sum := 0.0
+	fact := 1.0
+
+	for i := 1.0; i <= float64(m); i++ {
+		fact *= i
+		sum += math.Pow(a, i) / fact
+	}
+
+	sum += 1
+
+	return math.Pow(sum, -1) * (math.Pow(a, float64(m)) / fact)
+}
+
+func SolveColdStart(m map[string]*functionInfo) map[string]int {
+	outMap := make(map[string]int)
+
+	numberOfFunctions := len(m)
+	if numberOfFunctions == 0 {
+		return outMap
+	}
+
+	for fName, fInfo := range m {
+		sum := 0.0
+		arrivals := 0.0
+		w := 0
+
+		for _, cFInfo := range fInfo.invokingClasses {
+			sum += cFInfo.share
+			arrivals += cFInfo.arrivals
+		}
+
+		log.Printf("ERLANG(%d, %f): %f\n", w, arrivals/fInfo.meanDuration[LOCAL], ErlangB(w, arrivals/fInfo.meanDuration[LOCAL]))
+		log.Println("PCF > ErlangB", fInfo.probCold, ErlangB(w, arrivals/fInfo.meanDuration[LOCAL]))
+		for fInfo.probCold > ErlangB(w, arrivals/fInfo.meanDuration[LOCAL]) && float64(w+1) < sum {
+			w += 1
+			log.Printf("ERLANG(%d, %f): %f\n", w, arrivals/fInfo.meanDuration[LOCAL], ErlangB(w, arrivals/fInfo.meanDuration[LOCAL]))
+		}
+
+		outMap[fName] = w
+	}
+
+	return outMap
 }

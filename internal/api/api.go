@@ -60,11 +60,9 @@ func InvokeFunction(c echo.Context) error {
 	r.Params = invocationRequest.Params
 	r.Arrival = time.Now()
 
-	//r.Class = function.ServiceClass(invocationRequest.QoSClass)
 	className := invocationRequest.QoSClass
 	class, prs := scheduling.Classes[className]
 	if !prs {
-		log.Printf("Request %s class not found\n", invocationRequest.QoSClass)
 		class = scheduling.DefaultClass
 		className = "default"
 	}

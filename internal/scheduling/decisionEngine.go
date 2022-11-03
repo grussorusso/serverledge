@@ -24,38 +24,9 @@ var startingOffloadProb = 0.5
 
 // TODO add to config
 var evaluationInterval = 10
+var maxTimeSlots = 5
 
 var rGen *rand.Rand
-
-/*
-// TODO consider classes
-type functionInfo struct {
-	name string
-	//Number of function requests
-	count [2]int
-	//Mean duration time
-	meanDuration [2]float64
-	//Variance of the duration time
-	varianceDuration [2]float64
-	//Number of requests that missed the deadline
-	missed int
-	//Offload latency
-	offloadTime float64
-	//Average of init times when cold start
-	initTime float64
-	//TODO consider classes
-	probExecute float64
-	probOffload float64
-	probDrop    float64
-	//
-	probCold float64
-	//
-	arrivals     float64
-	arrivalCount float64
-	memory       int64
-	cpu          float64
-}
-*/
 
 type classFunctionInfo struct {
 	*functionInfo
@@ -68,6 +39,10 @@ type classFunctionInfo struct {
 	//
 	arrivals     float64
 	arrivalCount float64
+	//
+	share float64
+	//
+	timeSlotsWithoutArrivals int
 }
 
 type functionInfo struct {
@@ -105,21 +80,15 @@ type arrivalRequest struct {
 
 var m = make(map[string]*functionInfo)
 
-//var functionMap = make(map[string]functionInfo)
-
 // TODO edit buffer?
-var arrivalChannel = make(chan arrivalRequest, 10)
-
-var requestChannel = make(chan completedRequest, 10)
+var arrivalChannel = make(chan arrivalRequest, 1000)
+var requestChannel = make(chan completedRequest, 1000)
 
 func Decide(r *scheduledRequest) int {
 	name := r.Fun.Name
 	class := r.ClassService
 
 	prob := rGen.Float64()
-
-	log.Printf("Request with class %s#%f#%f#%f\n", class.Name,
-		class.Utility, r.GetMaxRT(), class.CompletedPercentage)
 
 	var pe float64
 	var po float64
@@ -129,13 +98,14 @@ func Decide(r *scheduledRequest) int {
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	invClasses, prs := m[name]
+	fInfo, prs := m[name]
 	if !prs {
 		pe = startingExecuteProb
 		po = startingOffloadProb
 		pd = 1 - (pe + po)
 	} else {
-		cFInfo, prs = invClasses.invokingClasses[class.Name]
+		log.Println("PCold", fInfo.probCold)
+		cFInfo, prs = fInfo.invokingClasses[class.Name]
 		if !prs {
 			pe = startingExecuteProb
 			po = startingOffloadProb
@@ -191,19 +161,26 @@ func handler() {
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
-			for f, functionInfoA := range m {
-				for c, finfo := range functionInfoA.invokingClasses {
-					log.Printf("Arrival of %s-%s: %f\n", f, c, finfo.arrivals/float64(evaluationInterval))
+
+			//Check if there are some instances with 0 arrivals
+			for fName, fInfo := range m {
+				for cName, cFInfo := range fInfo.invokingClasses {
+					//Cleanup
+					if cFInfo.arrivalCount == 0 {
+						cFInfo.timeSlotsWithoutArrivals++
+						if cFInfo.timeSlotsWithoutArrivals >= maxTimeSlots {
+							Delete(fName, cName)
+						}
+					}
 				}
 			}
 
 			updateProbabilities()
 
-			//TODO uncomment this
-			//Reset Map
-
+			//Reset arrivals for the time slot
 			for _, fInfo := range m {
 				for _, cFInfo := range fInfo.invokingClasses {
+					//Cleanup
 					cFInfo.arrivalCount = 0
 					cFInfo.arrivals = 0
 				}
@@ -226,30 +203,37 @@ func handler() {
 				m[name] = fInfo
 			}
 
-			log.Println("CPIIIU: ", arr.Fun.CPUDemand)
-
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probExecute:  startingExecuteProb,
-					probOffload:  startingOffloadProb,
-					probDrop:     1 - (startingExecuteProb + startingOffloadProb),
-					arrivals:     0,
-					arrivalCount: 0}
+					probExecute:              startingExecuteProb,
+					probOffload:              startingOffloadProb,
+					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
+					arrivals:                 0,
+					arrivalCount:             0,
+					timeSlotsWithoutArrivals: 0}
+
+				fInfo.invokingClasses[arr.class] = cFInfo
 			}
 
 			cFInfo.arrivalCount++
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
-			fInfo.invokingClasses[arr.class] = cFInfo
+			cFInfo.timeSlotsWithoutArrivals = 0
 		}
 	}
 }
 
 func updateProbabilities() {
 	SolveProbabilities(m)
+	log.Println(SolveColdStart(m))
 }
 
 func ShowData() {
+	//log.Println("ERLANG: ", ErlangB(57, 45))
+	for {
+		time.Sleep(5 * time.Second)
+		log.Println("map", m)
+	}
 	/*
 		for {
 			time.Sleep(5 * time.Second)
@@ -269,12 +253,20 @@ func Completed(r *function.Request, offloaded int) {
 	}
 }
 
-// Delete TODO handle delete, delete from other nodes?
-func Delete(name string) {
-	delete(m, name)
+func Delete(function string, class string) {
+	fInfo, prs := m[function]
+	if !prs {
+		return
+	}
+
+	delete(fInfo.invokingClasses, class)
+
+	//If there aren't any more classes calls the function can be deleted
+	if len(fInfo.invokingClasses) == 0 {
+		delete(m, function)
+	}
 }
 
-// UpdateDataAsync
 func UpdateDataAsync(r function.Response) {
 	name := r.Name
 	class := r.Class
@@ -290,6 +282,9 @@ func UpdateDataAsync(r function.Response) {
 	fInfo, prs := m[name]
 	if !prs {
 		//log.Fatal("MISSING FUNCTION INFO")
+		// If it is missing from the map then enough time has passed to cause expiring on the function entry,
+		// or the invocation came from somewhere else.
+		// This means that maybe is not necessary to maintain information about this function
 		return
 	}
 
