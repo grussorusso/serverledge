@@ -7,5 +7,10 @@
     "name": "class1",
     "utility": 1,
     "MaximumResponseTime": 20
+  },
+  {
+    "name": "class3",
+    "utility": 0.5,
+    "MaximumResponseTime": 20
   }
 ]

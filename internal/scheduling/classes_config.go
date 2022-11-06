@@ -3,7 +3,7 @@ package scheduling
 import (
 	"encoding/json"
 	"github.com/grussorusso/serverledge/internal/function"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 )
@@ -53,7 +53,8 @@ func ReadClassesConfiguration(fileName string) {
 		return
 	}
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
+	defer jsonFile.Close()
 
 	var list []function.QoSClass
 	err = json.Unmarshal(byteValue, &list)
@@ -73,6 +74,4 @@ func ReadClassesConfiguration(fileName string) {
 	}
 
 	log.Printf("Found %d classes available\n", len(Classes))
-
-	defer jsonFile.Close()
 }

@@ -28,23 +28,6 @@ var maxTimeSlots = 5
 
 var rGen *rand.Rand
 
-type classFunctionInfo struct {
-	*functionInfo
-	//
-	probExecute float64
-	probOffload float64
-	probDrop    float64
-	//
-	probCold float64
-	//
-	arrivals     float64
-	arrivalCount float64
-	//
-	share float64
-	//
-	timeSlotsWithoutArrivals int
-}
-
 type functionInfo struct {
 	name string
 	//Number of function requests
@@ -53,19 +36,42 @@ type functionInfo struct {
 	meanDuration [2]float64
 	//Variance of the duration time
 	varianceDuration [2]float64
+	//Count the number of cold starts to estimate probCold
+	coldStartCount [2]int64
+	//Count the number of calls in the time slot
+	timeSlotCount [2]int64
 	//Number of requests that missed the deadline
 	missed int
-	//Offload latency
+	//Offload latency TODO maybe global offloading time
 	offloadTime float64
 	//Average of init times when cold start
-	initTime float64
-	//
+	initTime [2]float64
+	//Memory requested by the function
 	memory int64
-	cpu    float64
-	//
+	//CPU requested by the function
+	cpu float64
+	//Probability of a cold start when requesting the function
 	probCold float64
-	//
+	//TODO maybe put an array
+	probColdOffload float64
+	//Map containing information about function requests for every class
 	invokingClasses map[string]*classFunctionInfo
+}
+
+type classFunctionInfo struct {
+	//Pointer used for accessing information about the function
+	*functionInfo
+	//
+	probExecute float64
+	probOffload float64
+	probDrop    float64
+	//
+	arrivals     float64
+	arrivalCount float64
+	//
+	share float64
+	//
+	timeSlotsWithoutArrivals int
 }
 
 type completedRequest struct {
@@ -78,6 +84,7 @@ type arrivalRequest struct {
 	class string
 }
 
+// Map of the functions information
 var m = make(map[string]*functionInfo)
 
 // TODO edit buffer?
@@ -184,6 +191,9 @@ func handler() {
 					cFInfo.arrivalCount = 0
 					cFInfo.arrivals = 0
 				}
+
+				fInfo.coldStartCount = [2]int64{0, 0}
+				fInfo.timeSlotCount = [2]int64{0, 0}
 			}
 
 		case r := <-requestChannel:
@@ -224,8 +234,9 @@ func handler() {
 }
 
 func updateProbabilities() {
+	//SolveprobabilitiesLegacy(m)
+	//log.Println(SolveColdStart(m))
 	SolveProbabilities(m)
-	log.Println(SolveColdStart(m))
 }
 
 func ShowData() {
@@ -281,7 +292,6 @@ func UpdateDataAsync(r function.Response) {
 
 	fInfo, prs := m[name]
 	if !prs {
-		//log.Fatal("MISSING FUNCTION INFO")
 		// If it is missing from the map then enough time has passed to cause expiring on the function entry,
 		// or the invocation came from somewhere else.
 		// This means that maybe is not necessary to maintain information about this function
@@ -289,6 +299,7 @@ func UpdateDataAsync(r function.Response) {
 	}
 
 	fInfo.count[location] = fInfo.count[location] + 1
+	fInfo.timeSlotCount[location] = fInfo.timeSlotCount[location] + 1
 
 	//Welford mean and variance
 	diff := r.Duration - fInfo.meanDuration[location]
@@ -299,9 +310,11 @@ func UpdateDataAsync(r function.Response) {
 	fInfo.varianceDuration[location] = (diff * diff2) / float64(fInfo.count[location])
 
 	if !r.IsWarmStart {
-		diff := r.InitTime - fInfo.initTime
-		fInfo.initTime = fInfo.initTime +
+		diff := r.InitTime - fInfo.initTime[location]
+		fInfo.initTime[location] = fInfo.initTime[location] +
 			(1/float64(fInfo.count[location]))*(diff)
+
+		fInfo.coldStartCount[location]++
 	}
 
 	if r.OffloadLatency != 0 {
@@ -322,12 +335,13 @@ func updateData(r completedRequest) {
 	location := r.location
 
 	fInfo, prs := m[name]
+	//TODO maybe create here the entry in the function? Is it necessary?
 	if !prs {
-		log.Fatal("MISSING FUNCTION INFO")
 		return
 	}
 
 	fInfo.count[location] = fInfo.count[location] + 1
+	fInfo.timeSlotCount[location] = fInfo.timeSlotCount[location] + 1
 
 	//Welford mean and variance
 	diff := r.ExecReport.Duration - fInfo.meanDuration[location]
@@ -338,9 +352,11 @@ func updateData(r completedRequest) {
 	fInfo.varianceDuration[location] = (diff * diff2) / float64(fInfo.count[location])
 
 	if !r.ExecReport.IsWarmStart {
-		diff := r.ExecReport.InitTime - fInfo.initTime
-		fInfo.initTime = fInfo.initTime +
+		diff := r.ExecReport.InitTime - fInfo.initTime[location]
+		fInfo.initTime[location] = fInfo.initTime[location] +
 			(1/float64(fInfo.count[location]))*(diff)
+
+		fInfo.coldStartCount[location]++
 	}
 
 	if r.ExecReport.OffloadLatency != 0 {
