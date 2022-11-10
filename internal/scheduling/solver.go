@@ -113,7 +113,7 @@ func SolveprobabilitiesLegacy(m map[string]*functionInfo) {
 		//Response time solution
 		if Classes[cFInfo.class].MaximumResponseTime != -1 {
 			lp.AddConstraintSparse([]golp.Entry{{getPExecutionIndex(i), cFInfo.meanDuration[LOCAL]},
-				{getPOffloadIndex(i), cFInfo.offloadTime + cFInfo.meanDuration[OFFLOADED]},
+				{getPOffloadIndex(i), OffloadLatency + cFInfo.meanDuration[OFFLOADED]},
 				{getPColdIndex(list[i].name), cFInfo.initTime[LOCAL]}},
 				golp.LE, Classes[cFInfo.class].MaximumResponseTime)
 		}
@@ -254,10 +254,20 @@ func getDeadlineSatisfactionProb(location int, cFInfo cFInfoWithClass, deadline 
 		return 1
 	}
 
+	//TODO is the correct value for missing data?
+	if cFInfo.count[location] == 0 {
+		return 1
+	}
+
+	//If there isn't enough data return 1
+	if cFInfo.count[location] == 0 {
+		return 1
+	}
+
 	if location == LOCAL {
 		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location])
 	} else {
-		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location]-cFInfo.offloadTime)
+		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location]-OffloadLatency)
 	}
 }
 
@@ -265,18 +275,12 @@ func exponentialCDF(mean float64, x float64) float64 {
 	return 1 - math.Exp(-(1/mean)*(x))
 }
 
-func getProbCold(fInfo *functionInfo, location int) float64 {
-	if fInfo.timeSlotCount[location] == 0 {
-		//If there are no arrivals there's a high probability that the function execution requires a cold start
-		return 1
-	} else {
-		return float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
-	}
-}
-
 // Used to modify the impact of the cost of cloud offloading
-var cost float64
-var beta float64
+var cost = 1.0 //0.0001
+var beta = 0.0 //1.0
+
+// TODO test
+var preference = 1.0
 
 func SolveProbabilities(m map[string]*functionInfo) {
 	if len(m) == 0 {
@@ -308,8 +312,8 @@ func SolveProbabilities(m map[string]*functionInfo) {
 			classMap[class] = classFunctionList
 		}
 
-		fInfo.probCold = getProbCold(fInfo, LOCAL)
-		fInfo.probColdOffload = getProbCold(fInfo, OFFLOADED)
+		fInfo.probCold = fInfo.getProbCold(LOCAL)
+		fInfo.probColdOffload = fInfo.getProbCold(OFFLOADED)
 	}
 
 	numberOfFunctionClass = len(list)
@@ -354,7 +358,6 @@ func SolveProbabilities(m map[string]*functionInfo) {
 
 		memoryConstraintEntries = append(memoryConstraintEntries, []golp.Entry{{getShareIndex(i), float64(cFInfo.memory)}}...)
 
-		//TODO functions can have 0 CPU demand?
 		if cFInfo.cpu != 0 {
 			cpuConstraintEntries = append(cpuConstraintEntries, []golp.Entry{{getShareIndex(i), cFInfo.cpu}}...)
 		}

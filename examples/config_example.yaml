@@ -8,7 +8,7 @@ api:
   port: 1323
 cloud:
   server:
-    url: http://192.168.1.21:1325
+    url: http://192.168.1.27:1325
 scheduler:
   #policy: edgecloud
   policy: customCloudOffload

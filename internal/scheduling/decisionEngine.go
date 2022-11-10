@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
@@ -19,14 +20,16 @@ const (
 	OFFLOAD_REQUEST = 2
 )
 
-var startingExecuteProb = 0.5
-var startingOffloadProb = 0.5
+var startingExecuteProb = 0.5 //0.0
+var startingOffloadProb = 0.5 //1.0
 
 // TODO add to config
 var evaluationInterval = 10
 var maxTimeSlots = 5
 
 var rGen *rand.Rand
+
+var OffloadLatency = 0.0
 
 type functionInfo struct {
 	name string
@@ -42,8 +45,6 @@ type functionInfo struct {
 	timeSlotCount [2]int64
 	//Number of requests that missed the deadline
 	missed int
-	//Offload latency TODO maybe global offloading time
-	offloadTime float64
 	//Average of init times when cold start
 	initTime [2]float64
 	//Memory requested by the function
@@ -72,6 +73,15 @@ type classFunctionInfo struct {
 	share float64
 	//
 	timeSlotsWithoutArrivals int
+}
+
+func (fInfo *functionInfo) getProbCold(location int) float64 {
+	if fInfo.timeSlotCount[location] == 0 {
+		//If there are no arrivals there's a high probability that the function execution requires a cold start
+		return 1
+	} else {
+		return float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
+	}
 }
 
 type completedRequest struct {
@@ -111,7 +121,6 @@ func Decide(r *scheduledRequest) int {
 		po = startingOffloadProb
 		pd = 1 - (pe + po)
 	} else {
-		log.Println("PCold", fInfo.probCold)
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
 		if !prs {
 			pe = startingExecuteProb
@@ -161,6 +170,8 @@ func InitDecisionEngine() {
 func handler() {
 	evaluationTicker :=
 		time.NewTicker(time.Duration(evaluationInterval) * time.Second)
+	pcoldTicker :=
+		time.NewTicker(time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)))
 
 	for {
 		select {
@@ -191,9 +202,6 @@ func handler() {
 					cFInfo.arrivalCount = 0
 					cFInfo.arrivals = 0
 				}
-
-				fInfo.coldStartCount = [2]int64{0, 0}
-				fInfo.timeSlotCount = [2]int64{0, 0}
 			}
 
 		case r := <-requestChannel:
@@ -229,6 +237,14 @@ func handler() {
 			cFInfo.arrivalCount++
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
 			cFInfo.timeSlotsWithoutArrivals = 0
+
+		//TODO is it correct?
+		case _ = <-pcoldTicker.C:
+			//Reset arrivals for the time slot
+			for _, fInfo := range m {
+				fInfo.coldStartCount = [2]int64{0, 0}
+				fInfo.timeSlotCount = [2]int64{0, 0}
+			}
 		}
 	}
 }
@@ -241,10 +257,10 @@ func updateProbabilities() {
 
 func ShowData() {
 	//log.Println("ERLANG: ", ErlangB(57, 45))
-	for {
-		time.Sleep(5 * time.Second)
-		log.Println("map", m)
-	}
+	//for {
+	//	time.Sleep(5 * time.Second)
+	//	log.Println("map", m)
+	//}
 	/*
 		for {
 			time.Sleep(5 * time.Second)
@@ -318,8 +334,8 @@ func UpdateDataAsync(r function.Response) {
 	}
 
 	if r.OffloadLatency != 0 {
-		diff := r.OffloadLatency - fInfo.offloadTime
-		fInfo.offloadTime = fInfo.offloadTime +
+		diff := r.OffloadLatency - OffloadLatency
+		OffloadLatency = OffloadLatency +
 			(1/float64(fInfo.count[location]))*(diff)
 	}
 
@@ -360,8 +376,8 @@ func updateData(r completedRequest) {
 	}
 
 	if r.ExecReport.OffloadLatency != 0 {
-		diff := r.ExecReport.OffloadLatency - fInfo.offloadTime
-		fInfo.offloadTime = fInfo.offloadTime +
+		diff := r.ExecReport.OffloadLatency - OffloadLatency
+		OffloadLatency = OffloadLatency +
 			(1/float64(fInfo.count[location]))*(diff)
 	}
 
