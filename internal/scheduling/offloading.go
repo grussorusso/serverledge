@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/metrics"
 	"io/ioutil"
 	"log"
 	"math"
@@ -119,12 +120,28 @@ func Offload(r *function.Request, serverUrl string) error {
 	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
-	//TODO temp
-	log.Printf("Completed offloaded (%s) execution of %s took %f\n", serverUrl, r.Fun.Name, r.ExecReport.ResponseTime)
+	policy.OnCompletion(&scheduledRequest{
+		Request:         r,
+		decisionChannel: nil,
+		priority:        0,
+	})
 
-	Completed(r, OFFLOADED)
+	if metrics.Enabled {
+		addOffloadedMetrics(r)
+	}
 
 	return nil
+}
+
+func addOffloadedMetrics(r *function.Request) {
+	metrics.AddCompletedInvocationOffloaded(r.Fun.Name)
+	metrics.AddFunctionDurationOffloadedValue(r.Fun.Name, r.ExecReport.Duration)
+
+	if !r.ExecReport.IsWarmStart {
+		metrics.AddColdStartOffload(r.Fun.Name, r.ExecReport.InitTime)
+	}
+
+	metrics.AddOffloadingTime(r.Fun.Name, r.ExecReport.OffloadLatency)
 }
 
 func OffloadAsync(r *function.Request, serverUrl string) error {

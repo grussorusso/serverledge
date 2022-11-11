@@ -24,8 +24,10 @@ var remoteServerUrl string
 var executionLogEnabled bool
 
 var offloadingClient *http.Client
+var policy Policy
 
 func Run(p Policy) {
+	policy = p
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
 
@@ -63,18 +65,30 @@ func Run(p Policy) {
 	for {
 		select {
 		case r = <-requests:
+			//TODO correct place?
+			if metrics.Enabled {
+				metrics.AddArrivals(r.Fun.Name, r.ClassService.Name)
+			}
+
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(r)
 
-			if metrics.Enabled {
-				metrics.AddCompletedInvocation(r.Fun.Name)
-				if r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
-				}
+			if metrics.Enabled && r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+				addCompletedMetrics(r)
 			}
 		}
+	}
+
+}
+
+func addCompletedMetrics(r *scheduledRequest) {
+	metrics.AddCompletedInvocation(r.Fun.Name)
+	metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
+
+	if !r.ExecReport.IsWarmStart {
+		metrics.AddColdStart(r.Fun.Name, r.ExecReport.InitTime)
 	}
 
 }

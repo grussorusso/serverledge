@@ -20,6 +20,10 @@ const (
 	OFFLOAD_REQUEST = 2
 )
 
+type decisionEngine struct {
+	m map[string]*functionInfo
+}
+
 var startingExecuteProb = 0.5 //0.0
 var startingOffloadProb = 0.5 //1.0
 
@@ -85,7 +89,7 @@ func (fInfo *functionInfo) getProbCold(location int) float64 {
 }
 
 type completedRequest struct {
-	*function.Request
+	*scheduledRequest
 	location int
 }
 
@@ -94,14 +98,10 @@ type arrivalRequest struct {
 	class string
 }
 
-// Map of the functions information
-var m = make(map[string]*functionInfo)
-
-// TODO edit buffer?
 var arrivalChannel = make(chan arrivalRequest, 1000)
 var requestChannel = make(chan completedRequest, 1000)
 
-func Decide(r *scheduledRequest) int {
+func (d *decisionEngine) Decide(r *scheduledRequest) int {
 	name := r.Fun.Name
 	class := r.ClassService
 
@@ -115,7 +115,7 @@ func Decide(r *scheduledRequest) int {
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	fInfo, prs := m[name]
+	fInfo, prs := d.m[name]
 	if !prs {
 		pe = startingExecuteProb
 		po = startingOffloadProb
@@ -159,19 +159,21 @@ func Decide(r *scheduledRequest) int {
 	}
 }
 
-func InitDecisionEngine() {
+func (d *decisionEngine) InitDecisionEngine() {
 	s := rand.NewSource(time.Now().UnixNano())
 	rGen = rand.New(s)
 
-	go ShowData()
-	go handler()
+	d.m = make(map[string]*functionInfo)
+
+	go d.ShowData()
+	go d.handler()
 }
 
-func handler() {
+func (d *decisionEngine) handler() {
 	evaluationTicker :=
-		time.NewTicker(time.Duration(evaluationInterval) * time.Second)
+		time.NewTicker(time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second)
 	pcoldTicker :=
-		time.NewTicker(time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)))
+		time.NewTicker(time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second)
 
 	for {
 		select {
@@ -181,22 +183,22 @@ func handler() {
 			log.Println("Evaluating")
 
 			//Check if there are some instances with 0 arrivals
-			for fName, fInfo := range m {
+			for fName, fInfo := range d.m {
 				for cName, cFInfo := range fInfo.invokingClasses {
 					//Cleanup
 					if cFInfo.arrivalCount == 0 {
 						cFInfo.timeSlotsWithoutArrivals++
 						if cFInfo.timeSlotsWithoutArrivals >= maxTimeSlots {
-							Delete(fName, cName)
+							d.Delete(fName, cName)
 						}
 					}
 				}
 			}
 
-			updateProbabilities()
+			d.updateProbabilities()
 
 			//Reset arrivals for the time slot
-			for _, fInfo := range m {
+			for _, fInfo := range d.m {
 				for _, cFInfo := range fInfo.invokingClasses {
 					//Cleanup
 					cFInfo.arrivalCount = 0
@@ -205,11 +207,11 @@ func handler() {
 			}
 
 		case r := <-requestChannel:
-			updateData(r)
+			d.updateData(r)
 		case arr := <-arrivalChannel:
 			name := arr.Fun.Name
 
-			fInfo, prs := m[name]
+			fInfo, prs := d.m[name]
 			if !prs {
 				fInfo = &functionInfo{
 					name:            name,
@@ -218,7 +220,7 @@ func handler() {
 					probCold:        1,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				m[name] = fInfo
+				d.m[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
@@ -238,10 +240,9 @@ func handler() {
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
 			cFInfo.timeSlotsWithoutArrivals = 0
 
-		//TODO is it correct?
 		case _ = <-pcoldTicker.C:
 			//Reset arrivals for the time slot
-			for _, fInfo := range m {
+			for _, fInfo := range d.m {
 				fInfo.coldStartCount = [2]int64{0, 0}
 				fInfo.timeSlotCount = [2]int64{0, 0}
 			}
@@ -249,13 +250,13 @@ func handler() {
 	}
 }
 
-func updateProbabilities() {
+func (d *decisionEngine) updateProbabilities() {
 	//SolveprobabilitiesLegacy(m)
 	//log.Println(SolveColdStart(m))
-	SolveProbabilities(m)
+	SolveProbabilities(d.m)
 }
 
-func ShowData() {
+func (d *decisionEngine) ShowData() {
 	//log.Println("ERLANG: ", ErlangB(57, 45))
 	//for {
 	//	time.Sleep(5 * time.Second)
@@ -273,15 +274,15 @@ func ShowData() {
 	*/
 }
 
-func Completed(r *function.Request, offloaded int) {
+func (d *decisionEngine) Completed(r *scheduledRequest, offloaded int) {
 	requestChannel <- completedRequest{
-		Request:  r,
-		location: offloaded,
+		scheduledRequest: r,
+		location:         offloaded,
 	}
 }
 
-func Delete(function string, class string) {
-	fInfo, prs := m[function]
+func (d *decisionEngine) Delete(function string, class string) {
+	fInfo, prs := d.m[function]
 	if !prs {
 		return
 	}
@@ -290,10 +291,11 @@ func Delete(function string, class string) {
 
 	//If there aren't any more classes calls the function can be deleted
 	if len(fInfo.invokingClasses) == 0 {
-		delete(m, function)
+		delete(d.m, function)
 	}
 }
 
+// TODO maybe remove
 func UpdateDataAsync(r function.Response) {
 	name := r.Name
 	class := r.Class
@@ -306,7 +308,7 @@ func UpdateDataAsync(r function.Response) {
 		location = OFFLOADED
 	}
 
-	fInfo, prs := m[name]
+	fInfo, prs := d.m[name]
 	if !prs {
 		// If it is missing from the map then enough time has passed to cause expiring on the function entry,
 		// or the invocation came from somewhere else.
@@ -345,12 +347,12 @@ func UpdateDataAsync(r function.Response) {
 	}
 }
 
-func updateData(r completedRequest) {
+func (d *decisionEngine) updateData(r completedRequest) {
 	name := r.Fun.Name
 
 	location := r.location
 
-	fInfo, prs := m[name]
+	fInfo, prs := d.m[name]
 	//TODO maybe create here the entry in the function? Is it necessary?
 	if !prs {
 		return

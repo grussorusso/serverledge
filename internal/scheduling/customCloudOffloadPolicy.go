@@ -1,21 +1,32 @@
 package scheduling
 
-import "github.com/grussorusso/serverledge/internal/node"
+import (
+	"github.com/grussorusso/serverledge/internal/node"
+)
+
+var d *decisionEngine
 
 type CustomCloudOffloadPolicy struct {
 }
 
 func (p *CustomCloudOffloadPolicy) Init() {
-	go InitDecisionEngine()
+	d = &decisionEngine{}
+	go d.InitDecisionEngine()
 }
 
+// TODO move completed jobs here
 func (p *CustomCloudOffloadPolicy) OnCompletion(r *scheduledRequest) {
 	//log.Printf("Completed execution of %s in %f\n", r.Fun.Name, r.ExecReport.ResponseTime)
 	//Completed(r.Request, false)
+	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD {
+		d.Completed(r, OFFLOADED)
+	} else {
+		d.Completed(r, LOCAL)
+	}
 }
 
 func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
-	dec := Decide(r)
+	dec := d.Decide(r)
 
 	if dec == EXECUTE_REQUEST {
 		containerID, err := node.AcquireWarmContainer(r.Fun)
@@ -33,31 +44,4 @@ func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
 	} else if dec == DROP_REQUEST {
 		dropRequest(r)
 	}
-	/*
-		dec, url := Decide(r)
-
-		if dec == EXEC_LOCAL_REQUEST {
-			containerID, err := node.AcquireWarmContainer(r.Fun)
-			if err == nil {
-				execLocally(r, containerID, true)
-			} else if handleColdStart(r) {
-				return
-			} else if r.CanDoOffloading {
-				handleCloudOffload(r)
-			} else {
-				dropRequest(r)
-			}
-		} else if dec == EXEC_CLOUD_REQUEST {
-			handleCloudOffload(r)
-		} else if dec == EXEC_NEIGHBOUR_REQUEST {
-			if url != "" {
-				handleEdgeOffload(r, url)
-				return
-			}
-
-			dropRequest(r)
-		} else if dec == DROP_REQUEST {
-			dropRequest(r)
-		}
-	*/
 }
