@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"log"
 
 	"net/http"
@@ -29,10 +30,17 @@ func Init() {
 	nodeIdentifier = node.NodeIdentifier
 	registerGlobalMetrics()
 
+	//portNumber := config.GetInt(config.METRICS_PROMETHEUS_PORT, 2112)
+	//host := config.GetString(config.METRICS_PROMETHEUS_HOST, "")
+
+	portNumber := config.GetInt(config.METRICS_PORT, 2112)
+
+	addr := fmt.Sprintf(":%d", portNumber)
+
 	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 		EnableOpenMetrics: true})
 	http.Handle("/metrics", handler)
-	http.ListenAndServe(":2112", nil)
+	http.ListenAndServe(addr, nil)
 }
 
 // Global metrics
@@ -42,26 +50,25 @@ var (
 		Help: "The total number of completed function invocations",
 	}, []string{"node", "function"})
 
-	Arrivals = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "arrivals_total",
-		Help: "The total number of arrivals",
-	}, []string{"node", "function", "class"})
-
 	CompletedInvocationsOffloaded = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "sedge_completed_offloaded_total",
 		Help: "The total number of completed offloaded function invocations",
 	}, []string{"node", "function"})
 
+	Arrivals = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "arrivals_total",
+		Help: "The total number of arrivals",
+	}, []string{"node", "function", "class"})
+
 	ExecutionTimes = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "sedge_exectime",
-		Help:    "Function duration",
-		Buckets: durationBuckets,
+		Name: "sedge_exectime",
+		Help: "Function duration",
 	},
 		[]string{"node", "function"})
+
 	ExecutionTimesOffloaded = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "sedge_exectime_offloaded",
-		Help:    "Function duration if offloaded",
-		Buckets: durationBuckets,
+		Name: "sedge_exectime_offloaded",
+		Help: "Function duration if offloaded",
 	},
 		[]string{"node", "function"})
 

@@ -57,6 +57,7 @@ const METRICS_ENABLED = "metrics.enabled"
 
 const METRICS_PROMETHEUS_HOST = "metrics.prometheus.host"
 const METRICS_PROMETHEUS_PORT = "metrics.prometheus.port"
+const METRICS_PORT = "metrics.port"
 
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"

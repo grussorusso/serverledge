@@ -14,6 +14,9 @@ serverledge-cli:
 executor:
 	CGO_ENABLED=0 go build -o $(BIN)/$@ cmd/$@/executor.go
 
+proto:
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/scheduling/protobuf/solver.proto
+
 DOCKERHUB_USER=grussorusso
 images:  image-python310 image-nodejs17ng image-base
 image-python310:

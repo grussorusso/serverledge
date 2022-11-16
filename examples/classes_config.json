@@ -1,7 +1,8 @@
 [
   {
     "name": "class2",
-    "utility": 0
+    "utility": 0,
+    "MaximumResponseTime": -1
   },
   {
     "name": "class1",

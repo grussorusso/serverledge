@@ -12,6 +12,7 @@ cloud:
 scheduler:
   #policy: edgecloud
   policy: customCloudOffload
+  #policy: customCloudOffloadPrometheus
 registry:
   udp:
     port: 9876

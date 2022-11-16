@@ -9,7 +9,7 @@ var dP *decisionEnginePrometheus
 
 func (p *CustomPolicyPrometheus) Init() {
 	dP = &decisionEnginePrometheus{}
-	go d.InitDecisionEngine()
+	go dP.InitDecisionEngine()
 }
 
 func (p *CustomPolicyPrometheus) OnCompletion(r *scheduledRequest) {

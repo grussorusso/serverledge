@@ -77,6 +77,8 @@ type classFunctionInfo struct {
 	share float64
 	//
 	timeSlotsWithoutArrivals int
+	//
+	className string
 }
 
 func (fInfo *functionInfo) getProbCold(location int) float64 {
@@ -231,7 +233,8 @@ func (d *decisionEngine) handler() {
 					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
-					timeSlotsWithoutArrivals: 0}
+					timeSlotsWithoutArrivals: 0,
+					className:                arr.class}
 
 				fInfo.invokingClasses[arr.class] = cFInfo
 			}
@@ -253,7 +256,7 @@ func (d *decisionEngine) handler() {
 func (d *decisionEngine) updateProbabilities() {
 	//SolveprobabilitiesLegacy(m)
 	//log.Println(SolveColdStart(m))
-	SolveProbabilities(d.m)
+	solve(d.m)
 }
 
 func (d *decisionEngine) ShowData() {

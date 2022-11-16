@@ -1,5 +1,6 @@
 metrics:
   enabled: true
+  port: 2113
 container:
   pool:
     cpus: 4

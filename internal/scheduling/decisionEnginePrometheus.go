@@ -1,10 +1,16 @@
 package scheduling
 
 import (
+	"context"
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -22,8 +28,6 @@ type functionInfoPrometheus struct {
 	varianceDuration [2]float64
 	//Count the number of cold starts to estimate probCold
 	coldStartCount [2]int64
-	//Count the number of calls in the time slot
-	timeSlotCount [2]int64
 	//Number of requests that missed the deadline
 	missed int
 	//Average of init times when cold start
@@ -116,6 +120,59 @@ func (dP *decisionEnginePrometheus) InitDecisionEngine() {
 	go dP.handler()
 }
 
+func getDataFromPrometheus() {
+	identifier := node.NodeIdentifier
+	log.Println(identifier)
+	query := fmt.Sprintf("rate(sedge_exectime_sum{node='%s'}[1d])/rate(sedge_exectime_count{node='%s'}[1d])", identifier, identifier)
+	log.Println(query)
+
+	client, err := api.NewClient(api.Config{
+		Address: "http://localhost:9090",
+	})
+	if err != nil {
+		fmt.Printf("Error creating client: %v\n", err)
+		os.Exit(1)
+	}
+	v1api := v1.NewAPI(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	//TODO edit range
+	r := v1.Range{
+		Start: time.Now().Add(-2 * time.Minute),
+		End:   time.Now(),
+		Step:  time.Second,
+	}
+
+	result, warnings, err := v1api.QueryRange(ctx, query, r, v1.WithTimeout(5*time.Second))
+	if err != nil {
+		fmt.Printf("Error querying Prometheus: %v\n", err)
+		os.Exit(1)
+	}
+	if len(warnings) > 0 {
+		fmt.Printf("Warnings: %v\n", warnings)
+	}
+
+	log.Println(result.Type())
+	log.Printf("Result:\n%v\n", result)
+
+	mapData := make(map[string][]model.SampleValue)
+
+	log.Println(result.(model.Matrix).Len())
+
+	for i := 0; i < result.(model.Matrix).Len(); i++ {
+		x := make([]model.SampleValue, 0)
+		for _, val := range result.(model.Matrix)[0].Values {
+			x = append(x, val.Value)
+		}
+
+		mapData[string(i)] = x
+	}
+
+	log.Println(mapData)
+}
+
+// TODO SYNC
 func (dP *decisionEnginePrometheus) handler() {
 	evaluationTicker :=
 		time.NewTicker(time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second)
@@ -125,7 +182,7 @@ func (dP *decisionEnginePrometheus) handler() {
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
-
+			getDataFromPrometheus()
 			dP.updateProbabilities()
 		case arr := <-arrivalChannel:
 			name := arr.Fun.Name
