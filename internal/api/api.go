@@ -122,9 +122,9 @@ func PollAsyncResult(c echo.Context) error {
 		var resp function.Response
 		err := json.Unmarshal(payload, &resp)
 
-		//TODO maybe remove
+		// TODO maybe remove
 		if err == nil {
-			scheduling.UpdateDataAsync(resp)
+			//scheduling.UpdateDataAsync(resp)
 		} else {
 			log.Println(err)
 		}

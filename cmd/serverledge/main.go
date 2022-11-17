@@ -169,8 +169,6 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.Custom1Policy{}
 	} else if policyConf == "customCloudOffload" {
 		return &scheduling.CustomCloudOffloadPolicy{}
-	} else if policyConf == "customCloudOffloadPrometheus" {
-		return &scheduling.CustomPolicyPrometheus{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

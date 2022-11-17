@@ -12,7 +12,12 @@ cloud:
 scheduler:
   #policy: edgecloud
   policy: customCloudOffload
+  version: flux
   #policy: customCloudOffloadPrometheus
+  cloud:
+    cost: 0.0001
 registry:
   udp:
     port: 9876
+solver:
+  address: "localhost:2500"

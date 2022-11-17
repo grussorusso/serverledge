@@ -62,9 +62,15 @@ const METRICS_PORT = "metrics.port"
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
+const SCHEDULING_POLICY_VERSION = "scheduler.version"
+
+const CLOUD_COST = "scheduler.cloud.cost"
 
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
 
 // Solver interval
 const SOLVER_EVALUATION_INTERVAL = "solver.evalinterval"
+
+// Solver ip address
+const SOLVER_ADDRESS = "solver.address"

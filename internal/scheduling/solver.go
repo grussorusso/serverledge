@@ -2,15 +2,11 @@ package scheduling
 
 import (
 	"context"
-	"flag"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/node"
 	pb "github.com/grussorusso/serverledge/internal/scheduling/protobuf"
 	"google.golang.org/grpc"
 	"log"
-)
-
-var (
-	serverAddr = flag.String("addr", "localhost:2500", "The server address in the format of host:port")
 )
 
 func solve(m map[string]*functionInfo) {
@@ -22,7 +18,9 @@ func solve(m map[string]*functionInfo) {
 
 	opts = append(opts, grpc.WithInsecure())
 
-	conn, err := grpc.Dial(*serverAddr, opts...)
+	serverAddr := config.GetString(config.SOLVER_ADDRESS, "localhost:2500")
+
+	conn, err := grpc.Dial(serverAddr, opts...)
 	defer conn.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -54,8 +52,8 @@ func solve(m map[string]*functionInfo) {
 		durationOffloaded := float32(fInfo.meanDuration[OFFLOADED])
 		initTimeLocal := float32(fInfo.initTime[LOCAL])
 		initTimeOffloaded := float32(fInfo.initTime[OFFLOADED])
-		pcold := float32(fInfo.probCold)
-		pcoldOffloaded := float32(fInfo.probColdOffload)
+		pcold := float32(fInfo.probCold[LOCAL])
+		pcoldOffloaded := float32(fInfo.probCold[OFFLOADED])
 
 		x := &pb.Function{
 			Name:              &fName,
@@ -73,24 +71,24 @@ func solve(m map[string]*functionInfo) {
 		functionList = append(functionList, x)
 	}
 
-	//TODO do this one time
-	for cName, class := range Classes {
-		utility := float32(class.Utility)
-		mrt := float32(class.MaximumResponseTime)
-		completedPercentage := float32(class.CompletedPercentage)
-		name := cName
+	if len(classList) == 0 {
+		for cName, class := range Classes {
+			utility := float32(class.Utility)
+			mrt := float32(class.MaximumResponseTime)
+			completedPercentage := float32(class.CompletedPercentage)
+			name := cName
 
-		classList = append(classList, &pb.QosClass{
-			Name:                &name,
-			Utility:             &utility,
-			MaxResponseTime:     &mrt,
-			CompletedPercentage: &completedPercentage,
-		})
+			classList = append(classList, &pb.QosClass{
+				Name:                &name,
+				Utility:             &utility,
+				MaxResponseTime:     &mrt,
+				CompletedPercentage: &completedPercentage,
+			})
+		}
 	}
 
 	latency := float32(OffloadLatency)
-	//TODO edit this
-	cost := float32(0.00001)
+	cost := float32(config.GetFloat(config.CLOUD_COST, 0.0001))
 	cpu := float32(node.Resources.MaxCPUs)
 	mem := float32(node.Resources.MaxMemMB)
 	response, err := client.Solve(context.Background(), &pb.Request{
