@@ -111,15 +111,69 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 }
 
 func (d *decisionEngineFlux) queryDb() {
+	//TODO edit time window and use better query
+	/*
+			from(bucket: "completions")
+			  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+			  |> group(columns: ["_measurement", "class"])
+			  |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: true)
 
+		maybe |> max()
+		or 	  |> mean()
+
+			from(bucket: "completions")
+											|> range(start: -%dm)
+											|> group(columns: ["_measurement", "class"])
+											|> count()
+	*/
 	query := fmt.Sprintf(`from(bucket: "completions")
+										|> range(start: -%dh)
+										|> group(columns: ["_measurement", "class"])
+									    |> aggregateWindow(every: 1s, fn: count, createEmpty: true)
+									    |> mean()`, 12)
+
+	result, err := queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(float64)
+
+			log.Println(x)
+			log.Println(val)
+			funct := x["_measurement"].(string)
+			class := x["class"].(string)
+
+			fInfo, prs := d.m[funct]
+			if !prs {
+				continue
+			}
+
+			//timeWindow := 25 * 60.0
+			cFInfo, prs := fInfo.invokingClasses[class]
+			if !prs {
+				//TODO create
+			} else {
+				cFInfo.arrivals = val
+			}
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println(err)
+	}
+
+	query = fmt.Sprintf(`from(bucket: "completions")
 										|> range(start: -%dh)
 										|> group(columns: ["_measurement", "offloaded"])
 										|> filter(fn: (r) => r["_field"] == "duration")
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, 12, 100, 100)
 
-	result, err := queryAPI.Query(context.Background(), query)
+	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
 		for result.Next() {
@@ -291,15 +345,6 @@ func (d *decisionEngineFlux) handler() {
 			d.queryDb()
 			d.updateProbabilities()
 
-			//Reset arrivals for the time slot
-			for _, fInfo := range d.m {
-				for _, cFInfo := range fInfo.invokingClasses {
-					//Cleanup
-					cFInfo.arrivalCount = 0
-					cFInfo.arrivals = 0
-				}
-			}
-
 		case r := <-requestChannel:
 			offloaded := "false"
 			warmStart := "false"
@@ -350,8 +395,6 @@ func (d *decisionEngineFlux) handler() {
 				fInfo.invokingClasses[arr.class] = cFInfo
 			}
 
-			cFInfo.arrivalCount++
-			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
 			cFInfo.timeSlotsWithoutArrivals = 0
 		case _ = <-pcoldTicker.C:
 			//Reset arrivals for the time slot
@@ -368,7 +411,10 @@ func (d *decisionEngineFlux) updateProbabilities() {
 }
 
 func (d *decisionEngineFlux) ShowData() {
-
+	for {
+		time.Sleep(time.Second * 5)
+		log.Println(d.m)
+	}
 }
 
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
