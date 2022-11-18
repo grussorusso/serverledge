@@ -7,6 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
 	"log"
 	"math/rand"
 	"time"
@@ -82,6 +83,9 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	s := rand.NewSource(time.Now().UnixNano())
 	rGen = rand.New(s)
 
+	//TODO parametrize
+	orgName := "serverledge"
+
 	// TODO edit batch size and token
 	clientInflux = influxdb2.NewClientWithOptions("http://localhost:8086", "my-token",
 		influxdb2.DefaultOptions().SetBatchSize(20))
@@ -89,18 +93,80 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	//								NODE			  INFO(arrivals, completions)
 	// "serverledge-"+node.NodeIdentifier
 	//TODO create custom bucket
-	/*
-		_, err := clientInflux.BucketsAPI().CreateBucket(context.Background(), &domain.Bucket{
-			Name: "completions",
-		})
-		if err != nil {
-				return
+	orgsAPI := clientInflux.OrganizationsAPI()
+	bucketAPI := clientInflux.BucketsAPI()
+	orgs, err := orgsAPI.GetOrganizations(context.Background(), api.PagingWithDescending(true))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	found := false
+	var orgServerledge domain.Organization
+	for _, org := range *orgs {
+		if orgName == org.Name {
+			log.Printf("Found organization %s\n", org.Name)
+			found = true
+			orgServerledge = org
 		}
+	}
 
-	*/
+	var orgId string
 
-	writeAPI = clientInflux.WriteAPI("serverledge", "completions")
-	queryAPI = clientInflux.QueryAPI("serverledge")
+	if !found {
+		orgId = "serverledge"
+		name := "Serverledge organization"
+		timeNow := time.Now()
+		orgsAPI.CreateOrganization(context.Background(), &domain.Organization{
+			CreatedAt:   &timeNow,
+			Description: &name,
+			Id:          &orgId,
+			Links:       nil,
+			Name:        orgName,
+			Status:      nil,
+			UpdatedAt:   nil,
+		})
+	} else {
+		orgId = *orgServerledge.Id
+	}
+
+	found = false
+	bucketName := "serverledge-" + node.NodeIdentifier
+	buckets, err := bucketAPI.GetBuckets(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, bucket := range *buckets {
+		if bucketName == bucket.Name {
+			log.Printf("Found bucket %s\n", bucket.Name)
+			found = true
+		}
+	}
+
+	if !found {
+		log.Printf("Creating bucket %s\n", bucketName)
+		_, err = bucketAPI.CreateBucket(context.Background(), &domain.Bucket{
+			CreatedAt:      nil,
+			Description:    nil,
+			Id:             &bucketName,
+			Labels:         nil,
+			Links:          nil,
+			Name:           bucketName,
+			OrgID:          &orgId,
+			RetentionRules: nil,
+			Rp:             nil,
+			SchemaType:     nil,
+			Type:           nil,
+			UpdatedAt:      nil,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	writeAPI = clientInflux.WriteAPI(orgName, bucketName)
+	queryAPI = clientInflux.QueryAPI(orgName)
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 
