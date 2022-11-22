@@ -74,3 +74,7 @@ const SOLVER_EVALUATION_INTERVAL = "solver.evalinterval"
 
 // Solver ip address
 const SOLVER_ADDRESS = "solver.address"
+
+const STORAGE_DB_ADDRESS = "storage.address"
+const STORAGE_DB_TOKEN = "storage.token"
+const STORAGE_DB_ORGNAME = "storage.orgname"

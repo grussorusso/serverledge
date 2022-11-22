@@ -21,3 +21,7 @@ registry:
     port: 9876
 solver:
   address: "localhost:2500"
+storage:
+  address: "http://localhost:8086"
+  token: "serverledge"
+  orgname: "serverledge"

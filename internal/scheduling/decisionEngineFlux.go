@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
@@ -20,6 +21,8 @@ type decisionEngineFlux struct {
 var clientInflux influxdb2.Client
 var writeAPI api.WriteAPI
 var queryAPI api.QueryAPI
+
+var bucketName string
 
 func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 	name := r.Fun.Name
@@ -83,16 +86,13 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	s := rand.NewSource(time.Now().UnixNano())
 	rGen = rand.New(s)
 
-	//TODO parametrize
-	orgName := "serverledge"
+	orgName := config.GetString(config.STORAGE_DB_ORGNAME, "serverledge")
+	address := config.GetString(config.STORAGE_DB_ADDRESS, "http://localhost:8086")
+	token := config.GetString(config.STORAGE_DB_TOKEN, "serverledge")
 
-	// TODO edit batch size and token
-	clientInflux = influxdb2.NewClientWithOptions("http://localhost:8086", "my-token",
+	// TODO edit batch size
+	clientInflux = influxdb2.NewClientWithOptions(address, token,
 		influxdb2.DefaultOptions().SetBatchSize(20))
-	// TODO edit bucket with node info
-	//								NODE			  INFO(arrivals, completions)
-	// "serverledge-"+node.NodeIdentifier
-	//TODO create custom bucket
 	orgsAPI := clientInflux.OrganizationsAPI()
 	bucketAPI := clientInflux.BucketsAPI()
 	orgs, err := orgsAPI.GetOrganizations(context.Background(), api.PagingWithDescending(true))
@@ -116,21 +116,21 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 		orgId = "serverledge"
 		name := "Serverledge organization"
 		timeNow := time.Now()
-		orgsAPI.CreateOrganization(context.Background(), &domain.Organization{
+		_, err := orgsAPI.CreateOrganization(context.Background(), &domain.Organization{
 			CreatedAt:   &timeNow,
 			Description: &name,
 			Id:          &orgId,
-			Links:       nil,
 			Name:        orgName,
-			Status:      nil,
-			UpdatedAt:   nil,
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		orgId = *orgServerledge.Id
 	}
 
 	found = false
-	bucketName := "serverledge-" + node.NodeIdentifier
+	bucketName = "serverledge-" + node.NodeIdentifier
 	buckets, err := bucketAPI.GetBuckets(context.Background())
 	if err != nil {
 		log.Fatal(err)
@@ -146,18 +146,9 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	if !found {
 		log.Printf("Creating bucket %s\n", bucketName)
 		_, err = bucketAPI.CreateBucket(context.Background(), &domain.Bucket{
-			CreatedAt:      nil,
-			Description:    nil,
-			Id:             &bucketName,
-			Labels:         nil,
-			Links:          nil,
-			Name:           bucketName,
-			OrgID:          &orgId,
-			RetentionRules: nil,
-			Rp:             nil,
-			SchemaType:     nil,
-			Type:           nil,
-			UpdatedAt:      nil,
+			Id:    &bucketName,
+			Name:  bucketName,
+			OrgID: &orgId,
 		})
 
 		if err != nil {
@@ -192,11 +183,12 @@ func (d *decisionEngineFlux) queryDb() {
 											|> group(columns: ["_measurement", "class"])
 											|> count()
 	*/
-	query := fmt.Sprintf(`from(bucket: "completions")
+	query := fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
+										|> filter(fn: (r) => r["_field"] == "duration")
 										|> group(columns: ["_measurement", "class"])
 									    |> aggregateWindow(every: 1s, fn: count, createEmpty: true)
-									    |> mean()`, 12)
+									    |> mean()`, bucketName, 12)
 
 	result, err := queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -212,16 +204,35 @@ func (d *decisionEngineFlux) queryDb() {
 
 			fInfo, prs := d.m[funct]
 			if !prs {
-				continue
+				f, _ := function.GetFunction(funct)
+				fInfo = &functionInfo{
+					name:            funct,
+					memory:          f.MemoryMB,
+					cpu:             f.CPUDemand,
+					probCold:        [2]float64{1, 1},
+					invokingClasses: make(map[string]*classFunctionInfo)}
+
+				d.m[funct] = fInfo
 			}
 
 			//timeWindow := 25 * 60.0
 			cFInfo, prs := fInfo.invokingClasses[class]
 			if !prs {
-				//TODO create
-			} else {
-				cFInfo.arrivals = val
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+					probExecute:              startingExecuteProb,
+					probOffload:              startingOffloadProb,
+					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
+					arrivals:                 0,
+					arrivalCount:             0,
+					timeSlotsWithoutArrivals: 0,
+					className:                class}
+
+				fInfo.invokingClasses[class] = cFInfo
 			}
+			cFInfo.arrivals = val
+
+			//Reset deletion
+			cFInfo.timeSlotsWithoutArrivals = 0
 		}
 
 		// check for an error
@@ -232,12 +243,12 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println(err)
 	}
 
-	query = fmt.Sprintf(`from(bucket: "completions")
+	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
 										|> group(columns: ["_measurement", "offloaded"])
 										|> filter(fn: (r) => r["_field"] == "duration")
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -268,12 +279,12 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println(err)
 	}
 
-	query = fmt.Sprintf(`from(bucket: "completions")
+	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
 										|> filter(fn: (r) => r["_field"] == "offload_latency")
 										|> group()
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -290,12 +301,12 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println(err)
 	}
 
-	query = fmt.Sprintf(`from(bucket: "completions")
+	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
 										|> group(columns: ["_measurement", "offloaded"])
 										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false")
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
@@ -327,10 +338,11 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println(err)
 	}
 
-	query = fmt.Sprintf(`from(bucket: "completions")
+	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
+  										|> filter(fn: (r) => r["_field"] == "duration")
 										|> group(columns: ["_measurement", "offloaded", "warm_start"])
-										|> count()`, 12)
+										|> count()`, bucketName, 12)
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -339,8 +351,6 @@ func (d *decisionEngineFlux) queryDb() {
 			x := result.Record().Values()
 			val := result.Record().Value().(int64)
 
-			log.Println(x)
-			log.Println(val)
 			funct := x["_measurement"].(string)
 			off := x["offloaded"].(string)
 			warm_start := x["warm_start"].(string)
@@ -379,7 +389,6 @@ func (d *decisionEngineFlux) queryDb() {
 			}
 		}
 	}
-
 }
 
 func (d *decisionEngineFlux) handler() {
