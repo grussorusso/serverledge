@@ -90,6 +90,8 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	address := config.GetString(config.STORAGE_DB_ADDRESS, "http://localhost:8086")
 	token := config.GetString(config.STORAGE_DB_TOKEN, "serverledge")
 
+	log.Printf("Organization %s at %s\n", orgName, address)
+
 	// TODO edit batch size
 	clientInflux = influxdb2.NewClientWithOptions(address, token,
 		influxdb2.DefaultOptions().SetBatchSize(20))
