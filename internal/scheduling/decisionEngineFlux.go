@@ -240,7 +240,7 @@ func (d *decisionEngineFlux) queryDb() {
 			log.Printf("query parsing error: %s\n", result.Err().Error())
 		}
 	} else {
-		log.Println(err)
+		log.Println("DB error", err)
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
@@ -276,7 +276,7 @@ func (d *decisionEngineFlux) queryDb() {
 			log.Printf("query parsing error: %s\n", result.Err().Error())
 		}
 	} else {
-		log.Println(err)
+		log.Println("DB error", err)
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
@@ -298,7 +298,7 @@ func (d *decisionEngineFlux) queryDb() {
 			log.Printf("query parsing error: %s\n", result.Err().Error())
 		}
 	} else {
-		log.Println(err)
+		log.Println("DB error", err)
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
@@ -335,7 +335,7 @@ func (d *decisionEngineFlux) queryDb() {
 			log.Printf("query parsing error: %s\n", result.Err().Error())
 		}
 	} else {
-		log.Println(err)
+		log.Println("DB error", err)
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
@@ -377,7 +377,7 @@ func (d *decisionEngineFlux) queryDb() {
 			log.Printf("query parsing error: %s\n", result.Err().Error())
 		}
 	} else {
-		log.Println(err)
+		log.Println("DB error", err)
 	}
 
 	for _, fInfo := range d.m {
