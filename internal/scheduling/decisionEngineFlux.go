@@ -97,7 +97,7 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	bucketAPI := clientInflux.BucketsAPI()
 	orgs, err := orgsAPI.GetOrganizations(context.Background(), api.PagingWithDescending(true))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Organization API error", err)
 	}
 
 	found := false
