@@ -198,9 +198,6 @@ func (d *decisionEngineFlux) queryDb() {
 		for result.Next() {
 			x := result.Record().Values()
 			val := result.Record().Value().(float64)
-
-			log.Println(x)
-			log.Println(val)
 			funct := x["_measurement"].(string)
 			class := x["class"].(string)
 

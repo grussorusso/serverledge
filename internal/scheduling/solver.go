@@ -104,7 +104,7 @@ func solve(m map[string]*functionInfo) {
 		log.Println(err)
 	}
 
-	log.Println(response.GetTimeTaken())
+	log.Println("Evaluation took: ", response.GetTimeTaken())
 	res := response.GetFResponse()
 
 	for _, r := range res {
