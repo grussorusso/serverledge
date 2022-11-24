@@ -56,7 +56,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Println("Probabilities are", pe, po, pd)
+	log.Printf("Probabilities for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
 
 	//warmNumber, isWarm := node.WarmStatus()[name]
 	if !r.CanDoOffloading {
