@@ -487,7 +487,11 @@ func (d *decisionEngineFlux) updateProbabilities() {
 func (d *decisionEngineFlux) ShowData() {
 	for {
 		time.Sleep(time.Second * 5)
-		log.Println(d.m)
+		for _, fInfo := range d.m {
+			for _, cFInfo := range fInfo.invokingClasses {
+				log.Println(cFInfo)
+			}
+		}
 	}
 }
 
