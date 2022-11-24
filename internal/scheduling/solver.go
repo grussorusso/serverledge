@@ -88,7 +88,7 @@ func solve(m map[string]*functionInfo) {
 	}
 
 	latency := float32(OffloadLatency)
-	cost := float32(config.GetFloat(config.CLOUD_COST, 0.0001))
+	cost := float32(config.GetFloat(config.CLOUD_COST, 0.01))
 	cpu := float32(node.Resources.MaxCPUs)
 	mem := float32(node.Resources.MaxMemMB)
 	response, err := client.Solve(context.Background(), &pb.Request{

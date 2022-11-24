@@ -35,6 +35,7 @@ type functionInfo struct {
 	coldStartCount [2]int64
 	//Count the number of calls in the time slot
 	timeSlotCount [2]int64
+	//TODO maybe remove
 	//Number of requests that missed the deadline
 	missed int
 	//Average of init times when cold start
@@ -85,6 +86,7 @@ type arrivalRequest struct {
 	class string
 }
 
+// TODO remove
 func (fInfo *functionInfo) getProbCold(location int) float64 {
 	if fInfo.timeSlotCount[location] == 0 {
 		//If there are no arrivals there's a high probability that the function execution requires a cold start

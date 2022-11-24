@@ -170,7 +170,7 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 }
 
 func (d *decisionEngineFlux) queryDb() {
-	//TODO edit time window and use better query
+	//TODO edit time window
 	/*
 			from(bucket: "completions")
 			  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
@@ -384,7 +384,7 @@ func (d *decisionEngineFlux) queryDb() {
 			if fInfo.coldStartCount[location] == 0 {
 				fInfo.probCold[location] = 1.0
 			} else {
-				fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.count[location])
+				fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.count[location]+fInfo.coldStartCount[location])
 			}
 		}
 	}

@@ -124,7 +124,7 @@ func PollAsyncResult(c echo.Context) error {
 
 		// TODO maybe remove
 		if err == nil {
-			//scheduling.UpdateDataAsync(resp)
+			//scheduling.CompletionAsync(resp)
 		} else {
 			log.Println(err)
 		}
