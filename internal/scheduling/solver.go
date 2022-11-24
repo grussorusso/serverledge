@@ -33,8 +33,7 @@ func solve(m map[string]*functionInfo) {
 	//TODO do only once
 	classList := make([]*pb.QosClass, 0)
 
-	for fName, fInfo := range m {
-
+	for _, fInfo := range m {
 		invocationList := make([]*pb.FunctionInvocation, 0)
 
 		for _, cFInfo := range fInfo.invokingClasses {
@@ -48,6 +47,7 @@ func solve(m map[string]*functionInfo) {
 
 		memory := int32(fInfo.memory)
 		cpu := float32(fInfo.cpu)
+		name := fInfo.name
 		durationLocal := float32(fInfo.meanDuration[LOCAL])
 		durationOffloaded := float32(fInfo.meanDuration[OFFLOADED])
 		initTimeLocal := float32(fInfo.initTime[LOCAL])
@@ -56,7 +56,7 @@ func solve(m map[string]*functionInfo) {
 		pcoldOffloaded := float32(fInfo.probCold[OFFLOADED])
 
 		x := &pb.Function{
-			Name:              &fName,
+			Name:              &name,
 			Memory:            &memory,
 			Cpu:               &cpu,
 			Invocations:       invocationList,
@@ -86,6 +86,8 @@ func solve(m map[string]*functionInfo) {
 			})
 		}
 	}
+
+	log.Println("Aaaaaa", functionList)
 
 	latency := float32(OffloadLatency)
 	cost := float32(config.GetFloat(config.CLOUD_COST, 0.01))
