@@ -185,12 +185,13 @@ func (d *decisionEngineFlux) queryDb() {
 											|> group(columns: ["_measurement", "class"])
 											|> count()
 	*/
+	start := time.Now().Add(-evaluationInterval)
 	query := fmt.Sprintf(`from(bucket: "%s")
-										|> range(start: -%dh)
+										|> range(start: %d)
 										|> filter(fn: (r) => r["_field"] == "duration")
 										|> group(columns: ["_measurement", "class"])
 									    |> aggregateWindow(every: 1s, fn: count, createEmpty: true)
-									    |> mean()`, bucketName, 12)
+									    |> mean()`, bucketName, start.Unix())
 
 	result, err := queryAPI.Query(context.Background(), query)
 	if err == nil {
