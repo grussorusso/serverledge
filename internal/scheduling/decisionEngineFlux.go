@@ -78,6 +78,11 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		return OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
+		requestChannel <- completedRequest{
+			scheduledRequest: r,
+			dropped:          false,
+		}
+
 		return DROP_REQUEST
 	}
 }
@@ -246,7 +251,7 @@ func (d *decisionEngineFlux) queryDb() {
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
 										|> group(columns: ["_measurement", "offloaded"])
-										|> filter(fn: (r) => r["_field"] == "duration")
+										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
 
@@ -281,7 +286,7 @@ func (d *decisionEngineFlux) queryDb() {
 
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
-										|> filter(fn: (r) => r["_field"] == "offload_latency")
+										|> filter(fn: (r) => r["_field"] == "offload_latency" and r["completed"] == "true")
 										|> group()
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
@@ -304,7 +309,7 @@ func (d *decisionEngineFlux) queryDb() {
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
 										|> group(columns: ["_measurement", "offloaded"])
-										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false")
+										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false" and r["completed"] == "true")
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
 	result, err = queryAPI.Query(context.Background(), query)
@@ -340,7 +345,7 @@ func (d *decisionEngineFlux) queryDb() {
 
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: -%dh)
-  										|> filter(fn: (r) => r["_field"] == "duration")
+  										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
 										|> group(columns: ["_measurement", "offloaded", "warm_start"])
 										|> count()`, bucketName, 12)
 
@@ -421,10 +426,15 @@ func (d *decisionEngineFlux) handler() {
 			d.updateProbabilities()
 
 		case r := <-requestChannel:
+			var fKeys map[string]interface{}
 			offloaded := "false"
 			warmStart := "false"
+			completed := "false"
 
-			fKeys := map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+			if !r.dropped {
+				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				completed = "true"
+			}
 
 			if r.ExecReport.OffloadLatency != 0 {
 				offloaded = "true"
@@ -436,7 +446,7 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			p := influxdb2.NewPoint(r.Fun.Name,
-				map[string]string{"class": r.ClassService.Name, "offloaded": offloaded, "warm_start": warmStart},
+				map[string]string{"class": r.ClassService.Name, "offloaded": offloaded, "warm_start": warmStart, "completed": completed},
 				fKeys,
 				time.Now())
 
@@ -500,6 +510,7 @@ func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
 	requestChannel <- completedRequest{
 		scheduledRequest: r,
 		location:         offloaded,
+		dropped:          false,
 	}
 }
 

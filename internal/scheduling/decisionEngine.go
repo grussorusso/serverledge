@@ -79,6 +79,7 @@ var maxTimeSlots = 5
 type completedRequest struct {
 	*scheduledRequest
 	location int
+	dropped  bool
 }
 
 type arrivalRequest struct {
