@@ -21,6 +21,9 @@ type decisionEngineFlux struct {
 var clientInflux influxdb2.Client
 var writeAPI api.WriteAPI
 var queryAPI api.QueryAPI
+var deleteAPI api.DeleteAPI
+var orgServerledge domain.Organization
+var bucketServerledge *domain.Bucket
 
 var bucketName string
 
@@ -108,7 +111,6 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	}
 
 	found := false
-	var orgServerledge domain.Organization
 	for _, org := range *orgs {
 		if orgName == org.Name {
 			log.Printf("Found organization %s\n", org.Name)
@@ -147,12 +149,15 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 		if bucketName == bucket.Name {
 			log.Printf("Found bucket %s\n", bucket.Name)
 			found = true
+			bucketServerledge = &bucket
+			break
 		}
 	}
 
 	if !found {
 		log.Printf("Creating bucket %s\n", bucketName)
-		_, err = bucketAPI.CreateBucket(context.Background(), &domain.Bucket{
+
+		bucketServerledge, err = bucketAPI.CreateBucket(context.Background(), &domain.Bucket{
 			Id:    &bucketName,
 			Name:  bucketName,
 			OrgID: &orgId,
@@ -165,6 +170,7 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 
 	writeAPI = clientInflux.WriteAPI(orgName, bucketName)
 	queryAPI = clientInflux.QueryAPI(orgName)
+	deleteAPI = clientInflux.DeleteAPI()
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 
@@ -172,6 +178,13 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 
 	go d.ShowData()
 	go d.handler()
+}
+
+func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
+	err := deleteAPI.Delete(context.Background(), &orgServerledge, bucketServerledge, time.Now().Add(-2*period), time.Now().Add(-period), "")
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (d *decisionEngineFlux) queryDb() {
@@ -190,6 +203,11 @@ func (d *decisionEngineFlux) queryDb() {
 											|> group(columns: ["_measurement", "class"])
 											|> count()
 	*/
+
+	//TODO change
+
+	searchInterval := 24 * time.Hour
+
 	start := time.Now().Add(-evaluationInterval)
 	query := fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: %d)
@@ -248,12 +266,13 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println("DB error", err)
 	}
 
+	start = time.Now().Add(-searchInterval)
 	query = fmt.Sprintf(`from(bucket: "%s")
-										|> range(start: -%dh)
+										|> range(start: %d)
 										|> group(columns: ["_measurement", "offloaded"])
 										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -285,11 +304,11 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
-										|> range(start: -%dh)
+										|> range(start: %d)
 										|> filter(fn: (r) => r["_field"] == "offload_latency" and r["completed"] == "true")
 										|> group()
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -307,11 +326,11 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
-										|> range(start: -%dh)
+										|> range(start: %d)
 										|> group(columns: ["_measurement", "offloaded"])
 										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false" and r["completed"] == "true")
 										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, bucketName, 12, 100, 100)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
@@ -344,10 +363,10 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 
 	query = fmt.Sprintf(`from(bucket: "%s")
-										|> range(start: -%dh)
+										|> range(start: %d)
   										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
 										|> group(columns: ["_measurement", "offloaded", "warm_start"])
-										|> count()`, bucketName, 12)
+										|> count()`, bucketName, start.Unix())
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
@@ -421,6 +440,9 @@ func (d *decisionEngineFlux) handler() {
 					}
 				}
 			}
+
+			//TODO set period
+			d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()

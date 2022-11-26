@@ -87,8 +87,6 @@ func solve(m map[string]*functionInfo) {
 		}
 	}
 
-	log.Println("Aaaaaa", functionList)
-
 	latency := float32(OffloadLatency)
 	cost := float32(config.GetFloat(config.CLOUD_COST, 0.01))
 	cpu := float32(node.Resources.MaxCPUs)

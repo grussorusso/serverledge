@@ -23,7 +23,7 @@ func (p *CustomCloudOffloadPolicy) Init() {
 
 	log.Println("Policy version:", version)
 
-	go de.InitDecisionEngine()
+	de.InitDecisionEngine()
 }
 
 // TODO move completed jobs here
