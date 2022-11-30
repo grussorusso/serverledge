@@ -74,7 +74,7 @@ var arrivalChannel = make(chan arrivalRequest, 1000)
 var requestChannel = make(chan completedRequest, 1000)
 
 // TODO add to config
-var maxTimeSlots = 5
+var maxTimeSlots = 20
 
 type completedRequest struct {
 	*scheduledRequest

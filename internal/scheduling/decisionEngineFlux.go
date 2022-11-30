@@ -189,23 +189,6 @@ func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
 
 func (d *decisionEngineFlux) queryDb() {
 	//TODO edit time window
-	/*
-			from(bucket: "completions")
-			  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-			  |> group(columns: ["_measurement", "class"])
-			  |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: true)
-
-		maybe |> max()
-		or 	  |> mean()
-
-			from(bucket: "completions")
-											|> range(start: -%dm)
-											|> group(columns: ["_measurement", "class"])
-											|> count()
-	*/
-
-	//TODO change
-
 	searchInterval := 24 * time.Hour
 
 	start := time.Now().Add(-evaluationInterval)
@@ -418,8 +401,6 @@ func (d *decisionEngineFlux) queryDb() {
 func (d *decisionEngineFlux) handler() {
 	evaluationTicker :=
 		time.NewTicker(evaluationInterval)
-	pcoldTicker :=
-		time.NewTicker(time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second)
 
 	for {
 		select {
@@ -435,6 +416,7 @@ func (d *decisionEngineFlux) handler() {
 					if cFInfo.arrivalCount == 0 {
 						cFInfo.timeSlotsWithoutArrivals++
 						if cFInfo.timeSlotsWithoutArrivals >= maxTimeSlots {
+							log.Println("DELETING", fName, cName)
 							d.Delete(fName, cName)
 						}
 					}
@@ -503,12 +485,6 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			cFInfo.timeSlotsWithoutArrivals = 0
-		case _ = <-pcoldTicker.C:
-			//Reset arrivals for the time slot
-			for _, fInfo := range d.m {
-				fInfo.coldStartCount = [2]int64{0, 0}
-				fInfo.timeSlotCount = [2]int64{0, 0}
-			}
 		}
 	}
 }
@@ -547,25 +523,5 @@ func (d *decisionEngineFlux) Delete(function string, class string) {
 	//If there aren't any more classes calls the function can be deleted
 	if len(fInfo.invokingClasses) == 0 {
 		delete(d.m, function)
-	}
-}
-
-func (d *decisionEngineFlux) updateData(r completedRequest) {
-	name := r.Fun.Name
-
-	location := r.location
-
-	fInfo, prs := d.m[name]
-	//TODO maybe create here the entry in the function? Is it necessary?
-	if !prs {
-		return
-	}
-
-	if !r.ExecReport.IsWarmStart {
-		diff := r.ExecReport.InitTime - fInfo.initTime[location]
-		fInfo.initTime[location] = fInfo.initTime[location] +
-			(1/float64(fInfo.count[location]))*(diff)
-
-		fInfo.coldStartCount[location]++
 	}
 }
