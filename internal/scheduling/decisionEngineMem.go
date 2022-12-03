@@ -46,7 +46,6 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	log.Println("Probabilities are", pe, po, pd)
 
-	//warmNumber, isWarm := node.WarmStatus()[name]
 	if !r.CanDoOffloading {
 		pd = pd / (pd + pe)
 		pe = pe / (pd + pe)
@@ -165,8 +164,6 @@ func (d *decisionEngineMem) handler() {
 }
 
 func (d *decisionEngineMem) updateProbabilities() {
-	//SolveprobabilitiesLegacy(m)
-	//log.Println(SolveColdStart(m))
 	solve(d.m)
 }
 
@@ -270,7 +267,7 @@ func (d *decisionEngineMem) updateData(r completedRequest) {
 	location := r.location
 
 	fInfo, prs := d.m[name]
-	//TODO maybe create here the entry in the function? Is it necessary?
+	//TODO create here the entry in the function? Is it necessary?
 	if !prs {
 		return
 	}
@@ -299,9 +296,5 @@ func (d *decisionEngineMem) updateData(r completedRequest) {
 		diff := r.ExecReport.OffloadLatency - OffloadLatency
 		OffloadLatency = OffloadLatency +
 			(1/float64(fInfo.count[location]))*(diff)
-	}
-
-	if r.ExecReport.ResponseTime > r.GetMaxRT() {
-		fInfo.missed++
 	}
 }

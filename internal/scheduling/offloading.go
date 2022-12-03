@@ -116,7 +116,7 @@ func Offload(r *function.Request, serverUrl string) error {
 	r.ExecReport = response.ExecutionReport
 
 	// TODO: check how this is used in the QoSAware policy
-	// It was originially computed as "report.Arrival - sendingTime"
+	// It was originally computed as "report.Arrival - sendingTime"
 	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
