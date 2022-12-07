@@ -71,6 +71,8 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		pe = 0
 	}
 
+	log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
+
 	if prob <= pe {
 		log.Println("Execute LOCAL")
 		return EXECUTE_REQUEST
