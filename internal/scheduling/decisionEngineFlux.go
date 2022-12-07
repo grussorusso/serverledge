@@ -59,7 +59,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities for %s-%s  availble %d - %d are %f %f %f", node.Resources.AvailableMemMB, r.Fun.MemoryMB, name, class.Name, pe, po, pd)
+	log.Printf("Probabilities for %s-%s  availble %d - %d are %f %f %f", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, pe, po, pd)
 
 	if !r.CanDoOffloading {
 		pd = pd / (pd + pe)
