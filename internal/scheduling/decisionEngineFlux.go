@@ -59,7 +59,8 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities for %s-%s  availble %d - %d are %f %f %f", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, pe, po, pd)
+	_, isWarm := node.WarmStatus()[name]
+	log.Printf("Probabilities for %s-%s  available %d - %d - %t  are %f %f %f", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, isWarm, pe, po, pd)
 
 	if !r.CanDoOffloading {
 		pd = pd / (pd + pe)
