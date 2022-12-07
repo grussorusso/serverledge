@@ -100,8 +100,8 @@ func (fInfo *functionInfo) getProbCold(location int) float64 {
 }
 
 func canExecute(function *function.Function) bool {
-	_, isWarm := node.WarmStatus()[function.Name]
-	if isWarm {
+	nContainers, _ := node.WarmStatus()[function.Name]
+	if nContainers >= 1 {
 		return true
 	}
 
