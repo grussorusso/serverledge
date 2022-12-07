@@ -1,6 +1,8 @@
 package scheduling
 
 import (
+	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	"math/rand"
 	"time"
 )
@@ -95,6 +97,20 @@ func (fInfo *functionInfo) getProbCold(location int) float64 {
 	} else {
 		return float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
 	}
+}
+
+func canExecute(function *function.Function) bool {
+	_, isWarm := node.WarmStatus()[function.Name]
+	if isWarm {
+		return true
+	}
+
+	if node.Resources.AvailableCPUs >= function.CPUDemand &&
+		node.Resources.AvailableMemMB >= function.MemoryMB {
+		return true
+	}
+
+	return false
 }
 
 type decisionEngine interface {

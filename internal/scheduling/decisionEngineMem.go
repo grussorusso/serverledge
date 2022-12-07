@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"math/rand"
 	"time"
@@ -50,8 +49,7 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 		pd = pd / (pd + pe)
 		pe = pe / (pd + pe)
 		po = 0
-	} else if node.Resources.AvailableCPUs < r.Fun.CPUDemand &&
-		node.Resources.AvailableMemMB < r.Fun.MemoryMB {
+	} else if !canExecute(r.Fun) {
 		pd = pd / (pd + po)
 		po = po / (pd + po)
 		pe = 0
