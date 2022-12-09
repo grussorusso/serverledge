@@ -67,9 +67,15 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		pe = pe / (pd + pe)
 		po = 0
 	} else if !canExecute(r.Fun) {
-		pd = pd / (pd + po)
-		po = po / (pd + po)
-		pe = 0
+		if pd == 0 && po == 0 {
+			pd = 1
+			po = 0
+			pe = 0
+		} else {
+			pd = pd / (pd + po)
+			po = po / (pd + po)
+			pe = 0
+		}
 	}
 
 	log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
