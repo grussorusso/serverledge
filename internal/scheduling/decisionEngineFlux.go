@@ -68,8 +68,8 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		po = 0
 	} else if !canExecute(r.Fun) {
 		if pd == 0 && po == 0 {
-			pd = 1
-			po = 0
+			pd = 0
+			po = 1
 			pe = 0
 		} else {
 			pd = pd / (pd + po)
