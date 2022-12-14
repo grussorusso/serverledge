@@ -59,6 +59,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
+	//TODO remove
 	nContainers, _ := node.WarmStatus()[name]
 	log.Printf("Probabilities for %s-%s available %d - %d - %d - %t are %f %f %f", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pe, po, pd)
 
@@ -197,6 +198,13 @@ func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
 func (d *decisionEngineFlux) queryDb() {
 	//TODO edit time window
 	searchInterval := 24 * time.Hour
+
+	//Reset arrivals in data map
+	for _, fInfo := range d.m {
+		for _, cFInfo := range fInfo.invokingClasses {
+			cFInfo.arrivals = 0
+		}
+	}
 
 	start := time.Now().Add(-evaluationInterval)
 	query := fmt.Sprintf(`from(bucket: "%s")
