@@ -14,6 +14,7 @@ import (
 
 const resultFile = "/tmp/_executor_result.json"
 const paramsFile = "/tmp/_executor.params"
+const fallbackAddressesFile = "/tmp/_executor_fallback_addresses.txt"
 
 func readExecutionResult(resultFile string) string {
 	content, err := ioutil.ReadFile(resultFile)
@@ -67,7 +68,6 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 
 		cmd = strings.Split(customCmd, " ")
 	}
-
 	var resp *InvocationResult
 	execCmd := exec.Command(cmd[0], cmd[1:]...)
 	out, err := execCmd.CombinedOutput()
@@ -81,6 +81,38 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		resp = &InvocationResult{true, result}
 		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	respBody, _ := json.Marshal(resp)
+	_, err = w.Write(respBody)
+	if err != nil {
+		fmt.Println("A migration has occurred.")
+		// TODO: acquire the fallback addresses and then send the result
+		// Possibly it is not necessary to write the addresses locally
+	}
+}
+
+func GetFallbackAddresses(w http.ResponseWriter, r *http.Request) {
+	// Parse request
+	reqDecoder := json.NewDecoder(r.Body)
+	req := &FallbackAcquisitionRequest{}
+	err := reqDecoder.Decode(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Save the fallback addresses locally
+	fallbackAddresses := req.FallbackAddresses
+	resp := &FallbackAcquisitionResult{true}
+	tmpFile, err := os.Create(fallbackAddressesFile) // Create a temporary copy file to transfer it to the container
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for _, ip := range fallbackAddresses {
+		fmt.Fprintln(tmpFile, ip)
+	}
+	tmpFile.Close()
 
 	w.Header().Set("Content-Type", "application/json")
 	respBody, _ := json.Marshal(resp)

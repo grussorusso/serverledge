@@ -34,6 +34,9 @@ func startAPIServer(e *echo.Echo) {
 	e.GET("/poll/:reqId", api.PollAsyncResult)
 	e.GET("/status", api.GetServerStatus)
 
+	e.POST("/receiveResultAfterMigration", api.ReceiveResultAfterMigration)
+	e.POST("/receiveContainerTar", api.ReceiveContainerTar)
+
 	// Start server
 	portNumber := config.GetInt(config.API_PORT, 1323)
 	e.HideBanner = true

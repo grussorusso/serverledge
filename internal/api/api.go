@@ -206,3 +206,20 @@ func GetServerStatus(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+func ReceiveResultAfterMigration(c echo.Context) error {
+	err := scheduling.ReceiveResultAfterMigration(c)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
+}
+
+func ReceiveContainerTar(c echo.Context) error {
+	err := scheduling.ReceiveContainerTar(c)
+	if err != nil {
+		return fmt.Errorf("An error occurred receiving a container tar: %v", err)
+	}
+	return nil
+}

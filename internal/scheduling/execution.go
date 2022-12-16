@@ -22,10 +22,10 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
 		req = executor.InvocationRequest{
-			cmd,
-			r.Params,
-			r.Fun.Handler,
-			HANDLER_DIR,
+			Command:    cmd,
+			Params:     r.Params,
+			Handler:    r.Fun.Handler,
+			HandlerDir: HANDLER_DIR,
 		}
 	}
 
@@ -56,5 +56,29 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	// notify scheduler
 	completions <- &completion{scheduledRequest: r, contID: contID}
 
+	return nil
+}
+
+func Checkpoint(contID container.ContainerID, fallbackAddresses []string) error {
+	req := executor.FallbackAcquisitionRequest{
+		FallbackAddresses: fallbackAddresses,
+	}
+	response, checkpointTime, err := container.Checkpoint(contID, &req)
+	if err != nil || !response.Success {
+		// notify scheduler
+		return fmt.Errorf("Checkpoint failed: %v", err)
+	}
+	fmt.Println("Checkpoint succeded in time ", checkpointTime)
+	return nil
+}
+
+func Restore(contID container.ContainerID, archiveName string) error {
+
+	restoreTime, err := container.Restore(contID, archiveName)
+	if err != nil {
+		// notify scheduler
+		return fmt.Errorf("Restore failed: %v", err)
+	}
+	fmt.Println("Restore succeded in time ", restoreTime)
 	return nil
 }

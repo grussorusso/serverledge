@@ -10,8 +10,9 @@ const CUSTOM_RUNTIME = "custom"
 
 var refreshedImages = map[string]bool{}
 
+// Podman requires the prefix 'docker.io' in order to pull from DockerHub
 var RuntimeToInfo = map[string]RuntimeInfo{
-	"python310":  RuntimeInfo{"grussorusso/serverledge-python310", []string{"python", "/entrypoint.py"}},
-	"nodejs17":   RuntimeInfo{"grussorusso/serverledge-nodejs17", []string{"node", "/entrypoint.js"}},
-	"nodejs17ng": RuntimeInfo{"grussorusso/serverledge-nodejs17ng", []string{}},
+	"python310":  {"docker.io/grussorusso/serverledge-python310", []string{"python", "/entrypoint.py"}},
+	"nodejs17":   {"docker.io/grussorusso/serverledge-nodejs17", []string{"node", "/entrypoint.js"}},
+	"nodejs17ng": {"docker.io/grussorusso/serverledge-nodejs17ng", []string{}},
 }

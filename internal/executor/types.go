@@ -11,3 +11,11 @@ type InvocationResult struct {
 	Success bool
 	Result  string
 }
+
+type FallbackAcquisitionRequest struct {
+	FallbackAddresses []string
+}
+
+type FallbackAcquisitionResult struct {
+	Success bool
+}

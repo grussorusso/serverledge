@@ -58,12 +58,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		Resources: container.Resources{Memory: opts.MemoryMB * 1048576}, // convert to bytes
 	}, nil, nil, "")
 
-	id := resp.ID
-
-	r, err := cf.cli.ContainerInspect(cf.ctx, id)
-	log.Printf("Container %s has name %s", id, r.Name)
-
-	return id, err
+	return resp.ID, err
 }
 
 func (cf *DockerFactory) CopyToContainer(contID ContainerID, content io.Reader, destPath string) error {
@@ -115,4 +110,23 @@ func (cf *DockerFactory) GetMemoryMB(contID ContainerID) (int64, error) {
 		return -1, err
 	}
 	return contJson.HostConfig.Memory / 1048576, nil
+}
+
+func (cf *DockerFactory) CheckpointContainer(contID ContainerID, archiveName string) error {
+	// Container checkpoint
+	err := cf.cli.CheckpointCreate(cf.ctx, contID, types.CheckpointCreateOptions{CheckpointID: contID, CheckpointDir: archiveName})
+	if err != nil {
+		log.Printf("The container %s could not be checkpointed: %v", contID, err)
+	}
+	Destroy(contID)
+	return err
+}
+
+func (cf *DockerFactory) RestoreContainer(contID ContainerID, archiveName string) error {
+	// Container restore
+	err := cf.cli.ContainerStart(cf.ctx, contID, types.ContainerStartOptions{CheckpointID: contID, CheckpointDir: archiveName})
+	if err != nil {
+		log.Printf("The container %s could not be restored: %v", contID, err)
+	}
+	return err
 }
