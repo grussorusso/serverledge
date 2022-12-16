@@ -305,8 +305,7 @@ func (d *decisionEngineFlux) queryDb() {
 										|> range(start: %d)
 										|> filter(fn: (r) => r["_field"] == "offload_latency" and r["completed"] == "true")
 										|> group()
-										|> tail(n: %d)
-										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
+										|> median()`, bucketName, start.Unix())
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
