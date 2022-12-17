@@ -65,10 +65,10 @@ const SCHEDULING_POLICY = "scheduler.policy"
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
 
+// Choose a container manager between "podman" and "docker"
+const DEFAULT_CONTAINER_MANAGER = "container.manager"
+
 // Podman socket to acquire the context (Rootful)
 // The non-rootful podman socket is
 // SOCKET = "unix:" + os.Getenv("XDG_RUNTIME_DIR") + "/podman/podman.sock"
 const PODMAN_SOCKET = "unix:/run/podman/podman.sock"
-
-// Choose a container manager between 'podman' and 'docker'
-const DEFAULT_CONTAINER_MANAGER = "podman"

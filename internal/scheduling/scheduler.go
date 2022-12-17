@@ -58,9 +58,10 @@ func Run(p Policy) {
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
 
-	if config.DEFAULT_CONTAINER_MANAGER == "docker" {
+	containerManager := config.GetString(config.DEFAULT_CONTAINER_MANAGER, "podman")
+	if containerManager == "docker" {
 		container.InitDockerContainerFactory()
-	} else if config.DEFAULT_CONTAINER_MANAGER == "podman" {
+	} else if containerManager == "podman" {
 		container.InitPodmanContainerFactory()
 	} else {
 		log.Fatal("An invalid container manager was specified in the configuration file.")
@@ -167,27 +168,29 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		/*
-			err = Execute(schedDecision.contID, &schedRequest)
-			if err != nil {
-				publishAsyncResponse(r.ReqId, function.Response{Success: false})
-			}
-			publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
-		*/
-		/*----
+
+		err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		}
+		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+
+		/*-------------------------------------------------------------------------------
 		DEMO - Migration process: Let's suppose a migration decision is taken.
-		----*/
-		shouldMigrate := true
+		----
+		shouldMigrate := true // node.Resources.AvailableMemMB < THRESHOLD
 		fallbackAddresses := []string{"IP1", "IP2", "10.0.2.7"}
 		// When the function execution is called, a migration occurs at the same time
 		go Execute(schedDecision.contID, &schedRequest)
 		if shouldMigrate {
-			do_migration_demo(schedDecision.contID, fallbackAddresses)
+			do_migration(schedDecision.contID, fallbackAddresses)
 		}
+		-------------------------------------------------------------------------------*/
 	}
 }
 
-func do_migration_demo(contID container.ContainerID, fallbackAddresses []string) error {
+// Start a migration process
+func do_migration(contID container.ContainerID, fallbackAddresses []string) error {
 	checkpointArchiveName := contID + ".tar.gz"
 	// First of all, checkpoint the container (specifying the fallback addresses)
 	err := Checkpoint(contID, fallbackAddresses)
@@ -209,17 +212,7 @@ func do_migration_demo(contID container.ContainerID, fallbackAddresses []string)
 	return err
 }
 
-func ReceiveResultAfterMigration(c echo.Context) error {
-	b, _ := io.ReadAll(c.Request().Body)
-	result := getMigrationResult(b)
-	if result.Error != nil {
-		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
-	}
-	report := &function.ExecutionReport{Result: result.Result}
-	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report})
-	return nil
-}
-
+// Listen on a port to receive the checkpointed container archive
 func ReceiveContainerTar(c echo.Context) error {
 	r := c.Request()
 	r.ParseMultipartForm(int64(checkpointArchiveSizeLimit))
@@ -248,6 +241,19 @@ func ReceiveContainerTar(c echo.Context) error {
 	return err
 }
 
+// Listen on a port to receive the result from a restored container
+func ReceiveResultAfterMigration(c echo.Context) error {
+	b, _ := io.ReadAll(c.Request().Body) // Get the result
+	result := getMigrationResult(b)      // Create the struct from it
+	if result.Error != nil {
+		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
+	}
+	report := &function.ExecutionReport{Result: result.Result}                                  // Build the report struct
+	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
+	return nil
+}
+
+// Build and send the request containing the container checkpoint archive, in order to send it to the remote node
 func prepareAndSendContainerTar(url string, checkpointArchiveName string) error {
 	fileDir, _ := os.Getwd() // Get current path
 	filePath := path.Join(fileDir, checkpointArchiveName)
@@ -263,10 +269,11 @@ func prepareAndSendContainerTar(url string, checkpointArchiveName string) error 
 	r, _ := http.NewRequest("POST", url, body)
 	r.Header.Add("Content-Type", writer.FormDataContentType())
 	client := &http.Client{}
-	_, err := client.Do(r)
+	_, err := client.Do(r) // Send the request
 	return err
 }
 
+// Schedule a restore operation
 func scheduleRestore(archiveName string) error {
 
 	restoreRequest := scheduledRestore{
@@ -283,6 +290,7 @@ func scheduleRestore(archiveName string) error {
 	return nil
 }
 
+// Translate the received result from the restored container into the expected format
 func getMigrationResult(b []byte) executor.MigrationResult {
 	// Manipulate the result string to remove noise and null bytes
 	result := strings.Trim(string(bytes.Trim(b, "\x00")), "\x00")
@@ -290,6 +298,7 @@ func getMigrationResult(b []byte) executor.MigrationResult {
 	result = strings.Replace(result, "\\", "", -1)
 	result = result[1 : len(result)-1]
 
+	// Build the json containing the informations about the function execution after migration
 	var res executor.MigrationResult
 	err := json.Unmarshal([]byte(result), &res)
 	if err != nil {
