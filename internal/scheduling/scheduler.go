@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/executor"
 	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/labstack/echo/v4"
@@ -28,6 +30,7 @@ import (
 )
 
 var requests chan *scheduledRequest
+var restores chan *scheduledRestore
 var completions chan *completion
 
 var remoteServerUrl string
@@ -46,6 +49,7 @@ var restorePool = sync.Pool{
 func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
+	restores = make(chan *scheduledRestore, 500)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -83,6 +87,8 @@ func Run(p Policy) {
 
 	var r *scheduledRequest
 	var c *completion
+	var restore *scheduledRestore
+
 	for {
 		select {
 		case r = <-requests:
@@ -97,6 +103,8 @@ func Run(p Policy) {
 					metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
 				}
 			}
+		case restore = <-restores:
+			p.OnRestore(restore)
 		}
 	}
 
@@ -159,23 +167,23 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-
-		err = Execute(schedDecision.contID, &schedRequest)
-		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
-		}
-		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
-
+		/*
+			err = Execute(schedDecision.contID, &schedRequest)
+			if err != nil {
+				publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			}
+			publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		*/
 		/*----
 		DEMO - Migration process: Let's suppose a migration decision is taken.
-		----
+		----*/
 		shouldMigrate := true
-		fallbackAddresses := []string{"IP1", "IP2", "10.0.2.6"}
+		fallbackAddresses := []string{"IP1", "IP2", "10.0.2.7"}
 		// When the function execution is called, a migration occurs at the same time
 		go Execute(schedDecision.contID, &schedRequest)
 		if shouldMigrate {
 			do_migration_demo(schedDecision.contID, fallbackAddresses)
-		}*/
+		}
 	}
 }
 
@@ -203,12 +211,12 @@ func do_migration_demo(contID container.ContainerID, fallbackAddresses []string)
 
 func ReceiveResultAfterMigration(c echo.Context) error {
 	b, _ := io.ReadAll(c.Request().Body)
-	b = bytes.Trim(b, "\x00")
-	result := strings.Trim(string(b), "\x00")
-	//if err != nil {
-	//	return fmt.Errorf("An error occurred receiving result after migration: %v", err)
-	//}
-	fmt.Println("Il risultato arrivato è\n", result)
+	result := getMigrationResult(b)
+	if result.Error != nil {
+		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
+	}
+	report := &function.ExecutionReport{Result: result.Result}
+	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report})
 	return nil
 }
 
@@ -260,21 +268,36 @@ func prepareAndSendContainerTar(url string, checkpointArchiveName string) error 
 }
 
 func scheduleRestore(archiveName string) error {
-	restoreChannel := make(chan schedDecision, 1)
-	// wait on channel for scheduling action
-	schedDecision, ok := <-restoreChannel
-	if !ok {
-		return fmt.Errorf("could not schedule the restore operation")
-	}
-	if schedDecision.action == DROP {
-		return node.OutOfResourcesErr
-	}
-	err := Restore("restored-"+archiveName, archiveName)
-	if err != nil {
-		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err)
-	}
-	return err
 
+	restoreRequest := scheduledRestore{
+		contID:         "restored-" + archiveName,
+		archiveName:    archiveName,
+		restoreChannel: make(chan restoreResult, 1)}
+	restores <- &restoreRequest
+
+	// wait on channel for scheduling action
+	err := <-restoreRequest.restoreChannel
+	if err.err != nil {
+		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err.err)
+	}
+	return nil
+}
+
+func getMigrationResult(b []byte) executor.MigrationResult {
+	// Manipulate the result string to remove noise and null bytes
+	result := strings.Trim(string(bytes.Trim(b, "\x00")), "\x00")
+	result = strings.Replace(result, "\\\\\\\"", "", -1)
+	result = strings.Replace(result, "\\", "", -1)
+	result = result[1 : len(result)-1]
+
+	var res executor.MigrationResult
+	err := json.Unmarshal([]byte(result), &res)
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	fmt.Println("Received data:\nResult: ", res.Result, "\nId: ", res.Id, "\nSuccess: ", res.Success)
+	return res
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {

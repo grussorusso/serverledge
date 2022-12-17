@@ -16,3 +16,10 @@ func (p *CloudOnlyPolicy) OnArrival(r *scheduledRequest) {
 		dropRequest(r)
 	}
 }
+
+func (p *CloudOnlyPolicy) OnRestore(r *scheduledRestore) {
+	resoreResponse := &restoreResult{
+		err: Restore(r.contID, r.archiveName),
+	}
+	r.restoreChannel <- *resoreResponse
+}

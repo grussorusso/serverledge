@@ -22,6 +22,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
 		req = executor.InvocationRequest{
+			Id:         r.ReqId,
 			Command:    cmd,
 			Params:     r.Params,
 			Handler:    r.Fun.Handler,

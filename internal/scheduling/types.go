@@ -11,6 +11,11 @@ type scheduledRequest struct {
 	decisionChannel chan schedDecision
 	priority        float64
 }
+type scheduledRestore struct {
+	contID         string
+	archiveName    string
+	restoreChannel chan restoreResult
+}
 
 type completion struct {
 	*scheduledRequest
@@ -24,6 +29,10 @@ type schedDecision struct {
 	action     action
 	contID     container.ContainerID
 	remoteHost string
+}
+
+type restoreResult struct {
+	err error
 }
 
 type action int64

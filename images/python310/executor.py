@@ -32,7 +32,7 @@ class Unbuffered(object):
 
 class Executor(BaseHTTPRequestHandler):
     def do_POST(self):
-        print("INVOKE CHIAMATO")
+        print("Function invocation process started.")
         content_length = int(self.headers['Content-Length']) 
         post_data = self.rfile.read(content_length) 
         request = json.loads(post_data.decode('utf-8'))
@@ -44,6 +44,7 @@ class Executor(BaseHTTPRequestHandler):
 
         handler = request["Handler"] 
         handler_dir = request["HandlerDir"]
+        id = request["Id"]
 
         try:
             params = request["Params"]
@@ -76,6 +77,8 @@ class Executor(BaseHTTPRequestHandler):
             result = getattr(mod, func_name)(params, context)
             response["Result"] = json.dumps(result)
             response["Success"] = True
+            response["Id"] = id
+
         except Exception as e:
             print(e, file=sys.stderr)
             response["Success"] = False
@@ -85,7 +88,6 @@ class Executor(BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(bytes(json.dumps(response), "utf-8"))
-            print("INVOKE FINITO")
         except ConnectionResetError:
             print("Seems like this container has been migrated. The occurred exception is ",sys.exc_info()[0])
             self.close_connection
@@ -107,11 +109,11 @@ class Executor(BaseHTTPRequestHandler):
                 except:
                     print("Failed to send the result to the node: " + str(node))
                     pass
-        print("Response sent.")
+        print("Function invocation process ended.")
 
 class FallbackListener(BaseHTTPRequestHandler):
     def do_POST(self):
-        print("FALLBACK CHIAMATO")
+        print("Fallback listener has been called.")
         content_length = int(self.headers['Content-Length']) 
         post_data = self.rfile.read(content_length) 
         request = json.loads(post_data.decode('utf-8'))
@@ -133,9 +135,8 @@ class FallbackListener(BaseHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.end_headers()
         self.wfile.write(bytes(json.dumps(response), "utf-8"))
-        print("FALLBACK FINITO")
 
-def turn_on(webServer):
+def start_listening(webServer):
     webServer.serve_forever()
 
 if __name__ == "__main__":
@@ -147,8 +148,8 @@ if __name__ == "__main__":
     fallbackListener = HTTPServer((hostName, serverPort+1), FallbackListener)
     
     # Start the listeners on different ports, using different processes
-    Process(target=turn_on, args=[executorServer]).start()
-    Process(target=turn_on, args=[fallbackListener]).start()
+    Process(target=start_listening, args=[executorServer]).start()
+    Process(target=start_listening, args=[fallbackListener]).start()
     print("Container services correctly initialized.")
 
     try:

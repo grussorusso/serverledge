@@ -100,3 +100,10 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 
 	dropRequest(r)
 }
+
+func (p *DefaultLocalPolicy) OnRestore(r *scheduledRestore) {
+	resoreResponse := &restoreResult{
+		err: Restore(r.contID, r.archiveName),
+	}
+	r.restoreChannel <- *resoreResponse
+}

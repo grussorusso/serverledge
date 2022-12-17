@@ -35,3 +35,10 @@ func (p *Custom1Policy) OnArrival(r *scheduledRequest) {
 		dropRequest(r)
 	}
 }
+
+func (p *Custom1Policy) OnRestore(r *scheduledRestore) {
+	resoreResponse := &restoreResult{
+		err: Restore(r.contID, r.archiveName),
+	}
+	r.restoreChannel <- *resoreResponse
+}
