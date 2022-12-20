@@ -49,8 +49,8 @@ func (cf *PodmanFactory) Create(image string, opts *ContainerOptions) (Container
 	s.Command = opts.Cmd
 	s.EnvMerge = opts.Env
 	s.Terminal = false
-	memory_limit := (opts.MemoryMB * 1048576)
-	s.ResourceLimits.Memory.Reservation = &memory_limit
+	//memory_limit := (opts.MemoryMB * 1048576)
+	//s.ResourceLimits.Memory = &specs.LinuxMemory{Limit: &memory_limit}
 	r, err := containers.CreateWithSpec(cf.ctx, s, new(containers.CreateOptions))
 	return r.ID, err
 }

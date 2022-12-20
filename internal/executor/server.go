@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -40,6 +42,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	os.Setenv("RESULT_FILE", resultFile)
 	os.Setenv("HANDLER", req.Handler)
 	os.Setenv("HANDLER_DIR", req.HandlerDir)
+	os.Setenv("ID", req.Id)
 	params := req.Params
 	if params == nil {
 		os.Setenv("PARAMS_FILE", "")
@@ -87,8 +90,36 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(respBody)
 	if err != nil {
 		fmt.Println("A migration has occurred.")
-		// TODO: acquire the fallback addresses and then send the result
-		// Possibly it is not necessary to write the addresses locally
+		// Build a migraion response struct
+		var mresp = &MigrationResult{}
+		mresp.Id = req.Id
+		mresp.Result = resp.Result
+		mresp.Success = true
+		respBody, _ = json.Marshal(mresp)
+		// Acquire the fallback IPs
+		tmpFile, err := os.Open(fallbackAddressesFile)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		scanner := bufio.NewScanner(tmpFile)
+		scanner.Split(bufio.ScanLines)
+		var fallbackAddresses []string
+		for scanner.Scan() {
+			fallbackAddresses = append(fallbackAddresses, scanner.Text())
+		}
+		tmpFile.Close()
+		// Send the response to the IPs
+		for _, ip := range fallbackAddresses {
+			url := fmt.Sprintf("http://%s:%d/receiveResultAfterMigration", ip, 1323)
+			_, err = http.Post(url, "application/json", bytes.NewBuffer(respBody))
+			if err != nil {
+				fmt.Println("ERR: Could not send the response to ", ip, "\n-> ", err)
+			} else {
+				fmt.Println("\t...Response sent to ", ip)
+				break
+			}
+		}
 	}
 }
 
