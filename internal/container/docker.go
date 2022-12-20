@@ -112,18 +112,25 @@ func (cf *DockerFactory) GetMemoryMB(contID ContainerID) (int64, error) {
 	return contJson.HostConfig.Memory / 1048576, nil
 }
 
+/* Experimental feature: checkpoints a container
+Container checkpoint Docker API does not support the --tcp-established flag yet.
+It is recommended to use Podman in order to migrate a container.*/
 func (cf *DockerFactory) CheckpointContainer(contID ContainerID, archiveName string) error {
-	// Container checkpoint
 	err := cf.cli.CheckpointCreate(cf.ctx, contID, types.CheckpointCreateOptions{CheckpointID: contID, CheckpointDir: archiveName})
 	if err != nil {
 		log.Printf("The container %s could not be checkpointed: %v", contID, err)
 	}
-	Destroy(contID)
+	/* TODO: before returning, this function has to create a tar archive from the checkpoint located
+	in /var/lib/docker/containers/container_ID/checkpoints, and put it in the current working directory.*/
 	return err
 }
 
+/* Experimental feature: restores a container
+Container checkpoint Docker API does not support the --tcp-established flag yet.
+It is recommended to use Podman in order to migrate a container.*/
 func (cf *DockerFactory) RestoreContainer(contID ContainerID, archiveName string) error {
-	// Container restore
+	/* TODO: before restoring, this function has to create the container without starting it.
+	Then it has to extract the local tar archive and move it into /var/lib/docker/containers/container_ID/checkpoints*/
 	err := cf.cli.ContainerStart(cf.ctx, contID, types.ContainerStartOptions{CheckpointID: contID, CheckpointDir: archiveName})
 	if err != nil {
 		log.Printf("The container %s could not be restored: %v", contID, err)
