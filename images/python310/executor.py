@@ -1,12 +1,13 @@
-# Python 3 server example
+# Python3 server
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
+import importlib
 import requests
 import time
-import os
-import sys
-import importlib
 import json
+import sys
+import os
+
 
 hostName = "0.0.0.0"
 serverPort = 8080
@@ -141,8 +142,6 @@ def start_listening(webServer):
 
 if __name__ == "__main__":
     sys.stdout = Unbuffered(sys.stdout) # Use unbuffered output
-
-    
 
     executorServer = HTTPServer((hostName, serverPort), Executor)
     fallbackListener = HTTPServer((hostName, serverPort+1), FallbackListener)

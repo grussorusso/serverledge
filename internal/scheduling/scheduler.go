@@ -183,14 +183,14 @@ func SubmitAsyncRequest(r *function.Request) {
 		// When the function execution is called, a migration occurs at the same time
 		go Execute(schedDecision.contID, &schedRequest)
 		if shouldMigrate {
-			do_migration(schedDecision.contID, fallbackAddresses)
+			migrate(schedDecision.contID, fallbackAddresses)
 		}
 		-------------------------------------------------------------------------------*/
 	}
 }
 
 // Start a migration process
-func do_migration(contID container.ContainerID, fallbackAddresses []string) error {
+func migrate(contID container.ContainerID, fallbackAddresses []string) error {
 	checkpointArchiveName := contID + ".tar.gz"
 	// First of all, checkpoint the container (specifying the fallback addresses)
 	err := Checkpoint(contID, fallbackAddresses)
@@ -275,14 +275,15 @@ func prepareAndSendContainerTar(url string, checkpointArchiveName string) error 
 
 // Schedule a restore operation
 func scheduleRestore(archiveName string) error {
-
+	// Create a restore request for a given container, from a given archive.
 	restoreRequest := scheduledRestore{
 		contID:         "restored-" + archiveName,
 		archiveName:    archiveName,
 		restoreChannel: make(chan restoreResult, 1)}
+	// Add the request to the channel
 	restores <- &restoreRequest
 
-	// wait on channel for scheduling action
+	// Wait on the channel for the restore to be executed
 	err := <-restoreRequest.restoreChannel
 	if err.err != nil {
 		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err.err)
