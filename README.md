@@ -11,7 +11,12 @@ When Edge nodes are overloaded, they can to offload computation
 to neighbor Edge nodes or to the Cloud.
 
 Serverledge has been first described in a paper presented at [IEEE PerCom 2023](https://www.percom.org/)
-(yet to appear).
+(yet to appear):
+
+> G. Russo Russo, T. Mannucci, V. Cardellini, and F. Lo Presti. Serverledge: Decentralized function-
+> as-a-service for the edge-cloud continuum. In *Proceedings of IEEE International Conference on
+> Pervasive Computing and Communications, PerCom 2023, Atlanta, GA, USA, March 13-17,
+> 2023*. IEEE, 2023 (To appear)
 
 
 
