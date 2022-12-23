@@ -1,14 +1,19 @@
 ![ServerlEdge](docs/logo.png)
 
-Serverledge is a Function-as-a-Service (FaaS) platform designed to
+Serverledge is a Function-as-a-Service (FaaS) framework designed to
 work in Edge-Cloud environments.
 
 Serverledge allows user to define and execute functions across
 distributed nodes located in Edge locations or in Cloud data centers.
 Each Serverledge node serves function invocation requests using a local
 container pool, so that functions are executed within containers for isolation purposes.
-When Edge nodes are overloaded, Serverledge tries to offload computation
+When Edge nodes are overloaded, they can to offload computation
 to neighbor Edge nodes or to the Cloud.
+
+Serverledge has been first described in a paper presented at [IEEE PerCom 2023](https://www.percom.org/)
+(yet to appear).
+
+
 
 ## Building from sources
 
@@ -22,7 +27,9 @@ to neighbor Edge nodes or to the Cloud.
 $ make
 ```
 
-## Running (single node deployment)
+You will find executables in `./bin/`.
+
+## Running (single-node deployment)
 
 You need an **etcd** server to run Serverledge. To quickly start a local
 server:
@@ -32,6 +39,8 @@ server:
 Start a Serverledge node:
 
 	$ bin/serverledge
+
+### Creating and invoking functions
 
 Register a function `func` from example code:
 
@@ -97,6 +106,16 @@ server:
 
 Supported configuration keys are defined in `internal/config/keys.go`.
 
+### Example
+
+The configuration file may look like this:
+
+	container.pool.memory: 4096
+	etcd.address: "1.2.3.4:2379"
+	scheduler.queue.capacity: 0
+	metrics.enabled: true
+
+
 ## Additional Documentation
 
 
@@ -105,3 +124,7 @@ Supported configuration keys are defined in `internal/config/keys.go`.
  - [Serverledge Internals: Executor](./docs/executor.md)
 
 
+## License
+
+Serverledge is distributed under the terms of the [MIT
+license](https://github.com/grussorusso/serverledge/blob/master/LICENSE.txt).

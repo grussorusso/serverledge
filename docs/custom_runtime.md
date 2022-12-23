@@ -1,11 +1,16 @@
-# Custom image (the easy way)
+Two approaches are available to prepare a custom container image containing
+your function code, as explained below.
+
+
+
+## Custom image (the easy way)
 
 The easiest way to build a custom function image is by leveraging the
 Serverledge base runtime image, i.e., `grussorusso/serverledge-base`.
 This image contains a simple implementation of the [Executor](https://github.com/grussorusso/serverledge/blob/main/docs/executor.md)
 server. When the function is invoked, the Executor runs a user-specified
 command as a new process and sets a few environment variables that may be
-used by the called process.
+used by the called process:
 
 - `PARAMS_FILE`: path of a file containing JSON-marshaled function parameters
 - `RESULT_FILE`: name of the file where the function must write its JSON-encoded result
@@ -30,18 +35,26 @@ You can write a `Dockerfile` as follows to build your own runtime image, e.g.:
 	COPY function.py /
 	# ...
 
-The new function must be created setting `custom` as the desired runtime and
-specifying a `custom_image`.
+
+## Custom image (the better way)
+
+For higher efficiency, instead of using the default Executor implementation,
+you can define your image from scratch rewriting/extending the
+`Dockerfile` and code used to build Serverledge runtime images.
+For instance, if you want to create a custom image for a Python-based function,
+you may write your own  `Dockerfile` based on the content of `<ServerledgeRepo>/images/pythonXXX/`.
+
+By doing so, you get rid of some process creation overheads, as
+your function is directly called upon arrival of invocation requests.
+
+## Using a custom image
+
+The new function can be created using the CLI interface, setting `custom` as the desired runtime and
+specifying the `custom_image` parameter.
 
 	bin/serverledge-cli create -function myfunc -memory 256 -runtime custom -custom_image MY_IMAGE_TAG 
 
-# Custom image (the harder way)
-
-For higher efficiency, instead of using the default Executor implementation,
-you can define your image from scratch including
-your own Executor server, written in the language you prefer based on
-the same protocol used by the Serverledge Executor.
-
-By doing so, you may get rid of some process creation overheads, as
-your function is directly called upon arrival of invocation requests.
-
+### Example
+The `examples/jsonschema` directory of the repository provides example files on
+how to build a custom image for a Python function requiring additional
+libraries.
