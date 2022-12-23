@@ -29,6 +29,9 @@ var requestsPool = sync.Pool{
 	},
 }
 
+// Maximum amount of seconds to wait for a sync request migrated result. -1 means no limit
+var MAX_SYNC_WAIT = config.GetInt(config.MAX_SYNC_WAIT_TIME, -1)
+
 // GetFunctions handles a request to list the function available in the system.
 func GetFunctions(c echo.Context) error {
 	list, err := function.GetAll()
@@ -67,6 +70,7 @@ func InvokeFunction(c echo.Context) error {
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0
+	r.ExecReport.Migrated = false
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
@@ -81,7 +85,54 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		// If there was no error submitting the request, it is still possible that the container
+		// has been migrated in the middle of its execution
+		if r.ExecReport.Migrated {
+			// If the execution has been migrated to another host, then wait until the other node
+			// posts the result on ETCD
+			etcdClient, err := utils.GetEtcdClient()
+			if err != nil {
+				log.Println("Could not connect to Etcd")
+				return c.JSON(http.StatusInternalServerError, "")
+			}
+			// Acquire the connection to ETCD
+			ctx := context.Background()
+			key := fmt.Sprintf("async/%s", r.ReqId)
+
+			// Define the wait-on-result variable depending on the timeout value (if set or no)
+			payload := []byte{}
+			total_waiting := 0
+			var waitForResult bool
+			if MAX_SYNC_WAIT == -1 {
+				waitForResult = true
+			} else {
+				waitForResult = total_waiting < MAX_SYNC_WAIT
+			}
+
+			// Poll for the result until it's ready or the timeout expires
+			for waitForResult {
+				res, err := etcdClient.Get(ctx, key)
+				if err != nil {
+					log.Println(err)
+					return c.JSON(http.StatusInternalServerError, "")
+				}
+
+				if len(res.Kvs) == 1 {
+					// The result is ready. Leave the loop
+					payload = res.Kvs[0].Value
+					break
+				}
+				time.Sleep(1 * time.Second)
+				if MAX_SYNC_WAIT != -1 {
+					// Increment this only if the maximum wait has been set.
+					total_waiting++
+				}
+			}
+			return c.JSONBlob(http.StatusOK, payload)
+		} else {
+			// If the container wasn't migrated, send the execution report normally
+			return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		}
 	}
 }
 

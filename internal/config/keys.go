@@ -72,3 +72,8 @@ const DEFAULT_CONTAINER_MANAGER = "container.manager"
 // The non-rootful podman socket is
 // SOCKET = "unix:" + os.Getenv("XDG_RUNTIME_DIR") + "/podman/podman.sock"
 const PODMAN_SOCKET = "unix:/run/podman/podman.sock"
+
+// When a syncronous operation is required, a migration can occur.
+// It is recommended to set this field to the maximum amount of
+// seconds you are willing to expect for the result
+const MAX_SYNC_WAIT_TIME = "max.sync.wait.time"

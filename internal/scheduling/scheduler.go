@@ -140,6 +140,13 @@ func SubmitRequest(r *function.Request) error {
 		if err != nil {
 			return err
 		}
+		/*-------------------------------------------------------------------------------
+		DEMO - Migration process: Let's suppose a migration decision is taken.
+		When the function execution is called, a migration occurs at the same time
+		----*/
+		//go Execute(schedDecision.contID, &schedRequest)
+		//migration_demo(r, schedDecision.contID)
+		//-------------------------------------------------------------------------------*/
 	}
 	return nil
 }
@@ -168,29 +175,33 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-
 		err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
-
 		/*-------------------------------------------------------------------------------
 		DEMO - Migration process: Let's suppose a migration decision is taken.
-		----
-		shouldMigrate := true // node.Resources.AvailableMemMB < THRESHOLD
-		fallbackAddresses := []string{"IP1", "IP2", "10.0.2.7"}
-		// When the function execution is called, a migration occurs at the same time
-		go Execute(schedDecision.contID, &schedRequest)
-		if shouldMigrate {
-			migrate(schedDecision.contID, fallbackAddresses)
-		}
-		-------------------------------------------------------------------------------*/
+		When the function execution is called, a migration occurs at the same time
+		----*/
+		//go Execute(schedDecision.contID, &schedRequest)
+		//migration_demo(r, schedDecision.contID)
+		//-------------------------------------------------------------------------------*/
+	}
+}
+
+// Demo function to show the migration process
+func migration_demo(request *function.Request, containerID container.ContainerID) {
+	shouldMigrate := true                                   // TODO: this decision will be taken like 'node.Resources.AvailableMemMB < THRESHOLD'
+	fallbackAddresses := []string{"IP1", "IP2", "10.0.2.7"} // TODO: these addresses will somehow be taken from ETCD
+	if shouldMigrate {
+		request.ExecReport.Migrated = true      // Necessary: set this field to true at this point
+		Migrate(containerID, fallbackAddresses) // And now start the migration
 	}
 }
 
 // Start a migration process
-func migrate(contID container.ContainerID, fallbackAddresses []string) error {
+func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 	checkpointArchiveName := contID + ".tar.gz"
 	// First of all, checkpoint the container (specifying the fallback addresses)
 	err := Checkpoint(contID, fallbackAddresses)
@@ -248,7 +259,7 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 	if result.Error != nil {
 		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
 	}
-	report := &function.ExecutionReport{Result: result.Result}                                  // Build the report struct
+	report := &function.ExecutionReport{Result: result.Result, Migrated: true}                  // Build the report struct
 	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
 	return nil
 }

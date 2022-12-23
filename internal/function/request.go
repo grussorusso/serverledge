@@ -31,6 +31,7 @@ type ExecutionReport struct {
 	Duration       float64
 	CPUTime        float64
 	SchedAction    string
+	Migrated       bool
 }
 
 type Response struct {
