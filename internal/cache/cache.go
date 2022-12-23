@@ -1,5 +1,6 @@
-// This has been adapted from github.com/patrickmn/go-cache
 package cache
+
+// This code has been adapted from github.com/patrickmn/go-cache
 
 import (
 	"runtime"
@@ -122,38 +123,8 @@ func (c *cache) Get(k string) (interface{}, bool) {
 	return item.Object, true
 }
 
-// GetWithExpiration returns an item and its expiration time from the cache.
-// It returns the item or nil, the expiration time if one is set (if the item
-// never expires a zero value for time.Time is returned), and a bool indicating
-// whether the key was found.
-func (c *cache) GetWithExpiration(k string) (interface{}, time.Time, bool) {
-	c.mu.RLock()
-	// "Inlining" of get and Expired
-	item, found := c.items[k]
-	if !found {
-		c.mu.RUnlock()
-		return nil, time.Time{}, false
-	}
-
-	if item.Expiration > 0 {
-		if time.Now().UnixNano() > item.Expiration {
-			c.mu.RUnlock()
-			return nil, time.Time{}, false
-		}
-
-		// Return the item and the expiration time
-		c.mu.RUnlock()
-		return item.Object, time.Unix(0, item.Expiration), true
-	}
-
-	// If expiration <= 0 (i.e. no expiration time set) then return the item
-	// and a zeroed time.Time
-	c.mu.RUnlock()
-	return item.Object, time.Time{}, true
-}
-
 // Delete an item from the cache. Does nothing if the key is not in the cache.
-//thread safe
+// thread safe
 func (c *cache) Delete(k string) {
 	c.mu.Lock()
 	v, evicted := c.delete(k)
@@ -163,7 +134,7 @@ func (c *cache) Delete(k string) {
 	}
 }
 
-//no thread safe
+// no thread safe
 func (c *cache) delete(k string) (interface{}, bool) {
 	if c.onEvicted != nil {
 		if v, found := c.items[k]; found {
@@ -198,49 +169,6 @@ func (c *cache) DeleteExpired() {
 	for _, v := range evictedItems {
 		c.onEvicted(v.key, v.value)
 	}
-}
-
-// OnEvicted Sets an (optional) function that is called with the key and value when an
-// item is evicted from the cache. (Including when it is deleted manually, but
-// not when it is overwritten.) Set to nil to disable.
-func (c *cache) OnEvicted(f func(string, interface{})) {
-	c.mu.Lock()
-	c.onEvicted = f
-	c.mu.Unlock()
-}
-
-// Items Copies all unexpired items in the cache into a new map and returns it.
-func (c *cache) Items() map[string]*Item {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	m := make(map[string]*Item, len(c.items))
-	now := time.Now().UnixNano()
-	for k, v := range c.items {
-		// "Inlining" of Expired
-		if v.Expiration > 0 {
-			if now > v.Expiration {
-				continue
-			}
-		}
-		m[k] = v
-	}
-	return m
-}
-
-// ItemCount Returns the number of items in the cache. This may include items that have
-// expired, but have not yet been cleaned up.
-func (c *cache) ItemCount() int {
-	c.mu.RLock()
-	n := len(c.items)
-	c.mu.RUnlock()
-	return n
-}
-
-// Flush Delete all items from the cache.
-func (c *cache) Flush() {
-	c.mu.Lock()
-	c.items = map[string]*Item{}
-	c.mu.Unlock()
 }
 
 type janitor struct {
