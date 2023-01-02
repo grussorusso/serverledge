@@ -78,6 +78,7 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 	rGen = rand.New(s)
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
+	log.Println("Evaluation interval:", evaluationInterval)
 
 	d.m = make(map[string]*functionInfo)
 
