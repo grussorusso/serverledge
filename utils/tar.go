@@ -44,7 +44,14 @@ func Tar(src string, of *os.File) error {
 		}
 
 		// update the name to correctly reflect the desired destination when untaring
-		header.Name = strings.TrimPrefix(strings.Replace(file, filepath.Dir(src), "", -1), string(filepath.Separator))
+		var strippedSrc string
+		if filepath.Dir(src) == "." && !strings.HasPrefix(src, ".") {
+			strippedSrc = src // nothing to do
+		} else {
+			strippedSrc = strings.Replace(file, filepath.Dir(src), "", -1)
+		}
+
+		header.Name = strings.TrimPrefix(strippedSrc, string(filepath.Separator))
 
 		// write the header
 		if err := tw.WriteHeader(header); err != nil {
