@@ -16,6 +16,7 @@ import (
 	"github.com/containers/podman/v4/pkg/bindings/images"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type PodmanFactory struct {
@@ -51,8 +52,10 @@ func (cf *PodmanFactory) Create(image string, opts *ContainerOptions) (Container
 	s.Command = opts.Cmd
 	s.EnvMerge = opts.Env
 	s.Terminal = false
-	//memory_limit := (opts.MemoryMB * 1048576)
-	//s.ResourceLimits.Memory.Limit = &memory_limit
+	memory_limit := (opts.MemoryMB * 1048576)
+	s.ResourceLimits = new(specs.LinuxResources)
+	s.ResourceLimits.Memory = new(specs.LinuxMemory)
+	s.ResourceLimits.Memory.Limit = &memory_limit
 	r, err := containers.CreateWithSpec(cf.ctx, s, new(containers.CreateOptions))
 	return r.ID, err
 }
