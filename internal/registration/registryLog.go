@@ -26,8 +26,6 @@ func InitEdgeMonitoring(r *Registry) (e error) {
 	Reg.etcdCh = make(chan bool)
 	Reg.serversMap = make(map[string]*StatusInformation)
 	Reg.NearbyServersMap = make(map[string]*StatusInformation)
-	//TODO temp
-	Reg.CloudServersMap = make(map[string]*StatusInformation)
 
 	// start listening for incoming udp connections; use case: edge-nodes request for status infos
 	go UDPStatusServer()
@@ -41,13 +39,6 @@ func runMonitor() {
 	//todo  adjust default values
 	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 30)) * time.Second)         //wake-up nearby monitoring
 	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 60)) * time.Second) // wake-up general-area monitoring
-	var cloudMonitoringTicker *time.Ticker
-
-	//TODO is it correct? use just outside cloud
-	//use config.GetInt(config.CLOUD_MONITORING_INTERVAL, 60))
-	if !config.GetBool(config.IS_IN_CLOUD, false) {
-		cloudMonitoringTicker = time.NewTicker(60 * time.Second) // wake-up general-area monitoring
-	}
 
 	for {
 		select {
@@ -57,9 +48,6 @@ func runMonitor() {
 			monitoring()
 		case <-nearbyTicker.C:
 			nearbyMonitoring()
-		//TODO move somewhere else?
-		case <-cloudMonitoringTicker.C:
-			cloudMonitoring()
 		}
 	}
 }
@@ -146,38 +134,6 @@ func nearbyMonitoring() {
 		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
-		}
-	}
-}
-
-// TODO is it correct?
-func cloudMonitoring() {
-	Reg.RwMtx.Lock()
-	defer Reg.RwMtx.Unlock()
-
-	etcdServerMap, err := GetCloudNodes(config.GetString(config.REGISTRY_AREA, "ROME"))
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for key, url := range etcdServerMap {
-		ip := url[7 : len(url)-5]
-		// use udp socket to retrieve infos about the node status and rtt
-		newInfo, _ := statusInfoRequest(ip)
-		if newInfo == nil {
-			//unreachable server
-			delete(Reg.serversMap, key)
-			continue
-		}
-		Reg.CloudServersMap[key] = newInfo
-	}
-
-	//deletes information about servers that haven't registered anymore
-	for key := range Reg.CloudServersMap {
-		_, ok := etcdServerMap[key]
-		if !ok {
-			delete(Reg.serversMap, key)
 		}
 	}
 }
