@@ -36,10 +36,9 @@ func startAPIServer(e *echo.Echo) {
 
 	// Start server
 	portNumber := config.GetInt(config.API_PORT, 1323)
-	ip := config.GetString(config.API_IP, "")
 	e.HideBanner = true
 
-	if err := e.Start(fmt.Sprintf("%s:%d", ip, portNumber)); err != nil && err != http.ErrServerClosed {
+	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && err != http.ErrServerClosed {
 		e.Logger.Fatal("shutting down the server")
 	}
 }
@@ -126,7 +125,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
+	ip := config.GetString(config.API_IP, utils.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d", ip, config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)
