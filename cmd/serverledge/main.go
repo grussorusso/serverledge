@@ -125,8 +125,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ip := config.GetString(config.API_IP, utils.GetIpAddress().String())
-	url := fmt.Sprintf("http://%s:%d", ip, config.GetInt(config.API_PORT, 1323))
+	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)

@@ -27,7 +27,9 @@ func (p *EdgePolicy) OnArrival(r *scheduledRequest) {
 			handleEdgeOffload(r, url)
 			return
 		}
-	} else if handleColdStart(r) {
+	}
+
+	if handleColdStart(r) {
 		return
 	} else if r.CanDoOffloading {
 		url := pickEdgeNodeForOffloading(r)

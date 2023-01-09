@@ -5,7 +5,6 @@ const ETCD_ADDRESS = "etcd.address"
 
 // exposed port for serverledge APIs
 const API_PORT = "api.port"
-const API_IP = "api.ip"
 
 // REMOTE SERVER URL
 const CLOUD_URL = "cloud.server.url"
