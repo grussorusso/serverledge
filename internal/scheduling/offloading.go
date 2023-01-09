@@ -38,6 +38,22 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	return ""
 }
 
+func pickEdgeNodeWithWarmForOffloading(r *scheduledRequest) (url string) {
+	nearbyServersMap := registration.Reg.NearbyServersMap
+	if nearbyServersMap == nil {
+		return ""
+	}
+
+	//search for warm container
+	for _, v := range nearbyServersMap {
+		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
+			return v.Url
+		}
+	}
+
+	return ""
+}
+
 func getWarmContainersInCloud(r *scheduledRequest) int {
 	cloudServersMap := registration.Reg.CloudServersMap
 
