@@ -21,6 +21,7 @@ func (p *EdgePolicy) OnArrival(r *scheduledRequest) {
 	if err == nil {
 		log.Printf("Using a warm container for: %v", r)
 		execLocally(r, containerID, true)
+		return
 	} else if r.CanDoOffloading {
 		url := pickEdgeNodeWithWarmForOffloading(r)
 		if url != "" {
