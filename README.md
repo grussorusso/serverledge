@@ -18,6 +18,8 @@ Serverledge has been first described in a paper presented at [IEEE PerCom 2023](
 > Pervasive Computing and Communications, PerCom 2023, Atlanta, GA, USA, March 13-17,
 > 2023*. IEEE, 2023 (To appear)
 
+Note that Serverledge is a research prototype and it is not (yet) meant to
+be used for production use, as it may lack critical security features.
 
 
 ## Building from sources
@@ -36,7 +38,11 @@ You will find executables in `./bin/`.
 
 ## Running (single-node deployment)
 
-You need an **etcd** server to run Serverledge. To quickly start a local
+As functions are executed within Docker containers, you need Docker to
+be installed on the host. Furthermore, the Serverledge node needs
+permissions to create containers.
+
+You also need an **etcd** server to run Serverledge. To quickly start a local
 server:
 
 	$ ./scripts/start-etcd.sh   # stop it with ./scripts/stop-etcd.sh
