@@ -62,7 +62,8 @@ func handleUDPConnection(conn *net.UDPConn) {
 
 func getCurrentStatusInformation() (status []byte, err error) {
 	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d", hostname, portNumber)
 	response := StatusInformation{
 		Url:                     url,
 		AvailableWarmContainers: node.WarmStatus(),
