@@ -170,6 +170,8 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.Custom1Policy{}
 	} else if policyConf == "customCloudOffload" {
 		return &scheduling.CustomCloudOffloadPolicy{}
+	} else if policyConf == "edgeCluster" {
+		return &scheduling.OffloadToCluster{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}
