@@ -29,7 +29,6 @@ type ExecutionReport struct {
 	InitTime       float64
 	OffloadLatency float64
 	Duration       float64
-	CPUTime        float64
 	SchedAction    string
 }
 
