@@ -309,7 +309,7 @@ func ShutdownWarmContainersFor(f *function.Function) {
 		return
 	}
 
-	containersToDelete := make([]container.ContainerID, 1)
+	containersToDelete := make([]container.ContainerID, 0)
 
 	elem := fp.ready.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
