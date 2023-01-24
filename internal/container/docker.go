@@ -20,6 +20,9 @@ type DockerFactory struct {
 	ctx context.Context
 }
 
+// For testing purposes
+var cpuLimit float64
+
 func InitDockerContainerFactory() *DockerFactory {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -29,6 +32,9 @@ func InitDockerContainerFactory() *DockerFactory {
 
 	dockerFact := &DockerFactory{cli, ctx}
 	cf = dockerFact
+
+	cpuLimit = config.GetFloat(config.DOCKER_LIMIT_CPU, 0) * 1000000000
+
 	return dockerFact
 }
 
@@ -49,13 +55,21 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		}
 	}
 
+	var res container.Resources
+
+	if cpuLimit > 0 {
+		res = container.Resources{Memory: opts.MemoryMB * 1048576, NanoCPUs: int64(cpuLimit)}
+	} else {
+		res = container.Resources{Memory: opts.MemoryMB * 1048576}
+	}
+
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
 		Image: image,
 		Cmd:   opts.Cmd,
 		Env:   opts.Env,
 		Tty:   false,
 	}, &container.HostConfig{
-		Resources: container.Resources{Memory: opts.MemoryMB * 1048576}, // convert to bytes
+		Resources: res, // convert to bytes
 	}, nil, nil, "")
 
 	id := resp.ID
