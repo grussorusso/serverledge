@@ -22,6 +22,7 @@ type DockerFactory struct {
 
 // For testing purposes
 var cpuLimit float64
+var cpuLimitPercentage float64
 
 func InitDockerContainerFactory() *DockerFactory {
 	ctx := context.Background()
@@ -33,7 +34,8 @@ func InitDockerContainerFactory() *DockerFactory {
 	dockerFact := &DockerFactory{cli, ctx}
 	cf = dockerFact
 
-	cpuLimit = config.GetFloat(config.DOCKER_LIMIT_CPU, 0) * 1000000000
+	cpuLimitPercentage = config.GetFloat(config.DOCKER_LIMIT_CPU, 0)
+	cpuLimit = cpuLimitPercentage * 1000000000
 
 	return dockerFact
 }
@@ -59,6 +61,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 
 	if cpuLimit > 0 {
 		res = container.Resources{Memory: opts.MemoryMB * 1048576, NanoCPUs: int64(cpuLimit)}
+		log.Println("Using CPU limit: ", cpuLimitPercentage)
 	} else {
 		res = container.Resources{Memory: opts.MemoryMB * 1048576}
 	}
