@@ -10,14 +10,14 @@ Run the following commands from the root directory of the repository:
 
 2. Start the "Edge" node
 
-	bin/serverledge examples/local_offloading/conf1.yaml
+	bin/serverledge examples/local_offloading/confEdge.yaml
 
 3. Start the "Cloud" node
 
-	bin/serverledge examples/local_offloading/conf2.yaml
+	bin/serverledge examples/local_offloading/confCloud.yaml
 
 4. Create and invoke a function
 
-	bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" 
-	bin/serverledge-cli invoke -f func -p "a:2" -p "b:3"
+	bin/serverledge-cli create -f func --memory 256 --src examples/isprime.py --runtime python310 --handler "isprime.handler" 
+	bin/serverledge-cli invoke -f func -p "n:17"
 
