@@ -73,7 +73,9 @@ func Run(p Policy) {
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
-			p.OnCompletion(r)
+			r.ExecReport.SchedAction = "local"
+
+			p.OnCompletion(c.scheduledRequest)
 
 			if metrics.Enabled && r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
 				addCompletedMetrics(r)
