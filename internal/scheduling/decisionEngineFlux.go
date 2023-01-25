@@ -79,7 +79,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
+	//log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
 
 	if prob <= pe {
 		log.Println("Execute LOCAL")
@@ -519,6 +519,13 @@ func (d *decisionEngineFlux) ShowData() {
 }
 
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
+
+	if offloaded == 0 {
+		log.Printf("LOCAL RESULT %s Duration %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	} else {
+		log.Printf("OFFLOADING RESULT %s Duration %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	}
+
 	requestChannel <- completedRequest{
 		scheduledRequest: r,
 		location:         offloaded,
