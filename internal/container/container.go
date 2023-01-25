@@ -73,29 +73,40 @@ func Destroy(id ContainerID) error {
 }
 
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
-	const maxRetries = 15
+	const TIMEOUT_MILLIS = 30000
+	const MAX_BACKOFF_MILLIS = 500
 	var backoffMillis = 25
 	var totalWaitMillis = 0
+	var attempts = 1
 
 	var err error
 
-	for retry := 1; retry <= maxRetries; retry++ {
+	for totalWaitMillis < TIMEOUT_MILLIS {
 		resp, err := http.Post(url, "application/json", body)
 		if err == nil {
 			return resp, time.Duration(totalWaitMillis * int(time.Millisecond)), err
-		} else if retry > 1 {
+		} else if attempts > 3 {
 			// It is common to have a failure after a cold start, so
-			// we avoid logging failures on the first attempt
-			log.Printf("Invocation POST failed (attempt %d/%d): %v", retry, maxRetries, err)
+			// we avoid logging failures on the first attempt(s)
+			log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
 		}
 
 		time.Sleep(time.Duration(backoffMillis * int(time.Millisecond)))
 		totalWaitMillis += backoffMillis
+		attempts += 1
 
-		if backoffMillis <= 200 {
-			backoffMillis *= 2
+		if backoffMillis < MAX_BACKOFF_MILLIS {
+			backoffMillis = min(backoffMillis*2, MAX_BACKOFF_MILLIS)
 		}
 	}
 
 	return nil, time.Duration(totalWaitMillis * int(time.Millisecond)), err
+}
+
+func min(a, b int) int {
+	if a <= b {
+		return a
+	} else {
+		return b
+	}
 }
