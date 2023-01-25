@@ -64,12 +64,12 @@ func Run(p Policy) {
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
-			p.OnCompletion(r)
+			p.OnCompletion(c.scheduledRequest)
 
 			if metrics.Enabled {
-				metrics.AddCompletedInvocation(r.Fun.Name)
-				if r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
+				metrics.AddCompletedInvocation(c.Fun.Name)
+				if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+					metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
 				}
 			}
 		}
