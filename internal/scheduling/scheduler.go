@@ -78,7 +78,7 @@ func Run(p Policy) {
 			p.OnCompletion(c.scheduledRequest)
 
 			if metrics.Enabled && r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-				addCompletedMetrics(r)
+				addCompletedMetrics(c.scheduledRequest)
 			}
 		}
 	}
