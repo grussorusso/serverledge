@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -46,9 +47,8 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	}
 
 	postBody, _ := json.Marshal(req)
-	postBodyB := bytes.NewBuffer(postBody)
 	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
-		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
+		executor.DEFAULT_EXECUTOR_PORT), bytes.NewReader(postBody))
 	if err != nil || resp == nil {
 		return nil, waitDuration, fmt.Errorf("Request to executor failed: %v", err)
 	}
@@ -72,7 +72,7 @@ func Destroy(id ContainerID) error {
 	return cf.Destroy(id)
 }
 
-func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
+func sendPostRequestWithRetries(url string, body io.Reader) (*http.Response, time.Duration, error) {
 	const maxRetries = 15
 	var backoffMillis = 25
 	var totalWaitMillis = 0
