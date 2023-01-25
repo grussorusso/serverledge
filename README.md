@@ -115,7 +115,7 @@ server:
 
 	$ bin/serverledge <config file>
 
-Supported configuration keys are defined in `internal/config/keys.go`.
+Further information about supported configuration options is available [here](./docs/configuration.md).
 
 ### Example
 
