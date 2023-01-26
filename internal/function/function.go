@@ -30,7 +30,7 @@ func getEtcdKey(funcName string) string {
 	return fmt.Sprintf("/function/%s", funcName)
 }
 
-//GetFunction retrieves a Function given its name.
+// GetFunction retrieves a Function given its name.
 func GetFunction(name string) (*Function, bool) {
 
 	val, found := getFromCache(name)
@@ -71,7 +71,7 @@ func getFromEtcd(name string) (*Function, bool) {
 	if err != nil {
 		return nil, false
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
 	getResponse, err := cli.Get(ctx, getEtcdKey(name))
 	if err != nil || len(getResponse.Kvs) < 1 {
 		return nil, false
