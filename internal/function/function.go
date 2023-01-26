@@ -3,8 +3,6 @@ package function
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/utils"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -71,7 +69,7 @@ func getFromEtcd(name string) (*Function, bool) {
 	if err != nil {
 		return nil, false
 	}
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	getResponse, err := cli.Get(ctx, getEtcdKey(name))
 	if err != nil || len(getResponse.Kvs) < 1 {
 		return nil, false

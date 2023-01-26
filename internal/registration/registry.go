@@ -31,7 +31,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 		return "", UnavailableClientErr
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.Key = r.getEtcdKey(id)
@@ -77,7 +77,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 		baseDir = r.getEtcdKey("")
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -106,7 +106,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 // GetCloudNodes retrieves the list of Cloud servers in a given region
 func GetCloudNodes(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -129,7 +129,7 @@ func GetCloudNodes(region string) (map[string]string, error) {
 // GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
 func GetCloudNodesInRegion(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -157,7 +157,7 @@ func (r *Registry) Deregister() (e error) {
 		return UnavailableClientErr
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), utils.Timeout)
 	_, err = etcdClient.Delete(ctx, r.Key)
 	if err != nil {
 		return err
