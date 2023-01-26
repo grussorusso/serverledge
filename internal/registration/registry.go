@@ -31,7 +31,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 		return "", UnavailableClientErr
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.Key = r.getEtcdKey(id)
