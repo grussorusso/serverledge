@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 
 var etcdClient *clientv3.Client = nil
 var clientMutex sync.Mutex
-var Timeout time.Duration
 
 func GetEtcdClient() (*clientv3.Client, error) {
 	clientMutex.Lock()
@@ -23,13 +21,10 @@ func GetEtcdClient() (*clientv3.Client, error) {
 		return etcdClient, nil
 	}
 
-	Timeout = time.Duration(config.GetInt(config.ETCD_TIMEOUT, 1)) * time.Second
-	log.Println("Dial Timeout for etcd client: ", Timeout)
 	etcdHost := config.GetString(config.ETCD_ADDRESS, "localhost:2379")
-
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{etcdHost},
-		DialTimeout: Timeout,
+		DialTimeout: 1 * time.Second,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to etcd: %v", err)

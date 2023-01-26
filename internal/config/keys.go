@@ -2,7 +2,6 @@ package config
 
 // Etcd server hostname
 const ETCD_ADDRESS = "etcd.address"
-const ETCD_TIMEOUT = "etcd.timeout"
 
 // exposed port for serverledge APIs
 const API_PORT = "api.port"
