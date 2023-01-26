@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ func GetEtcdClient() (*clientv3.Client, error) {
 	}
 
 	Timeout = time.Duration(config.GetInt(config.ETCD_TIMEOUT, 1))
+	log.Println("Dial Timeout for etcd client: ", Timeout)
 	etcdHost := config.GetString(config.ETCD_ADDRESS, "localhost:2379")
 
 	cli, err := clientv3.New(clientv3.Config{
