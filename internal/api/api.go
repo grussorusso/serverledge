@@ -85,11 +85,29 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Invocation failed: %v", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		// If there was no error submitting the request, it is still possible that the container
+		// At this point there was no error submitting the request, but it is still possible that the container
 		// has been migrated in the middle of its execution
 		if r.ExecReport.Migrated {
+
 			// If the execution has been migrated to another host, then wait until the other node
-			// posts the result on ETCD
+			// contacts back (until a timeout expires) or posts the result on ETCD
+
+			var timeout int
+
+			if MAX_SYNC_WAIT == -1 {
+				timeout = 0
+			} else {
+				timeout = MAX_SYNC_WAIT
+			}
+
+			select {
+			case res := <-scheduling.ResultsChannel:
+				return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: res})
+			case <-time.After(time.Duration(timeout) * time.Second):
+				fmt.Println("Synchronous timeout exceeded, going to poll the result from ETCD")
+			}
+
+			// If the other node fails to contact, poll the result from ETCD
 			etcdClient, err := utils.GetEtcdClient()
 			if err != nil {
 				log.Println("Could not connect to Etcd")
@@ -271,6 +289,14 @@ func ReceiveContainerTar(c echo.Context) error {
 	err := scheduling.ReceiveContainerTar(c)
 	if err != nil {
 		return fmt.Errorf("An error occurred receiving a container tar: %v", err)
+	}
+	return nil
+}
+
+func MigrationResponseListener(c echo.Context) error {
+	err := scheduling.ReceiveResultFromNode(c)
+	if err != nil {
+		return fmt.Errorf("An error occurred receiving a result from a remote node: %v", err)
 	}
 	return nil
 }

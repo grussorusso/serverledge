@@ -73,7 +73,15 @@ const DEFAULT_CONTAINER_MANAGER = "container.manager"
 // SOCKET = "unix:" + os.Getenv("XDG_RUNTIME_DIR") + "/podman/podman.sock"
 const PODMAN_SOCKET = "unix:/run/podman/podman.sock"
 
+// Enable or disable the migration process if necessary (default = true)
+const ALLOW_MIGRATION = "allow.migration"
+
 // When a syncronous operation is required, a migration can occur.
 // It is recommended to set this field to the maximum amount of
 // seconds you are willing to expect for the result
 const MAX_SYNC_WAIT_TIME = "max.sync.wait.time"
+
+// Threshold to decide if the node should migrate some functions.
+// The value should be a number between 0 and 1, representing the memory usage (default=0.8);
+// If node's memory goes above this threshold, a migration will take place
+const MIGRATION_DECISION_THRESHOLD = "migration.decision.threshold"

@@ -2,10 +2,13 @@ package scheduling
 
 import (
 	"fmt"
+	"net"
+	"os"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/executor"
+	"github.com/grussorusso/serverledge/internal/node"
 )
 
 const HANDLER_DIR = "/app"
@@ -13,6 +16,11 @@ const HANDLER_DIR = "/app"
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	//log.Printf("[%s] Executing on container: %v", r, contID)
+
+	//Retrieve the local IP address of the node that will execute the request
+	hostName, _ := os.Hostname()
+	addresses, _ := net.LookupHost(hostName)
+	localIp := addresses[0]
 
 	var req executor.InvocationRequest
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
@@ -22,13 +30,19 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
 		req = executor.InvocationRequest{
-			Id:         r.ReqId,
-			Command:    cmd,
-			Params:     r.Params,
-			Handler:    r.Fun.Handler,
-			HandlerDir: HANDLER_DIR,
+			Id:              r.ReqId,
+			Command:         cmd,
+			Params:          r.Params,
+			Handler:         r.Fun.Handler,
+			HandlerDir:      HANDLER_DIR,
+			NodeIP:          localIp,
+			Async:           r.Async,
+			OriginalRequest: *r.Request,
 		}
 	}
+	node.Resources.Lock()
+	node.NodeRequests[contID] = req // Add this request to the pool
+	node.Resources.Unlock()
 
 	t0 := time.Now()
 
@@ -36,12 +50,18 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	if err != nil {
 		// notify scheduler
 		completions <- &completion{scheduledRequest: r, contID: contID}
+		node.Resources.Lock()
+		delete(node.NodeRequests, contID)
+		node.Resources.Unlock()
 		return fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
 		// notify scheduler
 		completions <- &completion{scheduledRequest: r, contID: contID}
+		node.Resources.Lock()
+		delete(node.NodeRequests, contID)
+		node.Resources.Unlock()
 		return fmt.Errorf("Function execution failed")
 	}
 
@@ -56,7 +76,9 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 
 	// notify scheduler
 	completions <- &completion{scheduledRequest: r, contID: contID}
-
+	node.Resources.Lock()
+	delete(node.NodeRequests, contID)
+	node.Resources.Unlock()
 	return nil
 }
 

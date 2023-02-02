@@ -28,8 +28,8 @@ func (p *CloudEdgePolicy) OnArrival(r *scheduledRequest) {
 }
 
 func (p *CloudEdgePolicy) OnRestore(r *scheduledRestore) {
-	resoreResponse := &restoreResult{
+	restoreResponse := &restoreResult{
 		err: Restore(r.contID, r.archiveName),
 	}
-	r.restoreChannel <- *resoreResponse
+	r.restoreChannel <- *restoreResponse
 }

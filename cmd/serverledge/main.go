@@ -34,8 +34,9 @@ func startAPIServer(e *echo.Echo) {
 	e.GET("/poll/:reqId", api.PollAsyncResult)
 	e.GET("/status", api.GetServerStatus)
 
-	e.POST("/receiveResultAfterMigration", api.ReceiveResultAfterMigration)
-	e.POST("/receiveContainerTar", api.ReceiveContainerTar)
+	e.POST("/receiveResultAfterMigration", api.ReceiveResultAfterMigration) // The restored container contacts a node to send the result
+	e.POST("/migrationResponseListener", api.MigrationResponseListener)     // A remote node sends back the result to the original one after a migration (synchronous case)
+	e.POST("/receiveContainerTar", api.ReceiveContainerTar)                 // A node sends the checkpoint to another node
 
 	// Start server
 	portNumber := config.GetInt(config.API_PORT, 1323)

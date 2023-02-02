@@ -1,11 +1,16 @@
 package executor
 
+import "github.com/grussorusso/serverledge/internal/function"
+
 type InvocationRequest struct {
-	Id         string
-	Command    []string
-	Params     map[string]interface{}
-	Handler    string
-	HandlerDir string
+	OriginalRequest function.Request
+	Id              string
+	Command         []string
+	Params          map[string]interface{}
+	Handler         string
+	HandlerDir      string
+	NodeIP          string
+	Async           bool
 }
 
 type InvocationResult struct {

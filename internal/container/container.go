@@ -115,7 +115,7 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 	const maxRetries = 15
 	var backoffMillis = 25
 	var totalWaitMillis = 0
-	// TODO CAMBIA QUESTI PER PROVARE DOCKER
+
 	var err error
 
 	for retry := 1; retry <= maxRetries; retry++ {

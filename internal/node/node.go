@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/grussorusso/serverledge/internal/executor"
 )
 
 var OutOfResourcesErr = errors.New("not enough resources for function execution")
@@ -17,6 +19,8 @@ type NodeResources struct {
 	DropCount      int64
 	ContainerPools map[string]*ContainerPool
 }
+
+var NodeRequests map[string]executor.InvocationRequest
 
 func (n NodeResources) String() string {
 	return fmt.Sprintf("[CPUs: %f - Mem: %d]", n.AvailableCPUs, n.AvailableMemMB)

@@ -33,6 +33,9 @@ var requests chan *scheduledRequest
 var restores chan *scheduledRestore
 var completions chan *completion
 
+var ResultsChannel chan function.ExecutionReport
+var migrationAddresses chan string
+
 var remoteServerUrl string
 var executionLogEnabled bool
 
@@ -47,9 +50,16 @@ var restorePool = sync.Pool{
 }
 
 func Run(p Policy) {
+	//Let's initialize the channels for inter process communication
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
 	restores = make(chan *scheduledRestore, 500)
+	// We'll need a channel to send the results after a migration as well
+	ResultsChannel = make(chan function.ExecutionReport, 1)
+	// And a channel to share the migration client ip among processes
+	migrationAddresses = make(chan string, 1)
+	// This map associates all node's requests to their container
+	node.NodeRequests = make(map[string]executor.InvocationRequest)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -66,6 +76,11 @@ func Run(p Policy) {
 	} else {
 		log.Fatal("An invalid container manager was specified in the configuration file.")
 		return
+	}
+
+	// Start the thread that monitors node's memory, in order to migrate something if necessary
+	if config.GetBool(config.ALLOW_MIGRATION, true) {
+		go startMigrationMonitor()
 	}
 
 	//janitor periodically remove expired warm container
@@ -140,13 +155,6 @@ func SubmitRequest(r *function.Request) error {
 		if err != nil {
 			return err
 		}
-		/*-------------------------------------------------------------------------------
-		DEMO - Migration process: Let's suppose a migration decision is taken.
-		When the function execution is called, a migration occurs at the same time
-		----*/
-		//go Execute(schedDecision.contID, &schedRequest)
-		//migration_demo(r, schedDecision.contID)
-		//-------------------------------------------------------------------------------*/
 	}
 	return nil
 }
@@ -180,23 +188,6 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
-		/*-------------------------------------------------------------------------------
-		DEMO - Migration process: Let's suppose a migration decision is taken.
-		When the function execution is called, a migration occurs at the same time
-		----*/
-		//go Execute(schedDecision.contID, &schedRequest)
-		//migration_demo(r, schedDecision.contID)
-		//-------------------------------------------------------------------------------*/
-	}
-}
-
-// Demo function to show the migration process
-func migration_demo(request *function.Request, containerID container.ContainerID) {
-	shouldMigrate := true                                   // TODO: this decision will be taken like 'node.Resources.AvailableMemMB < THRESHOLD'
-	fallbackAddresses := []string{"IP1", "IP2", "10.0.2.7"} // TODO: these addresses will somehow be taken from ETCD
-	if shouldMigrate {
-		request.ExecReport.Migrated = true      // Necessary: set this field to true at this point
-		Migrate(containerID, fallbackAddresses) // And now start the migration
 	}
 }
 
@@ -225,6 +216,9 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 
 // Listen on a port to receive the checkpointed container archive
 func ReceiveContainerTar(c echo.Context) error {
+	// First of all noify the presence of a client migrator ip
+	migrationAddresses <- c.RealIP()
+	// Then work to retrieve the checkpointed container archive
 	r := c.Request()
 	r.ParseMultipartForm(int64(checkpointArchiveSizeLimit))
 	file, handler, err := r.FormFile(checkpointFormField) // Get the form file
@@ -234,7 +228,7 @@ func ReceiveContainerTar(c echo.Context) error {
 	}
 	defer file.Close()
 
-	fmt.Printf("Uploaded file specs:\nName -> %+v\nSize -> %+v\nMIME Header -> %+v\n", handler.Filename, handler.Size, handler.Header)
+	fmt.Printf("File received. Specs:\nName -> %+v\nSize -> %+v\nMIME Header -> %+v\n", handler.Filename, handler.Size, handler.Header)
 	currDir, _ := os.Getwd()
 	tempFile, err := ioutil.TempFile(currDir, "checkpoint-*.tar.gz") // Prepare the temporary file
 	if err != nil {
@@ -259,8 +253,62 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 	if result.Error != nil {
 		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
 	}
-	report := &function.ExecutionReport{Result: result.Result, Migrated: true}                  // Build the report struct
+	report := &function.ExecutionReport{Result: result.Result, Migrated: true, Id: result.Id} // Build the report struct
+	fmt.Printf("A result has been received from a migrated container: %s\nRequest ID: %s", report.Result, report.Id)
+
+	//Before uploading the result to ETCD, try to contact back the node (synchronous case)
+	originalNodeIP := retrieveOriginalNodeIP()
+	if originalNodeIP != "" {
+		//If the call was synchronous
+		url := fmt.Sprintf("http://%s:%d/migrationResponseListener", originalNodeIP, 1323)
+		postBody, _ := json.Marshal(report)
+		postBodyB := bytes.NewBuffer(postBody)
+		_, err := http.Post(url, "application/json", postBodyB)
+		if err != nil {
+			fmt.Printf("Error contacting primary node: %v\n", err)
+			return err
+		}
+		fmt.Println("Result sent back to primary node.")
+	}
 	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
+	fmt.Println("Result stored on ETCD.")
+	node.Resources.Lock()
+	// Retrieve the container Id from the request Id, in order to remove it from the requests
+	var contID string
+	for id, request := range node.NodeRequests {
+		if request.Id == result.Id {
+			contID = id
+			break
+		}
+	}
+	delete(node.NodeRequests, contID)
+	node.Resources.Unlock()
+	return nil
+}
+
+// Listen on a port to receive the result from the node which restored the migrated container
+func ReceiveResultFromNode(c echo.Context) error {
+	b, _ := io.ReadAll(c.Request().Body) // Get the result
+	var res function.ExecutionReport
+	err := json.Unmarshal(b, &res)
+	if err != nil {
+		fmt.Println("Error unmarshalling result from the migrated node")
+		return nil
+	}
+	node.Resources.Lock()
+	// Retrieve the container Id from the request Id, in order to remove it from the requests
+	var contID string
+	for id, request := range node.NodeRequests {
+		if request.Id == res.Id {
+			contID = id
+			break
+		}
+	}
+	delete(node.NodeRequests, contID)
+	node.Resources.Unlock()
+
+	// Publish the result on the channel, for the API waiting to respond to the client
+	ResultsChannel <- res
 	return nil
 }
 
