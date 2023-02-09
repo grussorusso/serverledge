@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/container"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 )
 
@@ -63,4 +65,12 @@ func getThreshold() float64 {
 	} else {
 		return thr
 	}
+}
+
+// Demo function to trigger the migraion manually
+// TODO - remove this function, use the monitoring thread instead
+func migration_demo(request *function.Request, containerID container.ContainerID) {
+	fallbackAddresses := []string{"IP1", "IP2", "34.89.21.9"} // Manually set the migration addresses
+	request.ExecReport.Migrated = true                        // Necessary: set this field to true before migrating
+	Migrate(containerID, fallbackAddresses)
 }
