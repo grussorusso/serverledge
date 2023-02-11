@@ -225,12 +225,19 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 			break
 		}
 	}
+
+	file, err := os.OpenFile("timelogA.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file.WriteString(time.Now().String())
 	return err
 }
 
 // Listen on a port to receive the checkpointed container archive
 func ReceiveContainerTar(c echo.Context) error {
-	// First of all noify the presence of a client migrator ip
+
+	fil, err := os.OpenFile("timelogB.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fil.WriteString(time.Now().String())
+
+	// First of all notify the presence of a client migrator ip
 	migrationAddresses <- c.RealIP()
 	// Then work to retrieve the checkpointed container archive
 	r := c.Request()
@@ -282,7 +289,6 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 			fmt.Printf("Error contacting primary node: %v\n", err)
 			return err
 		}
-		fmt.Println("Result sent back to primary node.")
 	}
 	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
 	fmt.Println("Result stored on ETCD.")

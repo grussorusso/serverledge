@@ -1,1 +1,1 @@
-bin/serverledge-cli invoke -f func -p "num:7" --async
+bin/serverledge-cli invoke -f func -p "n:7" --async

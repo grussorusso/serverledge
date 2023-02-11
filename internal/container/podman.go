@@ -56,6 +56,7 @@ func (cf *PodmanFactory) Create(image string, opts *ContainerOptions) (Container
 	s.ResourceLimits = new(specs.LinuxResources)
 	s.ResourceLimits.Memory = new(specs.LinuxMemory)
 	s.ResourceLimits.Memory.Limit = &memory_limit
+	s.SeccompProfilePath = "unconfined"
 	r, err := containers.CreateWithSpec(cf.ctx, s, new(containers.CreateOptions))
 	return r.ID, err
 }

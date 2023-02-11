@@ -18,11 +18,15 @@ func startMigrationMonitor() {
 	for true {
 		// Acquire the available memory and check if it is over the threshold
 		availableMemory := float64(node.Resources.AvailableMemMB)
+		percMem := (totalMemory - availableMemory) / totalMemory
+		fmt.Println("MEMORY_MB: ", totalMemory-availableMemory, " / ", totalMemory, " = ", percMem*100, "%")
+		fmt.Println(availableMemory, "<=", (1-threshold)*(totalMemory), "?")
 		if availableMemory <= (1-threshold)*(totalMemory) {
 			// Select the best container candidate to migrate
+			fmt.Println("-\n\n\nMIGRATING\n\n\n-")
 			migrateAContainer()
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -31,7 +35,7 @@ func migrateAContainer() {
 	var migrationNodeCandidates []string
 	var containerToMigrate string
 	// TODO: define an algorithm to find the best node candidates to migrate a container
-	migrationNodeCandidates = []string{"IP1", "IP2", "10.0.2.7"}
+	migrationNodeCandidates = []string{"10.0.2.7"}
 	for contID, r := range node.NodeRequests {
 		// TODO: define an algorithm to find the best container candidate to migrate
 		containerToMigrate = contID

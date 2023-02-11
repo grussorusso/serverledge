@@ -92,6 +92,8 @@ func Checkpoint(contID container.ContainerID, fallbackAddresses []string) error 
 		return fmt.Errorf("Checkpoint failed: %v", err)
 	}
 	fmt.Println("Checkpoint succeded in time ", checkpointTime)
+	file, err := os.OpenFile("checkpointlog.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file.WriteString(checkpointTime.String())
 	return nil
 }
 
@@ -103,5 +105,7 @@ func Restore(contID container.ContainerID, archiveName string) error {
 		return fmt.Errorf("Restore failed: %v", err)
 	}
 	fmt.Println("Restore succeded in time ", restoreTime)
+	file, err := os.OpenFile("restorelog.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file.WriteString(restoreTime.String())
 	return nil
 }
