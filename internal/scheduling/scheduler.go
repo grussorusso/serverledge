@@ -227,7 +227,7 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 	}
 
 	file, err := os.OpenFile("timelogA.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	file.WriteString(time.Now().String())
+	file.WriteString(time.Now().String() + "\n")
 	return err
 }
 
@@ -235,7 +235,7 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 func ReceiveContainerTar(c echo.Context) error {
 
 	fil, err := os.OpenFile("timelogB.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	fil.WriteString(time.Now().String())
+	fil.WriteString(time.Now().String() + "\n")
 
 	// First of all notify the presence of a client migrator ip
 	migrationAddresses <- c.RealIP()
