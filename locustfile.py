@@ -5,5 +5,5 @@ class TriggerMigration(HttpUser):
 
     @task
     def hello_world(self):
-        self.client.post("/invoke/func",json={"Params":{"n":"5000"},"Async":True}
+        self.client.post("/invoke/func",json={"Params":{"n":"100000"},"Async":False}
 )
