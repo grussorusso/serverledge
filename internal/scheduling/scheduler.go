@@ -60,6 +60,8 @@ func Run(p Policy) {
 	migrationAddresses = make(chan string, 1)
 	// This map associates all node's requests to their container
 	node.NodeRequests = make(map[string]executor.InvocationRequest)
+	// This map associates node containers to their IP
+	container.NodeContainers = make(map[container.ContainerIP]container.ContainerID)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -226,12 +228,10 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 		}
 	}
 
-	fmt.Println("1")
-	node.ReleaseContainer(contID, node.NodeRequests[contID].OriginalRequest.Fun)
-	fmt.Println("2")
-	node.DeleteExpiredContainer()
-	fmt.Println("3")
-	container.Destroy(contID)
+	node.Resources.Lock()
+	node.Resources.AvailableMemMB += node.NodeRequests[contID].OriginalRequest.Fun.MemoryMB
+	node.Resources.AvailableCPUs += node.NodeRequests[contID].OriginalRequest.Fun.CPUDemand
+	node.Resources.Unlock()
 
 	file, err := os.OpenFile("timelogA.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	file.WriteString(time.Now().String() + "\n")
@@ -309,6 +309,7 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 		}
 	}
 	delete(node.NodeRequests, contID)
+	delete(container.NodeContainers, container.ContainerIP(c.RealIP()))
 	node.Resources.Unlock()
 	return nil
 }
@@ -374,6 +375,7 @@ func scheduleRestore(archiveName string) error {
 	if err.err != nil {
 		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err.err)
 	}
+	container.AssociateContIDtoIP(restoreRequest.contID)
 	return nil
 }
 
