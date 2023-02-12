@@ -20,7 +20,6 @@ func startMigrationMonitor() {
 		availableMemory := float64(node.Resources.AvailableMemMB)
 		percMem := (totalMemory - availableMemory) / totalMemory
 		fmt.Println("MEMORY_MB: ", totalMemory-availableMemory, " / ", totalMemory, " = ", percMem*100, "%")
-		fmt.Println(availableMemory, "<=", (1-threshold)*(totalMemory), "?")
 		if availableMemory <= (1-threshold)*(totalMemory) {
 			// Select the best container candidate to migrate
 			fmt.Println("-\n\n\nMIGRATING\n\n\n-")

@@ -226,6 +226,13 @@ func Migrate(contID container.ContainerID, fallbackAddresses []string) error {
 		}
 	}
 
+	fmt.Println("1")
+	node.ReleaseContainer(contID, node.NodeRequests[contID].OriginalRequest.Fun)
+	fmt.Println("2")
+	node.DeleteExpiredContainer()
+	fmt.Println("3")
+	container.Destroy(contID)
+
 	file, err := os.OpenFile("timelogA.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	file.WriteString(time.Now().String() + "\n")
 	return err
