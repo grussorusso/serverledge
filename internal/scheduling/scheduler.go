@@ -60,8 +60,6 @@ func Run(p Policy) {
 	migrationAddresses = make(chan string, 1)
 	// This map associates all node's requests to their container
 	node.NodeRequests = make(map[string]executor.InvocationRequest)
-	// This map associates node containers to their IP
-	container.NodeContainers = make(map[container.ContainerIP]container.ContainerID)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -309,7 +307,7 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 		}
 	}
 	delete(node.NodeRequests, contID)
-	delete(container.NodeContainers, container.ContainerIP(c.RealIP()))
+	container.Destroy(contID)
 	node.Resources.Unlock()
 	return nil
 }
@@ -375,7 +373,6 @@ func scheduleRestore(archiveName string) error {
 	if err.err != nil {
 		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err.err)
 	}
-	container.AssociateContIDtoIP(restoreRequest.contID)
 	return nil
 }
 
