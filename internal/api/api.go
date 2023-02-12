@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -41,8 +42,17 @@ func GetFunctions(c echo.Context) error {
 	return c.JSON(http.StatusOK, list)
 }
 
+func logTime(invokeTime time.Time) {
+	file, _ := os.OpenFile("responseTime.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file.WriteString(time.Since(invokeTime).String() + "\n")
+}
+
 // InvokeFunction handles a function invocation request.
 func InvokeFunction(c echo.Context) error {
+
+	invokeTime := time.Now()
+	defer logTime(invokeTime)
+
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
