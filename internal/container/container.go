@@ -12,6 +12,10 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
+type ContainerIP string
+
+var NodeContainers map[ContainerIP]ContainerID // map[container IP]container ID
+
 //NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
@@ -34,6 +38,11 @@ func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, e
 	}
 
 	return contID, nil
+}
+
+func AssociateContIDtoIP(contID ContainerID) {
+	ip, _ := cf.GetIPAddress(contID)
+	NodeContainers[ContainerIP(ip)] = contID
 }
 
 // Execute interacts with the Executor running in the container to invoke the
