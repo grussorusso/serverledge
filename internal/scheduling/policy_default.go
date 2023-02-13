@@ -102,8 +102,10 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 }
 
 func (p *DefaultLocalPolicy) OnRestore(r *scheduledRestore) {
+	containerID, error := Restore(r.contID, r.archiveName)
 	resoreResponse := &restoreResult{
-		err: Restore(r.contID, r.archiveName),
+		contID: containerID,
+		err:    error,
 	}
 	r.restoreChannel <- *resoreResponse
 }

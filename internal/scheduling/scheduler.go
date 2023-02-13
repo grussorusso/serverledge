@@ -43,6 +43,10 @@ var offloadingClient *http.Client
 var checkpointArchiveSizeLimit = 10 * 1024
 var checkpointFormField = "checkpoint"
 
+type containerIP string
+
+var nodeContainers map[containerIP]container.ContainerID
+
 var restorePool = sync.Pool{
 	New: func() any {
 		return new(function.Request)
@@ -60,6 +64,8 @@ func Run(p Policy) {
 	migrationAddresses = make(chan string, 1)
 	// This map associates all node's requests to their container
 	node.NodeRequests = make(map[string]executor.InvocationRequest)
+	// This map associates all node's IP to
+	nodeContainers = make(map[containerIP]container.ContainerID)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -267,8 +273,11 @@ func ReceiveContainerTar(c echo.Context) error {
 	tempFile.Write(fileBytes)            // Write the byte array in the temporary file
 	fmt.Printf("Checkpoint file %s successfully received.\n", tempFile.Name())
 
-	err = scheduleRestore(tempFile.Name())
-
+	contID, err := scheduleRestore(tempFile.Name())
+	contIP := containerIP(container.GetContainerIP(contID))
+	node.Resources.Lock()
+	nodeContainers[contIP] = contID
+	node.Resources.Unlock()
 	return err
 }
 
@@ -297,17 +306,12 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 	}
 	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
 	fmt.Println("Result stored on ETCD.")
-	node.Resources.Lock()
 	// Retrieve the container Id from the request Id, in order to remove it from the requests
-	var contID string
-	for id, request := range node.NodeRequests {
-		if request.Id == result.Id {
-			contID = id
-			break
-		}
-	}
-	delete(node.NodeRequests, contID)
+	node.Resources.Lock()
+	contIP := containerIP(c.RealIP())
+	contID := nodeContainers[contIP]
 	container.Destroy(contID)
+	delete(nodeContainers, contIP)
 	node.Resources.Unlock()
 	return nil
 }
@@ -359,7 +363,7 @@ func prepareAndSendContainerTar(url string, checkpointArchiveName string) error 
 }
 
 // Schedule a restore operation
-func scheduleRestore(archiveName string) error {
+func scheduleRestore(archiveName string) (string, error) {
 	// Create a restore request for a given container, from a given archive.
 	restoreRequest := scheduledRestore{
 		contID:         "restored-" + archiveName,
@@ -369,11 +373,11 @@ func scheduleRestore(archiveName string) error {
 	restores <- &restoreRequest
 
 	// Wait on the channel for the restore to be executed
-	err := <-restoreRequest.restoreChannel
-	if err.err != nil {
-		return fmt.Errorf("An error occurred restoring the checkpoint tar: %v", err.err)
+	restoreResponse := <-restoreRequest.restoreChannel
+	if restoreResponse.err != nil {
+		return "", fmt.Errorf("An error occurred restoring the checkpoint tar: %v", restoreResponse.err)
 	}
-	return nil
+	return restoreResponse.contID, nil
 }
 
 // Translate the received result from the restored container into the expected format

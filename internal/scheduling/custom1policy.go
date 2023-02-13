@@ -37,8 +37,10 @@ func (p *Custom1Policy) OnArrival(r *scheduledRequest) {
 }
 
 func (p *Custom1Policy) OnRestore(r *scheduledRestore) {
-	resoreResponse := &restoreResult{
-		err: Restore(r.contID, r.archiveName),
+	containerID, error := Restore(r.contID, r.archiveName)
+	restoreResponse := &restoreResult{
+		contID: containerID,
+		err:    error,
 	}
-	r.restoreChannel <- *resoreResponse
+	r.restoreChannel <- *restoreResponse
 }

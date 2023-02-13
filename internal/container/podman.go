@@ -165,12 +165,12 @@ func (cf *PodmanFactory) CheckpointContainer(contID ContainerID, archiveName str
 }
 
 // Restore a container execution from a local tar checkpoint archive
-func (cf *PodmanFactory) RestoreContainer(contID ContainerID, archiveName string) error {
+func (cf *PodmanFactory) RestoreContainer(contID ContainerID, archiveName string) (string, error) {
 	// Container restore
 	options := new(containers.RestoreOptions).WithImportArchive(archiveName).WithTCPEstablished(true)
-	_, err := containers.Restore(cf.ctx, contID, options)
+	restoreReport, err := containers.Restore(cf.ctx, contID, options)
 	if err != nil {
 		log.Printf("The container %s could not be restored: %v", contID, err)
 	}
-	return err
+	return restoreReport.Id, err
 }

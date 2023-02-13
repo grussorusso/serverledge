@@ -32,7 +32,8 @@ type schedDecision struct {
 }
 
 type restoreResult struct {
-	err error
+	contID container.ContainerID
+	err    error
 }
 
 type action int64

@@ -73,7 +73,7 @@ func getThreshold() float64 {
 // Demo function to trigger the migraion manually
 // TODO - remove this function, use the monitoring thread instead
 func migration_demo(request *function.Request, containerID container.ContainerID) {
-	fallbackAddresses := []string{"IP1", "IP2", "34.89.21.9"} // Manually set the migration addresses
-	request.ExecReport.Migrated = true                        // Necessary: set this field to true before migrating
+	fallbackAddresses := []string{"34.77.63.161"} // Manually set the migration addresses
+	request.ExecReport.Migrated = true            // Necessary: set this field to true before migrating
 	Migrate(containerID, fallbackAddresses)
 }

@@ -128,12 +128,12 @@ func (cf *DockerFactory) CheckpointContainer(contID ContainerID, archiveName str
 /* Experimental feature: restores a container
 Container checkpoint Docker API does not support the --tcp-established flag yet.
 It is recommended to use Podman in order to migrate a container.*/
-func (cf *DockerFactory) RestoreContainer(contID ContainerID, archiveName string) error {
+func (cf *DockerFactory) RestoreContainer(contID ContainerID, archiveName string) (string, error) {
 	/* TODO: before restoring, this function has to create the container without starting it.
 	Then it has to extract the local tar archive and move it into /var/lib/docker/containers/container_ID/checkpoints*/
 	err := cf.cli.ContainerStart(cf.ctx, contID, types.ContainerStartOptions{CheckpointID: contID, CheckpointDir: archiveName})
 	if err != nil {
 		log.Printf("The container %s could not be restored: %v", contID, err)
 	}
-	return err
+	return contID, err
 }

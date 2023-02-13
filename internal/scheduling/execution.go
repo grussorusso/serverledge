@@ -97,15 +97,15 @@ func Checkpoint(contID container.ContainerID, fallbackAddresses []string) error 
 	return nil
 }
 
-func Restore(contID container.ContainerID, archiveName string) error {
+func Restore(contID container.ContainerID, archiveName string) (string, error) {
 
-	restoreTime, err := container.Restore(contID, archiveName)
+	restoreTime, id, err := container.Restore(contID, archiveName)
 	if err != nil {
 		// notify scheduler
-		return fmt.Errorf("Restore failed: %v", err)
+		return "", fmt.Errorf("Restore failed: %v", err)
 	}
 	fmt.Println("Restore succeded in time ", restoreTime)
 	file, err := os.OpenFile("restorelog.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	file.WriteString(restoreTime.String() + "\n")
-	return nil
+	return id, nil
 }

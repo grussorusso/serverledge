@@ -12,7 +12,7 @@ type Factory interface {
 	GetIPAddress(ContainerID) (string, error)
 	GetMemoryMB(id ContainerID) (int64, error)
 	CheckpointContainer(ContainerID, string) error
-	RestoreContainer(ContainerID, string) error
+	RestoreContainer(ContainerID, string) (string, error)
 }
 
 //ContainerOptions contains options for container creation.

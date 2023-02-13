@@ -94,13 +94,22 @@ func Checkpoint(contID ContainerID, req *executor.FallbackAcquisitionRequest) (*
 	return response, time.Since(startTime), nil
 }
 
-func Restore(contID ContainerID, archiveName string) (time.Duration, error) {
+func Restore(contID ContainerID, archiveName string) (time.Duration, string, error) {
 	startTime := time.Now()
-	err := cf.RestoreContainer(contID, archiveName)
+	id, err := cf.RestoreContainer(contID, archiveName)
 	if err != nil {
-		return time.Since(startTime), fmt.Errorf("Restore failed: %v", err)
+		return time.Since(startTime), "", fmt.Errorf("Restore failed: %v", err)
 	}
-	return time.Since(startTime), nil
+	return time.Since(startTime), id, nil
+}
+
+func GetContainerIP(containerID ContainerID) string {
+	ip, err := cf.GetIPAddress(containerID)
+	if err != nil {
+		return ip
+	} else {
+		return ""
+	}
 }
 
 func GetMemoryMB(id ContainerID) (int64, error) {
