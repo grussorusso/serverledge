@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -74,10 +72,17 @@ func getMigrationTargetNodes() []string {
 // TODO: define an algorithm to find the best container candidate to migrate
 func getMigrationTargetContainer() string {
 	// At the moment a random container associated with the least priority is selected
-	containerToMigrate := maps.Keys(node.NodeRequests)[0]
+	var containerToMigrate string
+	for contID, _ := range node.NodeRequests {
+		// Take the first container on the node
+		containerToMigrate = contID
+		break
+	}
+	// Register its priority
 	minimumPriority := node.NodeRequests[containerToMigrate].OriginalRequest.Class
 	requestToMigrate := node.NodeRequests[containerToMigrate]
 	for contID, r := range node.NodeRequests {
+		// Look for the least priority container on the node
 		if r.OriginalRequest.Class <= minimumPriority {
 			requestToMigrate = r
 			minimumPriority = r.OriginalRequest.Class
