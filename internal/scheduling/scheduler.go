@@ -155,16 +155,16 @@ func SubmitRequest(r *function.Request) error {
 			return err
 		}
 	} else {
-		//err = Execute(schedDecision.contID, &schedRequest)
-		//if err != nil {
-		//	return err
-		//}
+		err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			return err
+		}
 		/*-------------------------------------------------------------------------------
 		DEMO - Migration process: Let's suppose a migration decision is taken.
 		When the function execution is called, a migration occurs at the same time
 		----*/
-		go Execute(schedDecision.contID, &schedRequest)
-		migration_demo(r, schedDecision.contID)
+		//go Execute(schedDecision.contID, &schedRequest)
+		//migration_demo(r, schedDecision.contID)
 		//-------------------------------------------------------------------------------*/
 	}
 	return nil
@@ -194,17 +194,17 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		//err = Execute(schedDecision.contID, &schedRequest)
-		//if err != nil {
-		//	publishAsyncResponse(r.ReqId, function.Response{Success: false})
-		//}
-		//publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		err = Execute(schedDecision.contID, &schedRequest)
+		if err != nil {
+			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		}
+		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
 		/*-------------------------------------------------------------------------------
 		DEMO - Migration process: Let's suppose a migration decision is taken.
 		When the function execution is called, a migration occurs at the same time
 		----*/
-		go Execute(schedDecision.contID, &schedRequest)
-		migration_demo(r, schedDecision.contID)
+		//go Execute(schedDecision.contID, &schedRequest)
+		//migration_demo(r, schedDecision.contID)
 		//-------------------------------------------------------------------------------*/
 	}
 }
