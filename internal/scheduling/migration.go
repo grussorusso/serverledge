@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -22,7 +24,7 @@ func startMigrationMonitor() {
 		fmt.Println("MEMORY_MB: ", totalMemory-availableMemory, " / ", totalMemory, " = ", percMem*100, "%")
 		if availableMemory <= (1-threshold)*(totalMemory) {
 			// Select the best container candidate to migrate
-			fmt.Println("-\n\n\nMIGRATING\n\n\n-")
+			fmt.Println("Node load threshold exceeded. Selecting the best container to migrate...")
 			migrateAContainer()
 		}
 		time.Sleep(2 * time.Second)
@@ -34,15 +36,9 @@ func migrateAContainer() {
 	var migrationNodeCandidates []string
 	var containerToMigrate string
 	// TODO: define an algorithm to find the best node candidates to migrate a container
-	migrationNodeCandidates = []string{"10.0.2.7"}
-	for contID, r := range node.NodeRequests {
-		// TODO: define an algorithm to find the best container candidate to migrate
-		containerToMigrate = contID
-		r.OriginalRequest.ExecReport.Migrated = true /* Necessary: set this field to true before migrating.
-		This will allow the node API to know if the result will come normally or if it has to be polled from ETCD
-		*/
-		break
-	}
+	// TODO: define an algorithm to find the best container candidate to migrate
+	migrationNodeCandidates = getMigrationTargetNodes()
+	containerToMigrate = getMigrationTargetContainer()
 
 	Migrate(containerToMigrate, migrationNodeCandidates)
 }
@@ -68,6 +64,30 @@ func getThreshold() float64 {
 	} else {
 		return thr
 	}
+}
+
+// TODO: define an algorithm to find the best node candidates to migrate a container
+func getMigrationTargetNodes() []string {
+	return []string{"34.77.63.161"}
+}
+
+// TODO: define an algorithm to find the best container candidate to migrate
+func getMigrationTargetContainer() string {
+	// At the moment a random container associated with the least priority is selected
+	containerToMigrate := maps.Keys(node.NodeRequests)[0]
+	minimumPriority := node.NodeRequests[containerToMigrate].OriginalRequest.Class
+	requestToMigrate := node.NodeRequests[containerToMigrate]
+	for contID, r := range node.NodeRequests {
+		if r.OriginalRequest.Class <= minimumPriority {
+			requestToMigrate = r
+			minimumPriority = r.OriginalRequest.Class
+			containerToMigrate = contID
+		}
+	}
+	requestToMigrate.OriginalRequest.ExecReport.Migrated = true /* Necessary: set this field to true before migrating.
+	This will allow the node API to know if the result will come normally or if it has to be polled from ETCD
+	*/
+	return containerToMigrate
 }
 
 // Demo function to trigger the migraion manually
