@@ -43,9 +43,7 @@ var offloadingClient *http.Client
 var checkpointArchiveSizeLimit = 10 * 1024
 var checkpointFormField = "checkpoint"
 
-type containerIP string
-
-var nodeContainers map[containerIP]container.ContainerID
+var nodeRestoredContainers chan container.ContainerID
 
 var restorePool = sync.Pool{
 	New: func() any {
@@ -64,8 +62,8 @@ func Run(p Policy) {
 	migrationAddresses = make(chan string, 1)
 	// This map associates all node's requests to their container
 	node.NodeRequests = make(map[string]executor.InvocationRequest)
-	// This map associates all node's IP to
-	nodeContainers = make(map[containerIP]container.ContainerID)
+	// Channel to retreive the restore container IDs
+	nodeRestoredContainers = make(chan container.ContainerID, 500)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -274,10 +272,8 @@ func ReceiveContainerTar(c echo.Context) error {
 	fmt.Printf("Checkpoint file %s successfully received.\n", tempFile.Name())
 
 	contID, err := scheduleRestore(tempFile.Name())
-	contIP := containerIP(container.GetContainerIP(contID))
-	node.Resources.Lock()
-	nodeContainers[contIP] = contID
-	node.Resources.Unlock()
+	// Put the container on the restore channel
+	nodeRestoredContainers <- contID
 	return err
 }
 
@@ -306,13 +302,9 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 	}
 	publishAsyncResponse(result.Id, function.Response{Success: true, ExecutionReport: *report}) // Send the result to etcd
 	fmt.Println("Result stored on ETCD.")
-	// Retrieve the container Id from the request Id, in order to remove it from the requests
-	node.Resources.Lock()
-	contIP := containerIP(c.RealIP())
-	contID := nodeContainers[contIP]
+	// Retrieve the container Id in order to remove it from the requests
+	contID := <-nodeRestoredContainers
 	container.Destroy(contID)
-	delete(nodeContainers, contIP)
-	node.Resources.Unlock()
 	return nil
 }
 

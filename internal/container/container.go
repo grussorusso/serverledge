@@ -103,15 +103,6 @@ func Restore(contID ContainerID, archiveName string) (time.Duration, string, err
 	return time.Since(startTime), id, nil
 }
 
-func GetContainerIP(containerID ContainerID) string {
-	ip, err := cf.GetIPAddress(containerID)
-	if err != nil {
-		return ip
-	} else {
-		return ""
-	}
-}
-
 func GetMemoryMB(id ContainerID) (int64, error) {
 	return cf.GetMemoryMB(id)
 }
