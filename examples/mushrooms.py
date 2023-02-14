@@ -1,7 +1,6 @@
-from sklearn.feature_selection import mutual_info_classif
-from sklearn.model_selection import train_test_split
-from sklearn.feature_selection import SelectKBest
-from sklearn.preprocessing import LabelEncoder
+import sklearn.feature_selection as fs
+import sklearn.model_selection as ms
+import sklearn.preprocessing as pp
 import pandas as pd
 import numpy as np
 
@@ -14,7 +13,7 @@ che contengono una maggior quantità di informazione.
 '''
 
 def handler(params, context):
-    return train_model
+    return train_model()
 
 
 def train_model():
@@ -25,7 +24,7 @@ def train_model():
     # Convert nominal values into real ones
     df['class'] = df['class'].replace('p',1)
     df['class'] = df['class'].replace('e',0)
-    labelencoder=LabelEncoder()
+    labelencoder=pp.LabelEncoder()
     for column in df.columns:
         if column!= 'class' and column!='stem-height' and column!='stem-width' and column!='cap-diameter':
             df[column] = labelencoder.fit_transform(df[column])
@@ -35,10 +34,10 @@ def train_model():
     Y=df['class']
     y = np.array(Y, dtype = 'float32')
     x = np.array(X, dtype = 'float32')
-    x_train, x_test, y_train,y_test = train_test_split(x,y,train_size=0.9, random_state=50)
+    x_train, x_test, y_train,y_test = ms.train_test_split(x,y,train_size=0.9, random_state=50)
 
     # Train the model 
-    model = SelectKBest(mutual_info_classif)
+    model = fs.SelectKBest(fs.mutual_info_classif)
     model.fit(x_train, y_train)
 
     return "OK"
