@@ -1,12 +1,16 @@
 # Python3 server
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from multiprocessing import Process
-import importlib
 import requests
 import time
 import json
 import sys
 import os
+from sklearn.feature_selection import mutual_info_classif, SelectKBest
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import pandas as pd
+import numpy as np
 
 
 hostName = "0.0.0.0"
@@ -37,46 +41,39 @@ class Executor(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length']) 
         post_data = self.rfile.read(content_length) 
         request = json.loads(post_data.decode('utf-8'))
-
-        if not "invoke" in self.path:
-            self.send_response(404)
-            self.end_headers()
-            return
-
-        handler = request["Handler"] 
-        handler_dir = request["HandlerDir"]
         id = request["Id"]
-
-        try:
-            params = request["Params"]
-        except:
-            params = {}
-
-        if "context" in os.environ:
-            context = json.loads(os.environ["CONTEXT"]) 
-        else:
-            context = {}
-
-        if not handler_dir in added_dirs:
-            sys.path.insert(1, handler_dir)
-            added_dirs[handler_dir] = True
-
-        # Get module name
-        module,func_name = os.path.splitext(handler)
-        func_name = func_name[1:] # strip initial dot
-
         response = {}
-
         try:
-            # Import module
-            if not module in executed_modules:
-                exec(f"import {module}")
-                executed_modules[module] = True
 
-            # Call function
-            mod = importlib.import_module(module)
-            result = getattr(mod, func_name)(params, context)
-            response["Result"] = json.dumps(result)
+            '''
+            Questo esempio prende un dataset da 60k istanze e 20 attributi; su esso esegue una 
+            feature selection basata sulla mutual information. Tale meccanismo permette di selezionare 
+            gli attribui migliori stimando la dipendenza tra due variabili. In questo modo è 
+            possibile scartare gli attributi non utili ai fini dell'apprendimento, tenendo solo quelli
+            che contengono una maggior quantità di informazione. 
+            '''
+
+            df = pd.read_csv("https://raw.githubusercontent.com/msalvati1997/mushrooms_classificator/main/secondary_data.csv")
+    
+            # Convert nominal values into real ones
+            df['class'] = df['class'].replace('p',1)
+            df['class'] = df['class'].replace('e',0)
+            labelencoder=LabelEncoder()
+            for column in df.columns:
+                if column!= 'class' and column!='stem-height' and column!='stem-width' and column!='cap-diameter':
+                    df[column] = labelencoder.fit_transform(df[column])
+
+            # Split it into training and testing set
+            X = df.drop(['class'], axis=1)
+            Y=df['class']
+            y = np.array(Y, dtype = 'float32')
+            x = np.array(X, dtype = 'float32')
+            x_train, x_test, y_train,y_test = train_test_split(x,y,train_size=0.9, random_state=50)
+
+            # Train the model 
+            model = SelectKBest(mutual_info_classif)
+            model.fit(x_train, y_train)
+            response["Result"] = "OK"
             response["Success"] = True
             response["Id"] = id
 

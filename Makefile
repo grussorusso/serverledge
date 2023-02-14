@@ -24,7 +24,7 @@ image-base:
 image-nodejs17ng:
 	${CONTAINER_MANAGER} build -t $(DOCKERHUB_USER)/serverledge-nodejs17ng -f images/nodejs17ng/Dockerfile .
 image-custom-python:
-	${CONTAINER_MANAGER} build -t $(DOCKERHUB_USER)/serverledge-custom-python -f images/custom-python/Dockerfile .
+	${CONTAINER_MANAGER} build -t docker.io/mferretti1997/serverledge-custom-python -f images/custom-python/Dockerfile .
 
 push-images:
 	${CONTAINER_MANAGER} push $(DOCKERHUB_USER)/serverledge-python310

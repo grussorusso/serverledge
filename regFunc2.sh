@@ -1,0 +1,1 @@
+bin/serverledge-cli create -f func --memory 600 --runtime custom --custom_image docker.io/mferretti1997/python-custom
