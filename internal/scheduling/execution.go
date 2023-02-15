@@ -72,6 +72,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	r.ExecReport.CPUTime = -1.0 // TODO
 	r.ExecReport.Class = response.QoS
 	r.ExecReport.Id = response.Id
+	r.ExecReport.Migrated = false
 
 	// initializing containers may require invocation retries, adding
 	// latency
