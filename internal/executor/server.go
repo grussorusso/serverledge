@@ -81,7 +81,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		result := readExecutionResult(resultFile)
 
-		resp = &InvocationResult{true, result}
+		resp = &InvocationResult{true, result, 0, ""}
 		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
 	}
 
