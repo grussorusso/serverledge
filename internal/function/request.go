@@ -33,6 +33,7 @@ type ExecutionReport struct {
 	SchedAction    string
 	Migrated       bool
 	Id             string
+	Class          int64
 }
 
 type Response struct {

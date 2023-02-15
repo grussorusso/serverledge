@@ -38,6 +38,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 			NodeIP:          localIp,
 			Async:           r.Async,
 			OriginalRequest: *r.Request,
+			Class:           int64(r.Request.Class),
 		}
 	}
 	node.Resources.Lock()
@@ -69,6 +70,8 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 	r.ExecReport.CPUTime = -1.0 // TODO
+	r.ExecReport.Class = response.QoS
+	r.ExecReport.Id = response.Id
 
 	// initializing containers may require invocation retries, adding
 	// latency

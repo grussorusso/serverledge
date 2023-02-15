@@ -46,6 +46,7 @@ class Executor(BaseHTTPRequestHandler):
         handler = request["Handler"] 
         handler_dir = request["HandlerDir"]
         id = request["Id"]
+        qos = request["Class"]
 
         try:
             params = request["Params"]
@@ -79,6 +80,7 @@ class Executor(BaseHTTPRequestHandler):
             response["Result"] = json.dumps(result)
             response["Success"] = True
             response["Id"] = id
+            response["QoS"] = qos
 
         except Exception as e:
             print(e, file=sys.stderr)

@@ -284,7 +284,7 @@ func ReceiveResultAfterMigration(c echo.Context) error {
 	if result.Error != nil {
 		return fmt.Errorf("An error occurred during migration result unmarshaling: %v", result.Error)
 	}
-	report := &function.ExecutionReport{Result: result.Result, Migrated: true, Id: result.Id} // Build the report struct
+	report := &function.ExecutionReport{Result: result.Result, Migrated: true, Id: result.Id, Class: result.Class} // Build the report struct
 	fmt.Printf("A result has been received from a migrated container: %s\nRequest ID: %s", report.Result, report.Id)
 
 	//Before uploading the result to ETCD, try to contact back the node (synchronous case)
@@ -387,7 +387,7 @@ func getMigrationResult(b []byte) executor.MigrationResult {
 		res.Error = err
 		return res
 	}
-	fmt.Println("Received data:\nResult: ", res.Result, "\nId: ", res.Id, "\nSuccess: ", res.Success)
+	fmt.Println("Received data:\nResult: ", res.Result, "\nId: ", res.Id, "\nSuccess: ", res.Success, "\nClass: ", res.Class)
 	return res
 }
 

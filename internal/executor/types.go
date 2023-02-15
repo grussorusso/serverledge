@@ -11,11 +11,14 @@ type InvocationRequest struct {
 	HandlerDir      string
 	NodeIP          string
 	Async           bool
+	Class           int64
 }
 
 type InvocationResult struct {
 	Success bool
 	Result  string
+	QoS     int64
+	Id      string
 }
 
 type FallbackAcquisitionRequest struct {
@@ -29,6 +32,7 @@ type FallbackAcquisitionResult struct {
 type MigrationResult struct {
 	Result  string
 	Success bool
+	Class   int64
 	Id      string
 	Error   error
 }
