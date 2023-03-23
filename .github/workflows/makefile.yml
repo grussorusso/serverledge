@@ -19,6 +19,9 @@ jobs:
           
      - uses: actions/checkout@v2
 
+     - name: Install Podman dependencies
+       run: sudo apt install -y btrfs-progs crun go-md2man iptables libassuan-dev libc6-dev libdevmapper-dev libglib2.0-dev libgpgme-dev libgpg-error-dev libprotobuf-dev libprotobuf-c-dev libseccomp-dev libselinux1-dev libsystemd-dev libbtrfs-dev pkg-config uidmap containernetworking-plugins
+
      - name: Install Podman
        run: sudo apt-get install -y podman
       
