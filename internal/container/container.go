@@ -12,7 +12,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
-//NewContainer creates and starts a new container.
+// NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
 	if err != nil {
@@ -123,7 +123,6 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 	for totalWaitMillis < TIMEOUT_MILLIS {
 		resp, err := http.Post(url, "application/json", body)
 		if err == nil {
-			log.Printf("Invocation POST success (attempt %d/%d).", retry, maxRetries)
 			return resp, time.Duration(totalWaitMillis * int(time.Millisecond)), err
 		} else if attempts > 3 {
 			// It is common to have a failure after a cold start, so

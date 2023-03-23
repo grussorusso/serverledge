@@ -1,17 +1,18 @@
 BIN=bin
+TAGS=-tags "exclude_graphdriver_devicemapper exclude_graphdriver_btrfs"
 
 all: serverledge executor serverledge-cli lb
 
 serverledge:
-	CGO_ENABLED=1 GOOS=linux go build -o $(BIN)/$@ cmd/$@/main.go
+	CGO_ENABLED=1 GOOS=linux go build $(TAGS) -o $(BIN)/$@ cmd/$@/main.go
 lb:
-	CGO_ENABLED=1 GOOS=linux go build -o $(BIN)/$@ cmd/$@/main.go
+	CGO_ENABLED=1 GOOS=linux go build $(TAGS) -o $(BIN)/$@ cmd/$@/main.go
 
 serverledge-cli:
 	CGO_ENABLED=1 GOOS=linux go build -o $(BIN)/$@ cmd/cli/main.go
 
 executor:
-	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/executor.go
+	CGO_ENABLED=0 GOOS=linux go build $(TAGS) -o $(BIN)/$@ cmd/$@/executor.go
 
 DOCKERHUB_USER=grussorusso
 CONTAINER_MANAGER=$(manager)
