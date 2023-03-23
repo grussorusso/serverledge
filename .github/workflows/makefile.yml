@@ -18,6 +18,9 @@ jobs:
           go-version: "1.18.0"
           
      - uses: actions/checkout@v2
+
+     - name: Install Podman
+       run: sudo apt-get install -y podman
       
      - name: Install dependencies
        run: make
