@@ -30,6 +30,9 @@ type ExecutionReport struct {
 	OffloadLatency float64
 	Duration       float64
 	SchedAction    string
+	Migrated       bool
+	Id             string
+	Class          int64
 }
 
 type Response struct {

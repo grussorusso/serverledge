@@ -35,3 +35,12 @@ func (p *EdgePolicy) OnArrival(r *scheduledRequest) {
 
 	dropRequest(r)
 }
+
+func (p *EdgePolicy) OnRestore(r *scheduledRestore) {
+	containerID, error := Restore(r.contID, r.archiveName)
+	resoreResponse := &restoreResult{
+		contID: containerID,
+		err:    error,
+	}
+	r.restoreChannel <- *resoreResponse
+}
