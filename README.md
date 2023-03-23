@@ -25,6 +25,10 @@ be used for production use, as it may lack critical security features.
 ## Building from sources
 
 1. Check that Golang is correctly installed on your machine.
+ 
+1. Install Podman and its dependencies. E.g., for Ubuntu:
+	
+       sudo apt install -y btrfs-progs crun go-md2man iptables libassuan-dev libc6-dev libdevmapper-dev libglib2.0-dev libgpgme-dev libgpg-error-dev libprotobuf-dev libprotobuf-c-dev libseccomp-dev libselinux1-dev libsystemd-dev libbtrfs-dev pkg-config uidmap containernetworking-plugins podman
 
 1. Download a copy of the source code.
 
