@@ -15,14 +15,14 @@ be used for production use, as it may lack critical security features.
 
 Serverledge has been first described in a [paper](https://doi.org/10.1109/PERCOM56429.2023.10099372) presented at *IEEE PerCom 2023*. If you use Serverledge in your own work, please cite it:
 
-> @inproceedings{serverledge2023percom,
->    author={Russo Russo, Gabriele and Mannucci, Tiziana and Cardellini, Valeria and Lo Presti, Francesco},
->    booktitle={2023 IEEE International Conference on Pervasive Computing and Communications (PerCom)}, 
->    title={Serverledge: Decentralized Function-as-a-Service for the Edge-Cloud Continuum}, 
->    year={2023},
->    pages={131-140},
->    doi={10.1109/PERCOM56429.2023.10099372}
-> }
+    @inproceedings{serverledge2023percom,
+      author={Russo Russo, Gabriele and Mannucci, Tiziana and Cardellini, Valeria and Lo Presti, Francesco},
+      booktitle={2023 IEEE International Conference on Pervasive Computing and Communications (PerCom)}, 
+      title={Serverledge: Decentralized Function-as-a-Service for the Edge-Cloud Continuum}, 
+      year={2023},
+      pages={131-140},
+      doi={10.1109/PERCOM56429.2023.10099372}
+    }
 
 
 ## Building from sources
