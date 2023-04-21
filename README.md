@@ -10,16 +10,19 @@ container pool, so that functions are executed within containers for isolation p
 When Edge nodes are overloaded, they can to offload computation
 to neighbor Edge nodes or to the Cloud.
 
-Serverledge has been first described in a paper presented at [IEEE PerCom 2023](https://www.percom.org/)
-(yet to appear):
-
-> G. Russo Russo, T. Mannucci, V. Cardellini, and F. Lo Presti. Serverledge: Decentralized function-
-> as-a-service for the edge-cloud continuum. In *Proceedings of IEEE International Conference on
-> Pervasive Computing and Communications, PerCom 2023, Atlanta, GA, USA, March 13-17,
-> 2023*. IEEE, 2023 (To appear)
-
 Note that Serverledge is a research prototype and it is not (yet) meant to
 be used for production use, as it may lack critical security features.
+
+Serverledge has been first described in a [paper](https://doi.org/10.1109/PERCOM56429.2023.10099372) presented at *IEEE PerCom 2023*. If you use Serverledge in your own work, please cite it:
+
+> @inproceedings{serverledge2023percom,
+>    author={Russo Russo, Gabriele and Mannucci, Tiziana and Cardellini, Valeria and Lo Presti, Francesco},
+>    booktitle={2023 IEEE International Conference on Pervasive Computing and Communications (PerCom)}, 
+>    title={Serverledge: Decentralized Function-as-a-Service for the Edge-Cloud Continuum}, 
+>    year={2023},
+>    pages={131-140},
+>    doi={10.1109/PERCOM56429.2023.10099372}
+> }
 
 
 ## Building from sources
