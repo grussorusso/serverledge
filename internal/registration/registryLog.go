@@ -39,6 +39,7 @@ func runMonitor() {
 	//todo  adjust default values
 	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 30)) * time.Second)         //wake-up nearby monitoring
 	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 60)) * time.Second) // wake-up general-area monitoring
+
 	for {
 		select {
 		case <-Reg.etcdCh:
@@ -93,7 +94,7 @@ type dist struct {
 	distance time.Duration
 }
 
-//getRank finds servers nearby to the current one
+// getRank finds servers nearby to the current one
 func getRank(rank int) {
 	if rank > len(Reg.serversMap) {
 		for k, v := range Reg.serversMap {

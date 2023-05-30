@@ -95,10 +95,16 @@ func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 
 func main() {
 	configFileName := ""
+
 	if len(os.Args) > 1 {
 		configFileName = os.Args[1]
 	}
 	config.ReadConfiguration(configFileName)
+
+	configClassesFileName := ""
+	if len(os.Args) > 2 {
+		configClassesFileName = os.Args[2]
+	}
 
 	//setting up cache parameters
 	cacheSetup()
@@ -119,7 +125,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
+	ip := config.GetString(config.API_IP, utils.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d", ip, config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)
@@ -134,6 +141,7 @@ func main() {
 	// Register a signal handler to cleanup things on termination
 	registerTerminationHandler(registry, e)
 
+	scheduling.ReadClassesConfiguration(configClassesFileName)
 	schedulingPolicy := createSchedulingPolicy()
 	go scheduling.Run(schedulingPolicy)
 
@@ -160,6 +168,10 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.EdgePolicy{}
 	} else if policyConf == "custom1" {
 		return &scheduling.Custom1Policy{}
+	} else if policyConf == "customCloudOffload" {
+		return &scheduling.CustomCloudOffloadPolicy{}
+	} else if policyConf == "edgeCluster" {
+		return &scheduling.OffloadToCluster{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

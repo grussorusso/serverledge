@@ -3,10 +3,11 @@ package config
 // Etcd server hostname
 const ETCD_ADDRESS = "etcd.address"
 
-//exposed port for serverledge APIs
+// exposed port for serverledge APIs
 const API_PORT = "api.port"
+const API_IP = "api.ip"
 
-//REMOTE SERVER URL
+// REMOTE SERVER URL
 const CLOUD_URL = "cloud.server.url"
 
 // Forces runtime container images to be pulled the first time they are used,
@@ -28,10 +29,10 @@ const CONTAINER_EXPIRATION_TIME = "container.expiration"
 // cache capacity
 const CACHE_SIZE = "cache.size"
 
-//cache janitor interval (Seconds) : deletes expired items
+// cache janitor interval (Seconds) : deletes expired items
 const CACHE_CLEANUP = "cache.cleanup"
 
-//default expiration time assigned to a cache item (Seconds)
+// default expiration time assigned to a cache item (Seconds)
 const CACHE_ITEM_EXPIRATION = "cache.expiration"
 
 // true if the current server is a remote cloud server
@@ -55,12 +56,26 @@ const LISTEN_UDP_PORT = "registry.udp.port"
 // enable metrics system
 const METRICS_ENABLED = "metrics.enabled"
 
-const METRICS_PROMETHEUS_HOST = "metrics.prometheus.host"
-const METRICS_PROMETHEUS_PORT = "metrics.prometheus.port"
+const METRICS_PORT = "metrics.port"
 
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
+const SCHEDULING_POLICY_VERSION = "scheduler.version"
+
+const CLOUD_COST = "scheduler.cloud.cost"
 
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
+
+// Solver interval
+const SOLVER_EVALUATION_INTERVAL = "solver.evalinterval"
+
+// Solver ip address
+const SOLVER_ADDRESS = "solver.address"
+
+const STORAGE_DB_ADDRESS = "storage.address"
+const STORAGE_DB_TOKEN = "storage.token"
+const STORAGE_DB_ORGNAME = "storage.orgname"
+
+const DOCKER_LIMIT_CPU = "docker.cpu"

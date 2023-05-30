@@ -1,0 +1,66 @@
+syntax = "proto2";
+
+package serverledge;
+
+option go_package = "github.com/grussorusso/serverledge";
+
+service Solver {
+  rpc Solve(Request) returns (Response) {}
+}
+
+message FunctionInvocation {
+  required string qos_class = 1;
+  required float arrivals = 2;
+}
+
+message Function {
+  required string name = 1;
+  required int32 memory = 2;
+  required float cpu = 3;
+
+  repeated FunctionInvocation invocations = 4;
+
+  required float duration = 5;
+  required float duration_offloaded = 6;
+  required float init_time = 7;
+  required float init_time_offloaded = 8;
+  required float pcold = 9;
+  required float pcold_offloaded = 10;
+}
+
+message QosClass {
+  required string name = 1;
+  required float utility = 2;
+  required float max_response_time = 3;
+  required float completed_percentage = 4;
+}
+
+
+message Request {
+  required float offload_latency = 1;
+  repeated Function functions = 2;
+  repeated QosClass classes = 3;
+  required float cost = 4;
+  required float memory = 5;
+  required float cpu = 6;
+}
+
+message ClassResponse {
+  required string name = 1;
+  required float pe = 2;
+  required float po = 3;
+  required float pd = 4;
+  required float share = 5;
+}
+
+message FunctionResponse {
+  required string name = 1;
+  repeated ClassResponse class_responses = 2;
+}
+
+message Response {
+
+
+  repeated FunctionResponse f_response = 1;
+  required float time_taken = 2;
+}

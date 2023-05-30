@@ -24,8 +24,10 @@ var remoteServerUrl string
 var executionLogEnabled bool
 
 var offloadingClient *http.Client
+var policy Policy
 
 func Run(p Policy) {
+	policy = p
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
 
@@ -33,6 +35,8 @@ func Run(p Policy) {
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
+	node.Resources.MaxMemMB = node.Resources.AvailableMemMB
+	node.Resources.MaxCPUs = node.Resources.AvailableCPUs
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
 	log.Printf("Current resources: %v", node.Resources)
 
@@ -61,18 +65,30 @@ func Run(p Policy) {
 	for {
 		select {
 		case r = <-requests:
+			//TODO correct place?
+			if metrics.Enabled {
+				metrics.AddArrivals(r.Fun.Name, r.ClassService.Name)
+			}
+
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(c.scheduledRequest)
 
-			if metrics.Enabled {
-				metrics.AddCompletedInvocation(c.Fun.Name)
-				if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
-				}
+			if metrics.Enabled && r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+				addCompletedMetrics(r)
 			}
 		}
+	}
+
+}
+
+func addCompletedMetrics(r *scheduledRequest) {
+	metrics.AddCompletedInvocation(r.Fun.Name)
+	metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
+
+	if !r.ExecReport.IsWarmStart {
+		metrics.AddColdStart(r.Fun.Name, r.ExecReport.InitTime)
 	}
 
 }
@@ -95,7 +111,7 @@ func SubmitRequest(r *function.Request) error {
 	if schedDecision.action == DROP {
 		//log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
-	} else if schedDecision.action == EXEC_REMOTE {
+	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
 		//log.Printf("Offloading request")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
@@ -127,7 +143,7 @@ func SubmitAsyncRequest(r *function.Request) {
 	var err error
 	if schedDecision.action == DROP {
 		publishAsyncResponse(r.ReqId, function.Response{Success: false})
-	} else if schedDecision.action == EXEC_REMOTE {
+	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
 		//log.Printf("Offloading request")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
@@ -166,10 +182,10 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	r.decisionChannel <- decision
 }
 
-func handleOffload(r *scheduledRequest, serverHost string) {
+func handleOffload(r *scheduledRequest, serverHost string, act action) {
 	r.CanDoOffloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
-		action:     EXEC_REMOTE,
+		action:     act,
 		contID:     "",
 		remoteHost: serverHost,
 	}
@@ -177,5 +193,9 @@ func handleOffload(r *scheduledRequest, serverHost string) {
 
 func handleCloudOffload(r *scheduledRequest) {
 	cloudAddress := config.GetString(config.CLOUD_URL, "")
-	handleOffload(r, cloudAddress)
+	handleOffload(r, cloudAddress, EXEC_REMOTE)
+}
+
+func handleEdgeOffload(r *scheduledRequest, serverHost string) {
+	handleOffload(r, serverHost, EXEC_NEIGHBOUR)
 }

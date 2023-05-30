@@ -25,7 +25,7 @@ func (p *Custom1Policy) OnArrival(r *scheduledRequest) {
 	} else if r.CanDoOffloading && r.RequestQoS.Class == function.HIGH_PERFORMANCE {
 		url := pickEdgeNodeForOffloading(r)
 		if url != "" {
-			handleOffload(r, url)
+			//handleOffload(r, url)
 		} else {
 			dropRequest(r)
 		}

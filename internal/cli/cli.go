@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -146,8 +145,9 @@ func invoke(cmd *cobra.Command, args []string) {
 
 	// Prepare request
 	request := client.InvocationRequest{
-		Params:          paramsMap,
-		QoSClass:        int64(api.DecodeServiceClass(qosClass)),
+		Params: paramsMap,
+		//QoSClass:        int64(api.DecodeServiceClass(qosClass)),
+		QoSClass:        qosClass,
 		QoSMaxRespT:     qosMaxRespT,
 		CanDoOffloading: true,
 		Async:           asyncInvocation}
