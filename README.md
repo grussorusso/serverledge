@@ -13,7 +13,7 @@ to neighbor Edge nodes or to the Cloud.
 Note that Serverledge is a research prototype and it is not (yet) meant to
 be used for production use, as it may lack critical security features.
 
-Serverledge has been first described in a [paper](https://doi.org/10.1109/PERCOM56429.2023.10099372) presented at *IEEE PerCom 2023*. If you use Serverledge in your own work, please cite it:
+Serverledge has been first described in a [paper](http://www.ce.uniroma2.it/publications/serverledgePerCom2023.pdf) presented at *IEEE PerCom 2023*. If you use Serverledge in your own work, please cite it:
 
     @inproceedings{serverledge2023percom,
       author={Russo Russo, Gabriele and Mannucci, Tiziana and Cardellini, Valeria and Lo Presti, Francesco},
@@ -23,6 +23,10 @@ Serverledge has been first described in a [paper](https://doi.org/10.1109/PERCOM
       pages={131-140},
       doi={10.1109/PERCOM56429.2023.10099372}
     }
+
+The paper also went through an Artifact Evaluation. An artifact guide, which
+explains how to obtain and use the software, is available
+[here](http://www.ce.uniroma2.it/publications/ServerledgeArtifact.pdf).
 
 
 ## Building from sources
