@@ -192,10 +192,12 @@ func handleOffload(r *scheduledRequest, serverHost string, act action) {
 }
 
 func handleCloudOffload(r *scheduledRequest) {
+	log.Printf("Handling offload to cloud")
 	cloudAddress := config.GetString(config.CLOUD_URL, "")
 	handleOffload(r, cloudAddress, EXEC_REMOTE)
 }
 
 func handleEdgeOffload(r *scheduledRequest, serverHost string) {
+	log.Printf("Handling offload to nearby host")
 	handleOffload(r, serverHost, EXEC_NEIGHBOUR)
 }

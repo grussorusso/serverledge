@@ -1,0 +1,4 @@
+api.port: 1327
+registry.udp.port: 9878
+scheduler.policy: edgeCluster
+cloud.server.url: "http://127.0.0.1:1326"
