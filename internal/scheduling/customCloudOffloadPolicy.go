@@ -31,7 +31,7 @@ func (p *CustomCloudOffloadPolicy) OnCompletion(r *scheduledRequest) {
 	//log.Printf("Completed execution of %s in %f\n", r.Fun.Name, r.ExecReport.ResponseTime)
 	//Completed(r.Request, false)
 	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD {
-		de.Completed(r, OFFLOADED)
+		de.Completed(r, OFFLOADED_CLOUD)
 	} else {
 		de.Completed(r, LOCAL)
 	}
@@ -40,7 +40,7 @@ func (p *CustomCloudOffloadPolicy) OnCompletion(r *scheduledRequest) {
 func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
 	dec := de.Decide(r)
 
-	if dec == EXECUTE_REQUEST {
+	if dec == LOCAL_EXEC_REQUEST {
 		containerID, err := node.AcquireWarmContainer(r.Fun)
 		if err == nil {
 			execLocally(r, containerID, true)
@@ -51,7 +51,7 @@ func (p *CustomCloudOffloadPolicy) OnArrival(r *scheduledRequest) {
 		} else {
 			dropRequest(r)
 		}
-	} else if dec == OFFLOAD_REQUEST {
+	} else if dec == CLOUD_OFFLOAD_REQUEST {
 		handleCloudOffload(r)
 	} else if dec == DROP_REQUEST {
 		dropRequest(r)

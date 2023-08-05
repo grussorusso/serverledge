@@ -27,18 +27,18 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	fInfo, prs := d.m[name]
 	if !prs {
-		pe = startingExecuteProb
-		po = startingOffloadProb
+		pe = startingLocalProb
+		po = startingCloudOffloadProb
 		pd = 1 - (pe + po)
 	} else {
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
 		if !prs {
-			pe = startingExecuteProb
-			po = startingOffloadProb
+			pe = startingLocalProb
+			po = startingCloudOffloadProb
 			pd = 1 - (pe + po)
 		} else {
-			pe = cFInfo.probExecute
-			po = cFInfo.probOffload
+			pe = cFInfo.probLocalExecute
+			po = cFInfo.probCloudOffload
 			pd = cFInfo.probDrop
 		}
 	}
@@ -63,10 +63,10 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	if prob <= pe {
 		log.Println("Execute LOCAL")
-		return EXECUTE_REQUEST
+		return LOCAL_EXEC_REQUEST
 	} else if prob <= pe+po {
 		log.Println("Execute OFFLOAD")
-		return OFFLOAD_REQUEST
+		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
 		return DROP_REQUEST
@@ -134,7 +134,7 @@ func (d *decisionEngineMem) handler() {
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
-					probCold:        [2]float64{1, 1},
+					probCold:        [3]float64{1, 1, 1},
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo
@@ -143,9 +143,9 @@ func (d *decisionEngineMem) handler() {
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probExecute:              startingExecuteProb,
-					probOffload:              startingOffloadProb,
-					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
+					probLocalExecute:         startingLocalProb,
+					probCloudOffload:         startingCloudOffloadProb,
+					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
 					timeSlotsWithoutArrivals: 0,
@@ -161,8 +161,8 @@ func (d *decisionEngineMem) handler() {
 		case _ = <-pcoldTicker.C:
 			//Reset arrivals for the time slot
 			for _, fInfo := range d.m {
-				fInfo.coldStartCount = [2]int64{0, 0}
-				fInfo.timeSlotCount = [2]int64{0, 0}
+				fInfo.coldStartCount = [3]int64{0, 0, 0}
+				fInfo.timeSlotCount = [3]int64{0, 0, 0}
 			}
 		}
 	}
@@ -219,10 +219,10 @@ func UpdateDataAsync(r function.Response) {
 
 	var location int
 
-	if r.OffloadLatency != 0 {
+	if r.CloudOffloadLatency != 0 {
 		location = LOCAL
 	} else {
-		location = OFFLOADED
+		location = OFFLOADED_CLOUD
 	}
 
 	//TODO edit this
@@ -253,9 +253,9 @@ func UpdateDataAsync(r function.Response) {
 		fInfo.coldStartCount[location]++
 	}
 
-	if r.OffloadLatency != 0 {
-		diff := r.OffloadLatency - OffloadLatency
-		OffloadLatency = OffloadLatency +
+	if r.CloudOffloadLatency != 0 {
+		diff := r.CloudOffloadLatency - CloudOffloadLatency
+		CloudOffloadLatency = CloudOffloadLatency +
 			(1/float64(fInfo.count[location]))*(diff)
 	}
 
@@ -298,8 +298,8 @@ func (d *decisionEngineMem) updateData(r completedRequest) {
 	}
 
 	if r.ExecReport.OffloadLatency != 0 {
-		diff := r.ExecReport.OffloadLatency - OffloadLatency
-		OffloadLatency = OffloadLatency +
+		diff := r.ExecReport.OffloadLatency - CloudOffloadLatency
+		CloudOffloadLatency = CloudOffloadLatency +
 			(1/float64(fInfo.count[location]))*(diff)
 	}
 }

@@ -24,6 +24,7 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
+	// fixme: add fields to handle edge offloading report
 	Name           string
 	Class          string
 	Result         string

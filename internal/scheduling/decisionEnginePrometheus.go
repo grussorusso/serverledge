@@ -71,14 +71,14 @@ func (dP *decisionEnginePrometheus) Decide(r *scheduledRequest) int {
 
 	fInfo, prs := dP.m[name]
 	if !prs {
-		pe = startingExecuteProb
-		po = startingOffloadProb
+		pe = startingLocalProb
+		po = startingCloudOffloadProb
 		pd = 1 - (pe + po)
 	} else {
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
 		if !prs {
-			pe = startingExecuteProb
-			po = startingOffloadProb
+			pe = startingLocalProb
+			po = startingCloudOffloadProb
 			pd = 1 - (pe + po)
 		} else {
 			pe = cFInfo.probExecute
@@ -100,10 +100,10 @@ func (dP *decisionEnginePrometheus) Decide(r *scheduledRequest) int {
 
 	if prob <= pe {
 		log.Println("Execute LOCAL")
-		return EXECUTE_REQUEST
+		return LOCAL_EXEC_REQUEST
 	} else if prob <= pe+po {
 		log.Println("Execute OFFLOAD")
-		return OFFLOAD_REQUEST
+		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
 		return DROP_REQUEST
@@ -202,9 +202,9 @@ func (dP *decisionEnginePrometheus) handler() {
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfoPrometheus{functionInfoPrometheus: fInfo,
-					probExecute: startingExecuteProb,
-					probOffload: startingOffloadProb,
-					probDrop:    1 - (startingExecuteProb + startingOffloadProb)}
+					probExecute: startingLocalProb,
+					probOffload: startingCloudOffloadProb,
+					probDrop:    1 - (startingLocalProb + startingCloudOffloadProb)}
 
 				fInfo.invokingClasses[arr.class] = cFInfo
 			}

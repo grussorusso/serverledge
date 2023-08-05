@@ -10,6 +10,7 @@ import (
 )
 
 func solve(m map[string]*functionInfo) {
+	// FIXME: modify to implement new model with edge offloading probability
 	if len(m) == 0 {
 		return
 	}
@@ -49,23 +50,29 @@ func solve(m map[string]*functionInfo) {
 		cpu := float32(fInfo.cpu)
 		name := fInfo.name
 		durationLocal := float32(fInfo.meanDuration[LOCAL])
-		durationOffloaded := float32(fInfo.meanDuration[OFFLOADED])
+		durationOffloadedCloud := float32(fInfo.meanDuration[OFFLOADED_CLOUD])
+		durationOffloadedEdge := float32(fInfo.meanDuration[OFFLOADED_EDGE])
 		initTimeLocal := float32(fInfo.initTime[LOCAL])
-		initTimeOffloaded := float32(fInfo.initTime[OFFLOADED])
+		initTimeOffloadedCloud := float32(fInfo.initTime[OFFLOADED_CLOUD])
+		initTimeOffloadedEdge := float32(fInfo.initTime[OFFLOADED_EDGE])
 		pcold := float32(fInfo.probCold[LOCAL])
-		pcoldOffloaded := float32(fInfo.probCold[OFFLOADED])
+		pcoldOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
+		pcoldOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
 
 		x := &pb.Function{
-			Name:              &name,
-			Memory:            &memory,
-			Cpu:               &cpu,
-			Invocations:       invocationList,
-			Duration:          &durationLocal,
-			DurationOffloaded: &durationOffloaded,
-			InitTime:          &initTimeLocal,
-			InitTimeOffloaded: &initTimeOffloaded,
-			Pcold:             &pcold,
-			PcoldOffloaded:    &pcoldOffloaded,
+			Name:                   &name,
+			Memory:                 &memory,
+			Cpu:                    &cpu,
+			Invocations:            invocationList,
+			Duration:               &durationLocal,
+			DurationOffloadedCloud: &durationOffloadedCloud,
+			DurationOffloadedEdge:  &durationOffloadedEdge,
+			InitTime:               &initTimeLocal,
+			InitTimeOffloadedCloud: &initTimeOffloadedCloud,
+			InitTimeOffloadedEdge:  &initTimeOffloadedEdge,
+			Pcold:                  &pcold,
+			PcoldOffloadedCloud:    &pcoldOffloadedCloud,
+			PcoldOffloadedEdge:     &pcoldOffloadedEdge,
 		}
 
 		functionList = append(functionList, x)
@@ -87,17 +94,19 @@ func solve(m map[string]*functionInfo) {
 		}
 	}
 
-	latency := float32(OffloadLatency)
+	latencyCloud := float32(CloudOffloadLatency)
+	latencyEdge := float32(EdgeOffloadLatency)
 	cost := float32(config.GetFloat(config.CLOUD_COST, 0.01))
 	cpu := float32(node.Resources.MaxCPUs)
 	mem := float32(node.Resources.MaxMemMB)
 	response, err := client.Solve(context.Background(), &pb.Request{
-		OffloadLatency: &latency,
-		Functions:      functionList,
-		Classes:        classList,
-		Cost:           &cost,
-		Cpu:            &cpu,
-		Memory:         &mem,
+		CloudOffloadLatency: &latencyCloud,
+		EdgeOffloadLatency:  &latencyEdge,
+		Functions:           functionList,
+		Classes:             classList,
+		Cost:                &cost,
+		Cpu:                 &cpu,
+		Memory:              &mem,
 	})
 
 	if err != nil {
@@ -123,9 +132,10 @@ func solve(m map[string]*functionInfo) {
 				continue
 			}
 
-			cFInfo.probExecute = float64(x.GetPe())
-			cFInfo.probOffload = float64(x.GetPo())
-			cFInfo.probDrop = float64(x.GetPd())
+			cFInfo.probLocalExecute = float64(x.GetPL())
+			cFInfo.probCloudOffload = float64(x.GetPC())
+			cFInfo.probEdgeOffload = float64(x.GetPE())
+			cFInfo.probDrop = float64(x.GetPD())
 			cFInfo.share = float64(x.GetShare())
 		}
 	}
@@ -246,7 +256,7 @@ func solve(m map[string]*functionInfo) {
 //		//Response time solution
 //		if Classes[cFInfo.class].MaximumResponseTime != -1 {
 //			lp.AddConstraintSparse([]golp.Entry{{getPExecutionIndex(i), cFInfo.meanDuration[LOCAL]},
-//				{getPOffloadIndex(i), OffloadLatency + cFInfo.meanDuration[OFFLOADED]},
+//				{getPOffloadIndex(i), CloudOffloadLatency + cFInfo.meanDuration[OFFLOADED_CLOUD]},
 //				{getPColdIndex(list[i].name), cFInfo.initTime[LOCAL]}},
 //				golp.LE, Classes[cFInfo.class].MaximumResponseTime)
 //		}
@@ -313,8 +323,8 @@ func solve(m map[string]*functionInfo) {
 //	for i := range list {
 //		cFInfo := list[i]
 //
-//		cFInfo.probExecute = vars[getPExecutionIndex(i)]
-//		cFInfo.probOffload = vars[getPOffloadIndex(i)]
+//		cFInfo.probLocalExecute = vars[getPExecutionIndex(i)]
+//		cFInfo.probCloudOffload = vars[getPOffloadIndex(i)]
 //		cFInfo.probDrop = vars[getPDropIndex(i)]
 //		cFInfo.share = vars[getShareIndex(i)]
 //	}
@@ -400,7 +410,7 @@ func solve(m map[string]*functionInfo) {
 //	if location == LOCAL {
 //		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location])
 //	} else {
-//		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location]-OffloadLatency)
+//		return exponentialCDF(cFInfo.meanDuration[location], deadline-cFInfo.probCold*cFInfo.initTime[location]-CloudOffloadLatency)
 //	}
 //}
 //
@@ -446,7 +456,7 @@ func solve(m map[string]*functionInfo) {
 //		}
 //
 //		fInfo.probCold = fInfo.getProbCold(LOCAL)
-//		fInfo.probColdOffload = fInfo.getProbCold(OFFLOADED)
+//		fInfo.probColdOffload = fInfo.getProbCold(OFFLOADED_CLOUD)
 //	}
 //
 //	numberOfFunctionClass = len(list)
@@ -484,8 +494,8 @@ func solve(m map[string]*functionInfo) {
 //			[]float64{cFInfo.arrivals * Classes[cFInfo.class].Utility *
 //				getDeadlineSatisfactionProb(LOCAL, cFInfo, Classes[cFInfo.class].MaximumResponseTime),
 //				cFInfo.arrivals*Classes[cFInfo.class].Utility*
-//					getDeadlineSatisfactionProb(OFFLOADED, cFInfo, Classes[cFInfo.class].MaximumResponseTime) -
-//					beta*cost*cFInfo.arrivals*cFInfo.meanDuration[OFFLOADED]*float64(cFInfo.memory),
+//					getDeadlineSatisfactionProb(OFFLOADED_CLOUD, cFInfo, Classes[cFInfo.class].MaximumResponseTime) -
+//					beta*cost*cFInfo.arrivals*cFInfo.meanDuration[OFFLOADED_CLOUD]*float64(cFInfo.memory),
 //				0,
 //				0}...)
 //
@@ -539,8 +549,8 @@ func solve(m map[string]*functionInfo) {
 //	for i := range list {
 //		cFInfo := list[i]
 //
-//		cFInfo.probExecute = vars[getPExecutionIndex(i)]
-//		cFInfo.probOffload = vars[getPOffloadIndex(i)]
+//		cFInfo.probLocalExecute = vars[getPExecutionIndex(i)]
+//		cFInfo.probCloudOffload = vars[getPOffloadIndex(i)]
 //		cFInfo.probDrop = vars[getPDropIndex(i)]
 //		cFInfo.share = vars[getShareIndex(i)]
 //	}

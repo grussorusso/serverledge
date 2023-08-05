@@ -228,7 +228,7 @@ package scheduling
 //	var off int
 //
 //	//TODO not really correct as offloading to neighbour is not considered
-//	if resp.OffloadLatency == 0 {
+//	if resp.CloudOffloadLatency == 0 {
 //		off = LOCAL
 //	} else {
 //		off = CLOUD
@@ -239,7 +239,7 @@ package scheduling
 //	mut.Lock()
 //
 //	if off == CLOUD {
-//		rtt[rttIndex] = resp.OffloadLatency
+//		rtt[rttIndex] = resp.CloudOffloadLatency
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //
@@ -275,7 +275,7 @@ package scheduling
 //	mut.Lock()
 //
 //	if location != LOCAL {
-//		rtt[rttIndex] = r.ExecReport.OffloadLatency
+//		rtt[rttIndex] = r.ExecReport.CloudOffloadLatency
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //

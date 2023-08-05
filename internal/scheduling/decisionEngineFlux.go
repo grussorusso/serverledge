@@ -28,14 +28,16 @@ var bucketServerledge *domain.Bucket
 var bucketName string
 
 func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
+	// fixme: add edge offloading
 	name := r.Fun.Name
 	class := r.ClassService
 
 	prob := rGen.Float64()
 
-	var pe float64
-	var po float64
-	var pd float64
+	var pL float64
+	var pC float64
+	var pE float64
+	var pD float64
 
 	var cFInfo *classFunctionInfo
 
@@ -43,50 +45,72 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	fInfo, prs := d.m[name]
 	if !prs {
-		pe = startingExecuteProb
-		po = startingOffloadProb
-		pd = 1 - (pe + po)
+		pL = startingLocalProb
+		pC = startingCloudOffloadProb
+		pE = startingEdgeOffloadProb
+		pD = 1 - (pL + pC + pE)
 	} else {
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
+		log.Printf("cFInfo: %v", cFInfo)
+		log.Printf("prs: %v", prs)
 		if !prs {
-			pe = startingExecuteProb
-			po = startingOffloadProb
-			pd = 1 - (pe + po)
+			pL = startingLocalProb
+			pC = startingCloudOffloadProb
+			pE = startingEdgeOffloadProb
+			pD = 1 - (pL + pC + pE)
 		} else {
-			pe = cFInfo.probExecute
-			po = cFInfo.probOffload
-			pd = cFInfo.probDrop
+			pL = cFInfo.probLocalExecute
+			pC = cFInfo.probCloudOffload
+			pE = cFInfo.probEdgeOffload
+			pD = cFInfo.probDrop
 		}
 	}
 
 	//TODO remove
 	nContainers, _ := node.WarmStatus()[name]
-	log.Printf("Probabilities for %s-%s available %d - %d - %d - %t are %f %f %f", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pe, po, pd)
+	log.Printf("Probabilities for name: %s - class: %s available mem: %d - func mem: %d - containers: %d - can execute :%t are "+
+		"\t pL: %f "+
+		"\t pC: %f "+
+		"\t pE: %f "+
+		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
 
+	//FIXME
 	if !r.CanDoOffloading {
-		pd = pd / (pd + pe)
-		pe = pe / (pd + pe)
-		po = 0
+		pD = pD / (pD + pL)
+		pL = pL / (pD + pL)
+		pC = 0
+		pE = 0
 	} else if !canExecute(r.Fun) {
-		if pd == 0 && po == 0 {
-			pd = 0
-			po = 1
-			pe = 0
+		if pD == 0 && pC == 0 {
+			pD = 0
+			pC = 1
+			pE = 0
+			pL = 0
+		} else if pD == 0 && pE == 0 {
+			pD = 0
+			pC = 0
+			pE = 1
+			pL = 0
 		} else {
-			pd = pd / (pd + po)
-			po = po / (pd + po)
-			pe = 0
+			pD = pD / (pD + pC + pE)
+			pC = pC / (pD + pC + pE)
+			pE = pE / (pD + pC + pE)
+			pL = 0
 		}
 	}
 
-	//log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pe, po, pd)
+	//log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pL, pC, pD)
 
-	if prob <= pe {
+	log.Printf("prob: %f", prob)
+	if prob <= pL {
 		log.Println("Execute LOCAL")
-		return EXECUTE_REQUEST
-	} else if prob <= pe+po {
-		log.Println("Execute OFFLOAD")
-		return OFFLOAD_REQUEST
+		return LOCAL_EXEC_REQUEST
+	} else if prob <= pL+pC {
+		log.Println("Execute CLOUD OFFLOAD")
+		return CLOUD_OFFLOAD_REQUEST
+	} else if prob <= pL+pC+pE {
+		log.Println("Execute EDGE OFFLOAD")
+		return EDGE_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
 		requestChannel <- completedRequest{
@@ -230,7 +254,7 @@ func (d *decisionEngineFlux) queryDb() {
 					name:            funct,
 					memory:          f.MemoryMB,
 					cpu:             f.CPUDemand,
-					probCold:        [2]float64{1, 1},
+					probCold:        [3]float64{1, 1, 1},
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[funct] = fInfo
@@ -240,9 +264,9 @@ func (d *decisionEngineFlux) queryDb() {
 			cFInfo, prs := fInfo.invokingClasses[class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probExecute:              startingExecuteProb,
-					probOffload:              startingOffloadProb,
-					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
+					probLocalExecute:         startingLocalProb,
+					probCloudOffload:         startingCloudOffloadProb,
+					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
 					timeSlotsWithoutArrivals: 0,
@@ -283,7 +307,7 @@ func (d *decisionEngineFlux) queryDb() {
 			off := x["offloaded"].(string)
 			location := LOCAL
 			if off == "true" {
-				location = OFFLOADED
+				location = OFFLOADED_CLOUD
 			}
 			fInfo, prs := d.m[funct]
 			if !prs {
@@ -311,7 +335,7 @@ func (d *decisionEngineFlux) queryDb() {
 	if err == nil {
 		// Iterate over query response
 		for result.Next() {
-			OffloadLatency = result.Record().Values()["_value"].(float64)
+			CloudOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
 
 		// check for an error
@@ -340,7 +364,7 @@ func (d *decisionEngineFlux) queryDb() {
 
 			location := LOCAL
 			if off == "true" {
-				location = OFFLOADED
+				location = OFFLOADED_CLOUD
 			}
 
 			fInfo, prs := d.m[funct]
@@ -378,7 +402,7 @@ func (d *decisionEngineFlux) queryDb() {
 
 			location := LOCAL
 			if off == "true" {
-				location = OFFLOADED
+				location = OFFLOADED_CLOUD
 			}
 
 			fInfo, prs := d.m[funct]
@@ -412,6 +436,10 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 }
 
+/*
+**
+Function that handles the evaluation - maybe here is data!
+*/
 func (d *decisionEngineFlux) handler() {
 	evaluationTicker :=
 		time.NewTicker(evaluationInterval)
@@ -419,6 +447,7 @@ func (d *decisionEngineFlux) handler() {
 	for {
 		select {
 		case _ = <-evaluationTicker.C:
+			// FIXME new evaluation - add edge offloading probability in updateProbability
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
@@ -441,9 +470,11 @@ func (d *decisionEngineFlux) handler() {
 			d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
+			// FIXME: add update probabiliy edge offloading
 			d.updateProbabilities()
 
 		case r := <-requestChannel:
+			// FIXME: new request received - added data to influxdb - maybe differentiate betweek edge offloading and cloud offloading
 			var fKeys map[string]interface{}
 			offloaded := "false"
 			warmStart := "false"
@@ -470,6 +501,7 @@ func (d *decisionEngineFlux) handler() {
 
 			writeAPI.WritePoint(p)
 		case arr := <-arrivalChannel:
+			// FIXME: new function arrival - change classFunctionInfo to add probEdgeOffloading
 			name := arr.Fun.Name
 
 			fInfo, prs := d.m[name]
@@ -478,7 +510,7 @@ func (d *decisionEngineFlux) handler() {
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
-					probCold:        [2]float64{1, 1},
+					probCold:        [3]float64{1, 1, 1},
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo
@@ -487,9 +519,10 @@ func (d *decisionEngineFlux) handler() {
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probExecute:              startingExecuteProb,
-					probOffload:              startingOffloadProb,
-					probDrop:                 1 - (startingExecuteProb + startingOffloadProb),
+					probLocalExecute:         startingLocalProb,
+					probCloudOffload:         startingCloudOffloadProb,
+					probEdgeOffload:          startingEdgeOffloadProb,
+					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb + startingEdgeOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
 					timeSlotsWithoutArrivals: 0,

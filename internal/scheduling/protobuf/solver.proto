@@ -21,11 +21,14 @@ message Function {
   repeated FunctionInvocation invocations = 4;
 
   required float duration = 5;
-  required float duration_offloaded = 6;
-  required float init_time = 7;
-  required float init_time_offloaded = 8;
-  required float pcold = 9;
-  required float pcold_offloaded = 10;
+  required float duration_offloaded_cloud = 6;
+  required float duration_offloaded_edge = 7;
+  required float init_time = 8;
+  required float init_time_offloaded_cloud = 9;
+  required float init_time_offloaded_edge = 10;
+  required float pcold = 11;
+  required float pcold_offloaded_cloud = 12;
+  required float pcold_offloaded_edge = 13;
 }
 
 message QosClass {
@@ -37,20 +40,22 @@ message QosClass {
 
 
 message Request {
-  required float offload_latency = 1;
-  repeated Function functions = 2;
-  repeated QosClass classes = 3;
-  required float cost = 4;
-  required float memory = 5;
-  required float cpu = 6;
+  required float cloud_offload_latency = 1;
+  required float edge_offload_latency = 2;
+  repeated Function functions = 3;
+  repeated QosClass classes = 4;
+  required float cost = 5;
+  required float memory = 6;
+  required float cpu = 7;
 }
 
 message ClassResponse {
   required string name = 1;
-  required float pe = 2;
-  required float po = 3;
-  required float pd = 4;
-  required float share = 5;
+  required float pL = 2;
+  required float pC = 3;
+  required float pE = 4;
+  required float pD = 5;
+  required float share = 6;
 }
 
 message FunctionResponse {

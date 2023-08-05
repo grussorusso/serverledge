@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 )
@@ -27,7 +26,7 @@ func (p *OffloadToCluster) Init() {
 
 func (p *OffloadToCluster) OnCompletion(r *scheduledRequest) {
 	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD {
-		engine.Completed(r, OFFLOADED)
+		engine.Completed(r, OFFLOADED_CLOUD)
 	} else {
 		engine.Completed(r, LOCAL)
 	}
@@ -36,7 +35,7 @@ func (p *OffloadToCluster) OnCompletion(r *scheduledRequest) {
 func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 	dec := engine.Decide(r)
 
-	if dec == EXECUTE_REQUEST {
+	if dec == LOCAL_EXEC_REQUEST {
 		containerID, err := node.AcquireWarmContainer(r.Fun)
 		if err == nil {
 			log.Printf("Using a warm container for: %v", r)
@@ -59,8 +58,9 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 		} else {
 			dropRequest(r)
 		}
-	} else if dec == OFFLOAD_REQUEST {
-		if r.RequestQoS.Class == function.HIGH_PERFORMANCE {
+	} else if dec == CLOUD_OFFLOAD_REQUEST {
+		handleCloudOffload(r)
+		/*if r.RequestQoS.Class == function.HIGH_PERFORMANCE {
 			// The function needs high performances, offload to cloud
 			log.Printf("Offloading to cloud")
 			handleCloudOffload(r)
@@ -76,7 +76,15 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 				handleCloudOffload(r)
 			}
 			return
+		}*/
+	} else if dec == EDGE_OFFLOAD_REQUEST {
+		log.Printf("Picking edge node for horizontal offloading")
+		url := pickEdgeNodeForOffloading(r)
+		if url != "" {
+			log.Printf("Found url: %s", url)
+			handleEdgeOffload(r, url)
 		}
+		return
 	} else if dec == DROP_REQUEST {
 		dropRequest(r)
 	}
