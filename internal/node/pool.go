@@ -24,7 +24,7 @@ type warmContainer struct {
 
 var NoWarmFoundErr = errors.New("no warm container is available")
 
-//getFunctionPool retrieves (or creates) the container pool for a function.
+// getFunctionPool retrieves (or creates) the container pool for a function.
 func getFunctionPool(f *function.Function) *ContainerPool {
 	if fp, ok := Resources.ContainerPools[f.Name]; ok {
 		return fp
@@ -159,9 +159,9 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	//log.Printf("Released resources. Now: %v", Resources)
 }
 
-//NewContainer creates and starts a new container for the given function.
-//The container can be directly used to schedule a request, as it is already
-//in the busy pool.
+// NewContainer creates and starts a new container for the given function.
+// The container can be directly used to schedule a request, as it is already
+// in the busy pool.
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
@@ -194,6 +194,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 
 	contID, err := container.NewContainer(image, fun.TarFunctionCode, &container.ContainerOptions{
 		MemoryMB: fun.MemoryMB,
+		CPUQuota: fun.CPUDemand,
 	})
 
 	if err != nil {

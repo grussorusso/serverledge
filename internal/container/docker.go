@@ -49,14 +49,18 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		}
 	}
 
+	contResources := container.Resources{Memory: opts.MemoryMB * 1048576} // convert to bytes
+	if opts.CPUQuota > 0.0 {
+		contResources.CPUPeriod = 50000 // 50ms
+		contResources.CPUQuota = (int64)(50000.0 * opts.CPUQuota)
+	}
+
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
 		Image: image,
 		Cmd:   opts.Cmd,
 		Env:   opts.Env,
 		Tty:   false,
-	}, &container.HostConfig{
-		Resources: container.Resources{Memory: opts.MemoryMB * 1048576}, // convert to bytes
-	}, nil, nil, "")
+	}, &container.HostConfig{Resources: contResources}, nil, nil, "")
 
 	id := resp.ID
 

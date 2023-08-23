@@ -2,7 +2,7 @@ package container
 
 import "io"
 
-//A Factory to create and manage container.
+// A Factory to create and manage container.
 type Factory interface {
 	Create(string, *ContainerOptions) (ContainerID, error)
 	CopyToContainer(ContainerID, io.Reader, string) error
@@ -13,11 +13,12 @@ type Factory interface {
 	GetMemoryMB(id ContainerID) (int64, error)
 }
 
-//ContainerOptions contains options for container creation.
+// ContainerOptions contains options for container creation.
 type ContainerOptions struct {
 	Cmd      []string
 	Env      []string
 	MemoryMB int64
+	CPUQuota float64
 }
 
 type ContainerID = string
