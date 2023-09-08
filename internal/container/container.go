@@ -15,21 +15,25 @@ import (
 
 // NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
-	contID, err := cf.Create(image, opts)
+	contID, err := cf.Create(image, opts) // cf = container factory
 	if err != nil {
 		log.Printf("Failed container creation\n")
 		return "", err
 	}
 
 	if len(codeTar) > 0 {
-		decodedCode, _ := base64.StdEncoding.DecodeString(codeTar)
+		decodedCode, errDecode := base64.StdEncoding.DecodeString(codeTar)
+		if errDecode != nil {
+			log.Printf("Failed code decode")
+			return "", errDecode
+		}
 		err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 		if err != nil {
 			log.Printf("Failed code copy\n")
 			return "", err
 		}
 	}
-
+	// Starts the container after copying the code in it
 	err = cf.Start(contID)
 	if err != nil {
 		return "", err
@@ -50,8 +54,10 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	postBodyB := bytes.NewBuffer(postBody)
 	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
-	if err != nil || resp == nil {
-		return nil, waitDuration, fmt.Errorf("Request to executor failed: %v", err)
+	if err != nil || resp == nil || resp.StatusCode >= 400 { // FIXME: EOF for js when input is "0"
+		buffer := make([]byte, resp.ContentLength)
+		_, _ = resp.Body.Read(buffer)
+		return nil, waitDuration, fmt.Errorf("request to executor failed: %v. Status: %s. Buffer: %s", err, resp.Status, buffer)
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()

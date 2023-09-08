@@ -70,6 +70,15 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 
 	r, err := cf.cli.ContainerInspect(cf.ctx, id)
 	log.Printf("Container %s has name %s\n", id, r.Name)
+	// TODO: remove, only for debug
+	//containers, err := cf.cli.ContainerList(cf.ctx, types.ContainerListOptions{})
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//for _, c := range containers {
+	//	fmt.Println(c)
+	//} // end remove
 
 	return id, err
 }
