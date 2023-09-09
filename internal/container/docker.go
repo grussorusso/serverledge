@@ -3,15 +3,15 @@ package container
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
+	"github.com/grussorusso/serverledge/internal/config"
 	"io"
 	"io/ioutil"
 	"log"
-	"os/exec"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/grussorusso/serverledge/internal/config"
+	"strings"
 	//	"github.com/docker/docker/pkg/stdcopy"
 )
 
@@ -47,6 +47,8 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 			log.Printf("Pulled image: %s", image)
 			refreshedImages[image] = true
 		}
+	} else {
+		log.Printf("We already have the image: %s", image)
 	}
 
 	contResources := container.Resources{Memory: opts.MemoryMB * 1048576} // convert to bytes
@@ -98,20 +100,29 @@ func (cf *DockerFactory) Destroy(contID ContainerID) error {
 }
 
 func (cf *DockerFactory) HasImage(image string) bool {
-	// TODO: we should try using cf.cli.ImageList(...)
-	cmd := fmt.Sprintf("docker images %s | grep -vF REPOSITORY", image)
-	_, err := exec.Command("bash", "-c", cmd).Output()
+
+	list, err := cf.cli.ImageList(context.TODO(), types.ImageListOptions{
+		All:            false,
+		Filters:        filters.Args{},
+		SharedSize:     false,
+		ContainerCount: false,
+	})
 	if err != nil {
+		fmt.Printf("image list error: %v\n", err)
 		return false
 	}
-
-	// We have the image, but we may need to refresh it
-	if config.GetBool(config.FACTORY_REFRESH_IMAGES, false) {
-		if refreshed, ok := refreshedImages[image]; !ok || !refreshed {
-			return false
+	for _, summary := range list {
+		if len(summary.RepoTags) > 0 && strings.HasPrefix(summary.RepoTags[0], image) {
+			// We have the image, but we may need to refresh it
+			if config.GetBool(config.FACTORY_REFRESH_IMAGES, false) {
+				if refreshed, ok := refreshedImages[image]; !ok || !refreshed {
+					return false
+				}
+			}
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (cf *DockerFactory) GetIPAddress(contID ContainerID) (string, error) {

@@ -39,7 +39,7 @@ func initializeExampleJSFunction() (*function.Function, error) {
 	encoded := base64.StdEncoding.EncodeToString(srcContent)
 	f := function.Function{
 		Name:            "inc",
-		Runtime:         "nodejs17",
+		Runtime:         "nodejs17ng",
 		MemoryMB:        600,
 		CPUDemand:       1.0,
 		Handler:         "inc", // for js, only the file name is needed!!

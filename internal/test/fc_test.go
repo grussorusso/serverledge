@@ -6,6 +6,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/fc"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
@@ -227,7 +228,7 @@ func TestInvokeFC(t *testing.T) {
 	fcName := "test"
 	// CREATE - we create a test function composition
 	length := 5
-	f, fArr, err := initializeSameFunctionSlice(length, "py")
+	f, fArr, err := initializeSameFunctionSlice(length, "js")
 	u.AssertNil(t, err)
 	dag, errDag := fc.CreateSequenceDag(fArr)
 	u.AssertNil(t, errDag)
@@ -237,7 +238,7 @@ func TestInvokeFC(t *testing.T) {
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
-	params[f.Signature.GetInputs()[0].Name] = 0 // FIXME: for javascript, the 0 is converted to null. Don't know why
+	params[f.Signature.GetInputs()[0].Name] = 0 // FIXME: for javascript, the executor expects a string. But when you use "0", it seems to return null
 	resultMap, err2 := fcomp.Invoke(params)
 	u.AssertNil(t, err2)
 
@@ -295,47 +296,61 @@ func TestInvokeChoiceFC(t *testing.T) {
 }
 
 // TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions
-//func TestInvokeFC_DifferentFunctions(t *testing.T) {
-//
-//	if !INTEGRATION_TEST {
-//		t.FailNow()
-//	}
-//
-//	fcName := "test"
-//	// CREATE - we create a test function composition
-//	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
-//		AddInput("input", function.Int{}).
-//		AddOutput("result", function.Int{}).
-//		Build())
-//	u.AssertNil(t, errF1)
-//
-//	fInc, errF2 := initializePyFunction("inc", "handler", function.NewSignature().
-//		AddInput("input", function.Int{}).
-//		AddOutput("result", function.Int{}).
-//		Build())
-//	u.AssertNil(t, errF2)
-//
-//	dag, errDag := fc.NewDagBuilder().AddSimpleNode(fDouble).AddSimpleNode(fInc).Build()
-//	u.AssertNil(t, errDag)
-//
-//	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
-//	err1 := fcomp.SaveToEtcd()
-//	u.AssertNil(t, err1)
-//
-//	// INVOKE - we call the function composition
-//	params := make(map[string]interface{})
-//	params[fDouble.Signature.GetInputs()[0].Name] = 2
-//	resultMap, err2 := fcomp.Invoke(params)
-//	u.AssertNil(t, err2)
-//
-//	// check result
-//	output := resultMap.Result[fInc.Signature.GetOutputs()[0].Name]
-//	// res, errConv := strconv.Atoi(output.(string))
-//	u.AssertEquals(t, 2*2+1, output)
-//	// u.AssertNil(t, errConv)
-//	fmt.Println(resultMap)
-//
-//	// cleaning up function composition and function
-//	err3 := fcomp.Delete()
-//	u.AssertNil(t, err3)
-//}
+func TestInvokeFC_DifferentFunctions(t *testing.T) {
+
+	if !INTEGRATION_TEST {
+		t.FailNow()
+	}
+
+	fcName := "test"
+	// CREATE - we create a test function composition
+	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF1)
+
+	fInc, errF2 := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF2)
+
+	dag, errDag := fc.NewDagBuilder().
+		AddSimpleNode(fDouble).
+		AddSimpleNode(fInc).
+		AddSimpleNode(fDouble).
+		AddSimpleNode(fInc).
+		Build()
+
+	u.AssertNil(t, errDag)
+
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[fDouble.Signature.GetInputs()[0].Name] = 2
+	resultMap, err2 := fcomp.Invoke(params)
+	if err2 != nil {
+		log.Printf("%v\n", err2)
+		t.FailNow()
+	}
+	u.AssertNil(t, err2)
+
+	// check result
+	output := resultMap.Result[fInc.Signature.GetOutputs()[0].Name]
+	if output != 11 {
+		t.FailNow()
+	}
+
+	// res, errConv := strconv.Atoi(output.(string))
+	u.AssertEquals(t, (2*2+1)*2+1, output)
+	// u.AssertNil(t, errConv)
+	fmt.Println(resultMap)
+
+	// cleaning up function composition and function
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+}
