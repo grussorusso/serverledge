@@ -48,7 +48,10 @@ func TestFloat(t *testing.T) {
 	u.AssertNil(t, err2)
 
 	err3 := f.TypeCheck(1)
-	u.AssertNonNil(t, err3)
+	u.AssertNil(t, err3)
+
+	err4 := f.TypeCheck("pizza")
+	u.AssertNonNil(t, err4)
 
 }
 

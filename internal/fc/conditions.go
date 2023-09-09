@@ -198,7 +198,13 @@ func (p Predicate) Equals(o Predicate) bool {
 }
 func (c Condition) Equals(o Condition) bool {
 	typeOk := c.Type == o.Type
+	if !typeOk {
+		fmt.Printf("operand type is not the same: %d vs %d\n", c.Type, o.Type)
+	}
 	lenOpOk := len(c.Op) == len(o.Op)
+	if !lenOpOk {
+		fmt.Printf("operand size is not the same: %d vs %d\n", len(c.Op), len(o.Op))
+	}
 	if len(c.Op) > 0 && len(o.Op) > 0 && lenOpOk {
 		for i := range c.Op {
 			f := function.Float{}
@@ -220,6 +226,9 @@ func (c Condition) Equals(o Condition) bool {
 	}
 
 	lenSubCondOk := len(c.Sub) == len(o.Sub)
+	if !lenSubCondOk {
+		fmt.Printf("subconditions size is not the same: %d vs %d\n", len(c.Sub), len(o.Sub))
+	}
 	subOk := true
 	if lenSubCondOk {
 		for i := range c.Sub { // eq/const/ non ha sotto condizioni
@@ -244,32 +253,28 @@ func NewConstCondition(val interface{}) Condition {
 	}
 }
 
-func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
-	b := function.Float{}
-	err := b.TypeCheck(val1)
-	err2 := b.TypeCheck(val2)
-	if err != nil || err2 != nil {
-		return NewConstCondition(false)
-	}
+func NewAnd(conditions ...Condition) Condition {
 	return Condition{
-		Type: Smaller,
-		Op:   []interface{}{val1, val2},
+		Type: And,
+		Sub:  conditions,
 	}
 }
 
-func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
-	b := function.Float{}
-	err := b.TypeCheck(val1)
-	err2 := b.TypeCheck(val2)
-	if err != nil || err2 != nil {
-		return NewConstCondition(false)
-	}
+func NewOr(conditions ...Condition) Condition {
 	return Condition{
-		Type: Greater,
-		Op:   []interface{}{val1, val2},
+		Type: Or,
+		Sub:  conditions,
 	}
 }
 
+func NewNot(condition Condition) Condition {
+	return Condition{
+		Type: Not,
+		Sub:  []Condition{condition},
+	}
+}
+
+// operations
 func NewEqCondition(val1 interface{}, val2 interface{}) Condition {
 	return Condition{
 		Type: Eq,
@@ -284,9 +289,71 @@ func NewDiffCondition(val1, val2 interface{}) Condition {
 	}
 }
 
+func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
+	b := function.Float{}
+	err := b.TypeCheck(val1)
+	err2 := b.TypeCheck(val2)
+	if err != nil || err2 != nil {
+		fmt.Printf("cannot convert values to float: %v, %v\n", val1, val2)
+		return NewConstCondition(false)
+	}
+	return Condition{
+		Type: Greater,
+		Op:   []interface{}{val1, val2},
+	}
+}
+func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
+	b := function.Float{}
+	err := b.TypeCheck(val1)
+	err2 := b.TypeCheck(val2)
+	if err != nil || err2 != nil {
+		fmt.Printf("cannot convert values to float: %v, %v\n", val1, val2)
+		return NewConstCondition(false)
+	}
+	return Condition{
+		Type: Smaller,
+		Op:   []interface{}{val1, val2},
+	}
+}
+
 func NewEmptyCondition(collection []interface{}) Condition {
 	return Condition{
 		Type: Empty,
 		Op:   collection,
 	}
+}
+
+type ConditionBuilder struct {
+	p      *Predicate
+	errors string
+}
+
+type RootConditionBuilder struct {
+	cb *ConditionBuilder
+}
+
+func NewPredicate() *RootConditionBuilder {
+	return &RootConditionBuilder{cb: &ConditionBuilder{p: &Predicate{}}}
+}
+
+func (rcb *RootConditionBuilder) And(conds ...Condition) *ConditionBuilder {
+	and := NewAnd(conds...)
+	rcb.cb.p.Root = and
+	return rcb.cb
+}
+
+func (rcb *RootConditionBuilder) Or(conds ...Condition) *ConditionBuilder {
+	or := NewOr(conds...)
+	rcb.cb.p.Root = or
+	return rcb.cb
+}
+
+func (rcb *RootConditionBuilder) Not(cond Condition) *ConditionBuilder {
+	not := NewNot(cond)
+	rcb.cb.p.Root = not
+	return rcb.cb
+}
+
+func (cb *ConditionBuilder) Build() *Predicate {
+	return cb.p
 }

@@ -61,5 +61,33 @@ func TestPrintPredicate(t *testing.T) {
 }
 
 func TestBuilder(t *testing.T) {
+	built1 := fc.NewPredicate().And(
+		fc.NewEqCondition(2, 2),
+		fc.NewGreaterCondition(4, 2),
+	).Build()
+
+	utils.AssertTrue(t, built1.Equals(predicate1))
+
+	built2 := fc.NewPredicate().Or(
+		fc.NewConstCondition(true),
+		fc.NewSmallerCondition(4, 2),
+	).Build()
+
+	utils.AssertTrue(t, built2.Equals(predicate2))
+
+	built3 := fc.NewPredicate().Or(
+		fc.NewAnd(
+			fc.NewEqCondition(2, 2),
+			fc.NewGreaterCondition(4, 2),
+		),
+		fc.NewSmallerCondition(4, 2),
+	).Build()
+	utils.AssertTrue(t, built3.Equals(predicate3))
+
+	built4 := fc.NewPredicate().Not(
+		fc.NewEmptyCondition([]interface{}{1, 2, 3, 4}),
+	).Build()
+
+	utils.AssertTrue(t, built4.Equals(predicate4))
 
 }
