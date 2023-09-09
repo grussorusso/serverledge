@@ -83,6 +83,16 @@ func (b Bool) TypeCheck(val interface{}) error {
 
 func (f Float) TypeCheck(val interface{}) error {
 	switch t := val.(type) {
+	case int:
+		return nil
+	case int8:
+		return nil
+	case int16:
+		return nil
+	case int32:
+		return nil
+	case int64:
+		return nil
 	case float64:
 		return nil
 	case float32:
