@@ -1,5 +1,7 @@
 ![ServerlEdge](docs/logo.png)
 
+![Test](https://github.com/redjack96/serverledge/actions/workflows/makefile.yml/badge.svg)
+
 Serverledge is a Function-as-a-Service (FaaS) framework designed to
 work in Edge-Cloud environments.
 
