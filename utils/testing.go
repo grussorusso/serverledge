@@ -6,7 +6,7 @@ import (
 
 func AssertEquals(t *testing.T, expected interface{}, result interface{}) {
 	if expected != result {
-		t.Logf("%s is failed. Got '%v', expected %v", t.Name(), result, expected)
+		t.Logf("%s is failed. Got '%s', expected %s", t.Name(), result, expected)
 		t.FailNow()
 	}
 }

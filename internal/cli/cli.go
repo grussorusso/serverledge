@@ -141,12 +141,12 @@ func Init() {
 	// Function composition
 
 	rootCmd.AddCommand(compInvokeCmd)
-	invokeCmd.Flags().StringVarP(&compName, "function-composition", "fc", "", "name of the function composition")
-	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "resptime", "", -1.0, "Max. response time (optional)")
-	invokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
-	invokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Function parameter: <name>:<value>")
-	invokeCmd.Flags().StringVarP(&paramsFile, "params_file", "j", "", "File containing parameters (JSON)")
-	invokeCmd.Flags().BoolVarP(&asyncInvocation, "async", "a", false, "Asynchronous invocation")
+	invokeCmd.Flags().StringVarP(&compName, "function-composition", "m", "", "name of the function composition")
+	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "fc-resptime", "", -1.0, "Max. response time (optional)")
+	invokeCmd.Flags().StringVarP(&qosClass, "fc-class", "", "", "QoS class (optional)")
+	invokeCmd.Flags().StringSliceVarP(&params, "fc-param", "", nil, "Function parameter: <name>:<value>")
+	invokeCmd.Flags().StringVarP(&paramsFile, "fc-params_file", "", "", "File containing parameters (JSON)")
+	invokeCmd.Flags().BoolVarP(&asyncInvocation, "fc-async", "", false, "Asynchronous invocation")
 
 	rootCmd.AddCommand(compCreateCmd)
 	compCreateCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function")
@@ -155,7 +155,7 @@ func Init() {
 	compCreateCmd.Flags().BoolVarP(&removeFnOnDelete, "remove-function-on-delete", "r", false, "when the function composition is deleted, if this flag is true, the associated function will also be deleted")
 
 	rootCmd.AddCommand(compDeleteCmd)
-	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "fc", "", "name of the function composition")
+	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "c", "", "name of the function composition")
 
 	rootCmd.AddCommand(compListCmd)
 

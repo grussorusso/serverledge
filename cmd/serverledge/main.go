@@ -112,7 +112,7 @@ func main() {
 	}
 
 	// TODO: qui potrebbe servire un config.API_IP
-	ip := config.GetString(utils.GetIpAddress().String(), utils.GetIpAddress().String())
+	ip := config.GetString(config.API_IP, utils.GetIpAddress().String())
 	url := fmt.Sprintf("http://%s:%d", ip, config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {

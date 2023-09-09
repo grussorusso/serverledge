@@ -51,7 +51,10 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 func (c *ChoiceNode) Exec() (map[string]interface{}, error) {
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
-		ok := condition.Test()
+		ok, err := condition.Test()
+		if err != nil {
+			return nil, fmt.Errorf("error while testing condition: %v", err)
+		}
 		if ok {
 			c.firstMatch = i
 			// the output map should be like the input map!

@@ -8,95 +8,58 @@ import (
 	"testing"
 )
 
-func TestMarshalCondition(t *testing.T) {
-	c := fc.NewAndCondition(fc.NewConstCondition(true), fc.NewEqCondition(2, 1), fc.NewSmallerCondition(1, 5))
-	m, err := json.Marshal(c)
-	utils.AssertNil(t, err)
-	fmt.Printf("%s\n", m)
-	utils.AssertEquals(t, "{\"Conditions\":[{\"Value\":true},{\"Params\":[2,1]},{\"Smaller\":1,\"Bigger\":5}]}", fmt.Sprintf("%s", m))
+var predicate1 = fc.Predicate{Root: fc.Condition{Type: fc.And, Sub: []fc.Condition{{Type: fc.Eq, Op: []interface{}{2, 2}}, {Type: fc.Greater, Op: []interface{}{4, 2}}}}}
+var predicate2 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Sub: []fc.Condition{{Type: fc.Const, Op: []interface{}{true}}, {Type: fc.Smaller, Op: []interface{}{4, 2}}}}}
+var predicate3 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Sub: []fc.Condition{predicate1.Root, {Type: fc.Smaller, Op: []interface{}{4, 2}}}}}
+var predicate4 = fc.Predicate{Root: fc.Condition{Type: fc.Not, Sub: []fc.Condition{{Type: fc.Empty, Op: []interface{}{1, 2, 3, 4}}}}}
 
-	//var and fc.And
-	//err2 := json.Unmarshal(m, &and)
-	//utils.AssertNil(t, err2)
-	//
-	//utils.AssertEquals(t, c, and)
-	//fmt.Printf("%+v\n", and)
+func TestPredicateMarshal(t *testing.T) {
+
+	predicates := []fc.Predicate{predicate1, predicate2, predicate3, predicate4}
+	for _, predicate := range predicates {
+		val, err := json.Marshal(predicate)
+		utils.AssertNil(t, err)
+
+		var predicateTest fc.Predicate
+		errUnmarshal := json.Unmarshal(val, &predicateTest)
+		utils.AssertNil(t, errUnmarshal)
+		fmt.Printf("predicateInput\t: %+v\n", predicate)
+		fmt.Printf("predicateTest\t: %+v\n", predicateTest)
+		utils.AssertTrue(t, predicate.Equals(predicateTest))
+	}
 }
 
-func TestConstCondition(t *testing.T) {
-	c := fc.NewConstCondition(true)
-	utils.AssertTrue(t, c.Test())
+func TestPredicate(t *testing.T) {
+	ok := predicate1.Test()
+	utils.AssertTrue(t, ok)
 
-	c = fc.NewConstCondition(false)
-	utils.AssertFalse(t, c.Test())
+	ok2 := predicate2.Test()
+	utils.AssertTrue(t, ok2)
+
+	ok3 := predicate3.Test()
+	utils.AssertTrue(t, ok3)
+
+	ok4 := predicate4.Test()
+	utils.AssertTrue(t, ok4)
 }
 
-func TestEqCondition(t *testing.T) {
-	c := fc.NewEqCondition(1, 1)
-	utils.AssertTrue(t, c.Test())
+func TestPrintPredicate(t *testing.T) {
+	str := predicate1.LogicString()
+	utils.AssertEquals(t, "(2 == 2 && 4 > 2)", str)
+	predicate1.Print()
+	str2 := predicate2.LogicString()
+	utils.AssertEquals(t, "(true || 4 < 2)", str2)
+	predicate2.Print()
 
-	c = fc.NewEqCondition(1, 1, 1)
-	utils.AssertTrue(t, c.Test())
+	str3 := predicate3.LogicString()
+	utils.AssertEquals(t, "((2 == 2 && 4 > 2) || 4 < 2)", str3)
+	predicate3.Print()
 
-	c = fc.NewEqCondition(1, 2, 1, 4)
-	utils.AssertFalse(t, c.Test())
+	str4 := predicate4.LogicString()
+	utils.AssertEquals(t, "!(empty input)", str4)
+	predicate4.Print()
 }
 
-func TestGreaterCondition(t *testing.T) {
-	c := fc.NewGreaterCondition(5, 4) // 5 > 4
-	utils.AssertTrue(t, c.Test())
+func TestBuilder(t *testing.T) {
 
-	c = fc.NewGreaterCondition(4, 4) // 4 > 4
-	utils.AssertFalse(t, c.Test())
-
-	c = fc.NewGreaterCondition(4.9, 4.5) // 4.9 > 4.5
-	utils.AssertTrue(t, c.Test())
-
-}
-
-func TestSmallerCondition(t *testing.T) {
-	c := fc.NewSmallerCondition(4, 5)
-	utils.AssertTrue(t, c.Test())
-
-	c = fc.NewSmallerCondition(4, 4)
-	utils.AssertFalse(t, c.Test())
-
-	c = fc.NewSmallerCondition(4.2, 4.5)
-	utils.AssertTrue(t, c.Test())
-
-}
-
-func TestAndCondition(t *testing.T) {
-	c := fc.NewAndCondition(fc.NewConstCondition(true), fc.NewEqCondition(1, 1))
-	utils.AssertTrue(t, c.Test())
-
-	c = fc.NewAndCondition(fc.NewConstCondition(true), fc.NewEqCondition(1, 1), fc.NewSmallerCondition(1, 5))
-	utils.AssertTrue(t, c.Test())
-
-	c = fc.NewAndCondition(fc.NewConstCondition(true), fc.NewEqCondition(2, 1), fc.NewSmallerCondition(1, 5))
-	utils.AssertFalse(t, c.Test())
-
-}
-
-func TestOrCondition(t *testing.T) {
-	c := fc.NewOrCondition(fc.NewConstCondition(true), fc.NewEqCondition(1, 1))
-	utils.AssertTrue(t, c.Test())
-
-	c = fc.NewOrCondition(fc.NewConstCondition(false), fc.NewEqCondition(1, 1), fc.NewSmallerCondition(1, 5))
-	utils.AssertTrue(t, c.Test())
-
-	c = fc.NewOrCondition(fc.NewConstCondition(false), fc.NewEqCondition(2, 1), fc.NewSmallerCondition(10, 5))
-	utils.AssertFalse(t, c.Test())
-
-}
-
-func TestNotCondition(t *testing.T) {
-	c := fc.NewNotCondition(fc.NewConstCondition(false))
-	utils.AssertTrue(t, c.Test())
-
-	c2 := fc.NewNotCondition(fc.NewAndCondition(fc.NewConstCondition(true), fc.NewEqCondition(2, 1)))
-	utils.AssertTrue(t, c2.Test())
-
-	c3 := fc.NewNotCondition(fc.NewEqCondition(2, 2))
-	utils.AssertFalse(t, c3.Test())
 }
