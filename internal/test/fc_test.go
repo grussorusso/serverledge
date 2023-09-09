@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/api"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
@@ -44,8 +45,8 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	url := fmt.Sprintf("http://%s:%d", HOST, PORT)
+	ip := config.GetString(config.API_IP, u.GetIpAddress().String())
+	url := fmt.Sprintf("http://%s:%d", ip, PORT)
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)
@@ -244,7 +245,7 @@ func TestInvokeFC(t *testing.T) {
 	// res, errConv := strconv.Atoi(output.(string))
 	u.AssertEquals(t, output, length)
 	// u.AssertNil(t, errConv)
-	fmt.Println(resultMap)
+	fmt.Printf("%+v\n", resultMap)
 
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
@@ -261,7 +262,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	fcName := "test"
 	// CREATE - we create a test function composition
 	length := 1
-	input := 2
+	input := 0
 	f, fArr, err := initializeSameFunctionSlice(length, "py")
 	u.AssertNil(t, err)
 

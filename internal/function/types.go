@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -81,18 +82,18 @@ func (b Bool) TypeCheck(val interface{}) error {
 }
 
 func (f Float) TypeCheck(val interface{}) error {
-	switch val.(type) {
+	switch t := val.(type) {
 	case float64:
 		return nil
 	case float32:
 		return nil
 	case string:
-		_, err := strconv.ParseFloat(val.(string), 32)
-		_, err2 := strconv.ParseFloat(val.(string), 64)
+		_, err := strconv.ParseFloat(t, 32)
+		_, err2 := strconv.ParseFloat(t, 64)
 		if err == nil || err2 == nil {
 			return nil
 		}
-		return fmt.Errorf("val is a string '%s', but cannot be cast to a Float", val.(string))
+		return fmt.Errorf("val is a string '%s', but cannot be cast to a Float", t)
 	default:
 		return fmt.Errorf("val should be Float but is %v", val)
 	}
@@ -128,5 +129,111 @@ func (a Array[D]) TypeCheck(val interface{}) error {
 		typeElem := reflect.TypeOf(val).Elem()
 		err := fmt.Errorf("val should be a slice, but is %v of type %s", val, typeElem.Name())
 		return err
+	}
+}
+
+func (t Text) Convert(val interface{}) (string, error) {
+	switch t := val.(type) {
+	case string:
+		return t, nil
+	case int:
+		return fmt.Sprintf("%d", t), nil
+	case int8:
+		return fmt.Sprintf("%d", t), nil
+	case int16:
+		return fmt.Sprintf("%d", t), nil
+	case int32:
+		return fmt.Sprintf("%d", t), nil
+	case int64:
+		return fmt.Sprintf("%d", t), nil
+	case float32:
+		return fmt.Sprintf("%f", t), nil
+	case float64:
+		return fmt.Sprintf("%f", t), nil
+	case bool:
+		return fmt.Sprintf("%v", t), nil
+	default:
+		return "", fmt.Errorf("val should be Text, but is %v", val)
+	}
+}
+
+func (i Int) Convert(val interface{}) (int, error) {
+	switch t := val.(type) {
+	case int:
+		return t, nil
+	case int8:
+		return int(t), nil
+	case int16:
+		return int(t), nil
+	case int32:
+		return int(t), nil
+	case int64:
+		return int(t), nil
+	case string:
+		val, err := strconv.Atoi(val.(string))
+		if err == nil {
+			return val, nil
+		}
+		return 0, fmt.Errorf("val is a string '%s', but cannot be cast to an Int", t)
+	default:
+		return 0, fmt.Errorf("val should be Int, but is %v", val)
+	}
+}
+func (b Bool) Convert(val interface{}) (bool, error) {
+	switch t := val.(type) {
+	case bool:
+		return t, nil
+	case int:
+		if t != 0 {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	case string:
+		if t == "true" || t == "True" || t == "1" {
+			return true, nil
+		} else if t == "false" || t == "False" || t == "0" {
+			return false, nil
+		} else {
+			return false, fmt.Errorf("val is of type string, but cannot be converted to bool")
+		}
+	default:
+		return false, fmt.Errorf("value %v does not represent a Bool", val)
+	}
+}
+
+func (f Float) Convert(val interface{}) (float64, error) {
+	switch t := val.(type) {
+	case int:
+		return float64(t), nil
+	case int8:
+		return float64(t), nil
+	case int16:
+		return float64(t), nil
+	case int32:
+		return float64(t), nil
+	case int64:
+		return float64(t), nil
+	case float64:
+		return t, nil
+	case float32:
+		return float64(t), nil
+	case bool:
+		if t {
+			return 1.0, nil
+		}
+		return 0.0, nil
+	case string:
+		val64, err64 := strconv.ParseFloat(t, 64)
+		if err64 == nil {
+			return val64, nil
+		}
+		val32, err32 := strconv.ParseFloat(t, 32)
+		if err32 == nil {
+			return val32, nil
+		}
+		return math.NaN(), fmt.Errorf("val is a string '%s', but cannot be cast to a Float", t)
+	default:
+		return math.NaN(), fmt.Errorf("val should be Float but is %v", val)
 	}
 }
