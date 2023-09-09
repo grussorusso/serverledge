@@ -56,7 +56,10 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
 	if err != nil || resp == nil || resp.StatusCode >= 400 { // FIXME: EOF for js when input is "0"
 		buffer := make([]byte, resp.ContentLength*2)
-		_, _ = resp.Body.Read(buffer)
+		n, errRead := resp.Body.Read(buffer)
+		if errRead != nil {
+			return nil, waitDuration, fmt.Errorf("request to executor failed and body cannot be retrieved (characters read: %d): %v", n, err)
+		}
 		return nil, waitDuration, fmt.Errorf("request to executor failed: %v. Status: %s. Buffer: %s", err, resp.Status, buffer)
 	}
 	defer func(Body io.ReadCloser) {
