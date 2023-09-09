@@ -118,7 +118,7 @@ func PollAsyncResult(c echo.Context) error {
 		payload := res.Kvs[0].Value
 		return c.JSONBlob(http.StatusOK, payload)
 	} else {
-		return c.JSON(http.StatusNotFound, "")
+		return c.JSON(http.StatusNotFound, "function not found")
 	}
 }
 
