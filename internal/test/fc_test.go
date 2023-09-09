@@ -25,7 +25,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = false
+const INTEGRATION_TEST = true
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -45,6 +45,7 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	ip := config.GetString(config.API_IP, u.GetIpAddress().String())
 	url := fmt.Sprintf("http://%s:%d", ip, PORT)
 	myKey, err := registry.RegisterToEtcd(url)
