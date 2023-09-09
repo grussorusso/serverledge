@@ -17,7 +17,7 @@ func initializeExamplePyFunction() (*function.Function, error) {
 	f := function.Function{
 		Name:            "inc",
 		Runtime:         "python310",
-		MemoryMB:        600,
+		MemoryMB:        20,
 		CPUDemand:       1.0,
 		Handler:         "inc.handler", // on python, for now is needed file name and handler name!!
 		TarFunctionCode: encoded,
@@ -40,7 +40,7 @@ func initializeExampleJSFunction() (*function.Function, error) {
 	f := function.Function{
 		Name:            "inc",
 		Runtime:         "nodejs17ng",
-		MemoryMB:        600,
+		MemoryMB:        50,
 		CPUDemand:       1.0,
 		Handler:         "inc", // for js, only the file name is needed!!
 		TarFunctionCode: encoded,

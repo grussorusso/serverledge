@@ -281,7 +281,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
-	params[f.Signature.GetInputs()[0].Name] = input // FIXME: for javascript, the 0 is converted to null. Don't know why
+	params[f.Signature.GetInputs()[0].Name] = input
 	resultMap, err2 := fcomp.Invoke(params)
 	u.AssertNil(t, err2)
 	// checking the result, should be input + 1
