@@ -41,7 +41,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	if !response.Success {
 		// notify scheduler
 		completions <- &completion{scheduledRequest: r, contID: contID}
-		return fmt.Errorf("Function execution failed")
+		return fmt.Errorf("function execution failed")
 	}
 
 	r.ExecReport.Result = response.Result

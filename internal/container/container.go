@@ -72,7 +72,6 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	if err != nil {
 		return nil, waitDuration, fmt.Errorf("Parsing executor response failed: %v", err)
 	}
-
 	return response, waitDuration, nil
 }
 

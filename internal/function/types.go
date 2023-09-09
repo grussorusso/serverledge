@@ -47,35 +47,34 @@ func (t Text) TypeCheck(val interface{}) error {
 	}
 }
 func (i Int) TypeCheck(val interface{}) error {
-	switch val.(type) {
+	switch val := val.(type) {
 	case int:
 		return nil
 	case string:
-		_, err := strconv.Atoi(val.(string))
+		_, err := strconv.Atoi(val)
 		if err == nil {
 			return nil
 		}
-		return fmt.Errorf("val is a string '%s', but cannot be cast to an Int", val.(string))
+		return fmt.Errorf("val is a string that cannot be cast to an Int: '%s'", val)
 	default:
 		return fmt.Errorf("val should be Int, but is %v", val)
 	}
 }
 
 func (b Bool) TypeCheck(val interface{}) error {
-	switch val.(type) {
+	switch v := val.(type) {
 	case bool:
 		return nil
 	case int:
-		if val.(int) == 1 || val.(int) == 0 {
+		if v == 1 || v == 0 {
 			return nil
 		}
 		return fmt.Errorf("val is of type int, but cannot be converted to bool")
 	case string:
-		v := val.(string)
 		if v == "false" || v == "False" || v == "true" || v == "True" || v == "1" || v == "0" {
 			return nil
 		}
-		return fmt.Errorf("val is of type string, but cannot be converted to bool")
+		return fmt.Errorf("val is a string that cannot be cast to an Int: '%s'", val.(string))
 	default:
 		return fmt.Errorf("val should be Bool, but is %v", val)
 	}

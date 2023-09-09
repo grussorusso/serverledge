@@ -96,9 +96,14 @@ func (s *SimpleNode) Exec() (map[string]interface{}, error) {
 	// extract output map
 	for _, o := range funct.Signature.GetOutputs() {
 		// if the output is a simple type (e.g. int, bool, string, array) we simply add it to the map
-		m[o.Name], err = o.TryParse(r.ExecReport.Result)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse intermediate output: %v", err)
+		m[o.Name] = r.ExecReport.Result
+		err1 := o.CheckOutput(m)
+		if err1 != nil {
+			return nil, fmt.Errorf("output type checking failed: %v", err1)
+		}
+		m[o.Name], err1 = o.TryParse(r.ExecReport.Result)
+		if err1 != nil {
+			return nil, fmt.Errorf("failed to parse intermediate output: %v", err1)
 		}
 		// TODO: else if the output is a struct/map, we should return a map with struct field and values
 	}
@@ -208,6 +213,8 @@ func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 			delete(output, key)
 			// and replace with the input entry
 			output[def.Name] = val
+			// save the output map in the input of the node
+			s.input = output
 		} else {
 			// otherwise if no one of the entry typechecks we are doomed
 			return fmt.Errorf("no output entry input-checks with the next function")
