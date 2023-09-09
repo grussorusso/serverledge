@@ -1,5 +1,5 @@
 BIN=bin
-GO=~/go/go1.19.9/bin/go
+GO=go
 all: serverledge executor serverledge-cli lb
 
 serverledge:
