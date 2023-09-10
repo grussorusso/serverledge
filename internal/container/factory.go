@@ -11,6 +11,7 @@ type Factory interface {
 	HasImage(string) bool
 	GetIPAddress(ContainerID) (string, error)
 	GetMemoryMB(id ContainerID) (int64, error)
+	GetLog(id ContainerID) (string, error)
 }
 
 // ContainerOptions contains options for container creation.

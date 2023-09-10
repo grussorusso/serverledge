@@ -288,7 +288,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
 
 	u.AssertEquals(t, input+1, output)
-	fmt.Println(resultMap)
+	fmt.Printf("%+v\n", resultMap)
 
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()

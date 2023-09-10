@@ -80,6 +80,10 @@ func Destroy(id ContainerID) error {
 	return cf.Destroy(id)
 }
 
+func GetLog(id ContainerID) (string, error) {
+	return cf.GetLog(id)
+}
+
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
 	const TIMEOUT_MILLIS = 30000
 	const MAX_BACKOFF_MILLIS = 500

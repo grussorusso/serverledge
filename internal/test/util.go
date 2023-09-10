@@ -63,7 +63,7 @@ func initializePyFunction(name string, handler string, sign *function.Signature)
 	f := function.Function{
 		Name:            name,
 		Runtime:         "python310",
-		MemoryMB:        600,
+		MemoryMB:        20,
 		CPUDemand:       1.0,
 		Handler:         fmt.Sprintf("%s.%s", name, handler), // on python, for now is needed file name and handler name!!
 		TarFunctionCode: encoded,

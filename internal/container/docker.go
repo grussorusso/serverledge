@@ -140,3 +140,24 @@ func (cf *DockerFactory) GetMemoryMB(contID ContainerID) (int64, error) {
 	}
 	return contJson.HostConfig.Memory / 1048576, nil
 }
+
+func (cf *DockerFactory) GetLog(contID ContainerID) (string, error) {
+	logsReader, err := cf.cli.ContainerLogs(cf.ctx, contID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Since:      "",
+		Until:      "",
+		Timestamps: false,
+		Follow:     false,
+		Tail:       "",
+		Details:    false,
+	})
+	if err != nil {
+		return "no logs", fmt.Errorf("can't get the logs: %v", err)
+	}
+	logs, err := io.ReadAll(logsReader)
+	if err != nil {
+		return "no logs", fmt.Errorf("can't read the logs: %v", err)
+	}
+	return fmt.Sprintf("%s\n", logs), nil
+}
