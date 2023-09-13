@@ -34,7 +34,7 @@ func Run(p Policy) {
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	log.Printf("Current resources: %v", &node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -60,7 +60,7 @@ func Run(p Policy) {
 	var c *completion
 	for {
 		select {
-		case r = <-requests:
+		case r = <-requests: // receive request
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
@@ -77,13 +77,14 @@ func Run(p Policy) {
 
 }
 
+// TODO: maybe we should make separate function to handle request from function or function compositions
 // SubmitRequest submits a newly arrived request for scheduling and execution
-func SubmitRequest(r *function.Request) error {
+func SubmitRequest(r *function.Request, fromComposition bool) error {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
-	requests <- &schedRequest
-
+	requests <- &schedRequest // send request
+	// fmt.Printf("Submitting request for executing function %s\n", r.Fun.Name)
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
@@ -102,7 +103,7 @@ func SubmitRequest(r *function.Request) error {
 			return err
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
+		err = Execute(schedDecision.contID, &schedRequest, fromComposition) // executing request
 		if err != nil {
 			return err
 		}
@@ -111,11 +112,11 @@ func SubmitRequest(r *function.Request) error {
 }
 
 // SubmitAsyncRequest submits a newly arrived async request for scheduling and execution
-func SubmitAsyncRequest(r *function.Request) {
+func SubmitAsyncRequest(r *function.Request, fromComposition bool) {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
-	requests <- &schedRequest
+	requests <- &schedRequest // send async request
 
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
@@ -134,7 +135,7 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
+		err = Execute(schedDecision.contID, &schedRequest, fromComposition) // executing async request
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}

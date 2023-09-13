@@ -136,6 +136,15 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 			if errExec != nil {
 				return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
 			}
+
+			_, wait := node.(*SimpleNode)
+			if wait {
+				// fmt.Println("Waiting previous node to complete execution")
+				<-types.NodeDoneChan
+				// recv := <-types.NodeDoneChan
+				// fmt.Printf("Finished waiting, received %s\n", recv)
+			}
+
 			previousOutput = output
 			// prepares the output for the next function(s)
 			errSend := node.PrepareOutput(output)

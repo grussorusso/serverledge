@@ -11,7 +11,7 @@ type Request struct {
 	Fc         *FunctionComposition
 	Params     map[string]interface{}
 	Arrival    time.Time
-	ExecReport function.ExecutionReport
+	ExecReport function.ExecutionReport // TODO : qui andrebbe messo fc.ExecutionReport
 	function.RequestQoS
 	CanDoOffloading bool
 	Async           bool

@@ -254,7 +254,7 @@ func TestInvokeFC(t *testing.T) {
 	u.AssertNil(t, err3)
 }
 
-// TestInvokeFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
+// TestInvokeChoiceFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
 func TestInvokeChoiceFC(t *testing.T) {
 
 	if !INTEGRATION_TEST {

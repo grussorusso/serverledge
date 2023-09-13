@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -64,20 +65,23 @@ func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
 	} else if errors.Is(err, node.OutOfResourcesErr) {
 	} else {
 		// other error
+		log.Printf("%v", err)
 		p.queue.Dequeue()
 		dropRequest(req)
 	}
 }
 
+// OnArrival for default policy is executed every time a function is invoked, before invoking the function
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
+	fmt.Printf("Completed execution of dagNode\n")
 	containerID, err := node.AcquireWarmContainer(r.Fun)
 	if err == nil {
-		execLocally(r, containerID, true)
+		execLocally(r, containerID, true) // decides to execute locally
 		return
 	}
 
 	if errors.Is(err, node.NoWarmFoundErr) {
-		if handleColdStart(r) {
+		if handleColdStart(r) { // initialize container and executes locally
 			return
 		}
 	} else if errors.Is(err, node.OutOfResourcesErr) {
