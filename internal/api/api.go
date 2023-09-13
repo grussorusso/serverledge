@@ -76,11 +76,11 @@ func InvokeFunction(c echo.Context) error {
 	r.ExecReport.OffloadLatency = 0.0
 
 	if r.Async {
-		go scheduling.SubmitAsyncRequest(r)
+		go scheduling.SubmitAsyncRequest(r, false)
 		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
 	}
 
-	err = scheduling.SubmitRequest(r)
+	err = scheduling.SubmitRequest(r, false)
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")

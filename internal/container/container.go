@@ -54,7 +54,7 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	postBodyB := bytes.NewBuffer(postBody)
 	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
-	if err != nil || resp == nil || resp.StatusCode >= 400 { // FIXME: EOF for js when input is "0"
+	if err != nil || resp == nil || resp.StatusCode >= 400 {
 		buffer, err2 := io.ReadAll(resp.Body)
 		if err2 != nil {
 			return nil, waitDuration, fmt.Errorf("request to executor failed (not all buffer red): %v. Status: %s. Buffer: %s", err, resp.Status, buffer)

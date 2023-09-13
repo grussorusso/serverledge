@@ -28,3 +28,5 @@ type Deployable interface {
 	// Invokable // uncomment with correct signature for function.Function and FunctionComposition
 	// Pollable // uncomment with correct signature for function.Function and FunctionComposition
 }
+
+var NodeDoneChan = make(chan string)

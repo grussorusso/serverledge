@@ -87,7 +87,7 @@ func (s *SimpleNode) Exec() (map[string]interface{}, error) {
 	r.ExecReport.OffloadLatency = 0.0
 
 	// executes the function, waiting for the result
-	err := scheduling.SubmitRequest(r)
+	err := scheduling.SubmitRequest(r, true)
 	if err != nil {
 		return nil, err
 	}

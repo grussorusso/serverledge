@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/types"
+
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -19,7 +21,13 @@ type ContainerPool struct {
 
 type warmContainer struct {
 	Expiration int64
+	Function   string
 	contID     container.ContainerID
+}
+
+type busyContainer struct {
+	Function string
+	contID   container.ContainerID
 }
 
 var NoWarmFoundErr = errors.New("no warm container is available")
@@ -30,37 +38,47 @@ func getFunctionPool(f *function.Function) *ContainerPool {
 		return fp
 	}
 
-	fp := newFunctionPool(f)
+	fp := newFunctionPool()
 	Resources.ContainerPools[f.Name] = fp
 	return fp
 }
 
-func (fp *ContainerPool) getWarmContainer() (container.ContainerID, bool) {
+func (fp *ContainerPool) getWarmContainer(funcName string) (container.ContainerID, bool) {
 	// TODO: picking most-recent / least-recent container might be better?
 	elem := fp.ready.Front()
 	if elem == nil {
 		return "", false
 	}
 
+	if elem.Value.(warmContainer).Function != funcName {
+		return "no function", false
+	}
+
 	fp.ready.Remove(elem)
 	contID := elem.Value.(warmContainer).contID
-	fp.putBusyContainer(contID)
+	fp.putBusyContainer(contID, funcName)
 
 	return contID, true
 }
 
-func (fp *ContainerPool) putBusyContainer(contID container.ContainerID) {
-	fp.busy.PushBack(contID)
+func (fp *ContainerPool) putBusyContainer(contID container.ContainerID, funcName string) {
+	fmt.Printf("storing in the busy pool the container %s for func '%s'\n", contID, funcName)
+	fp.busy.PushBack(busyContainer{
+		Function: funcName,
+		contID:   contID,
+	})
 }
 
-func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, expiration int64) {
+func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, funcName string, expiration int64) {
+	fmt.Printf("storing in the ready pool warm container %s for func '%s'\n", contID, funcName)
 	fp.ready.PushBack(warmContainer{
 		contID:     contID,
+		Function:   funcName, // FIXME this is wrong sometimes (multithreading)
 		Expiration: expiration,
 	})
 }
 
-func newFunctionPool(_ *function.Function) *ContainerPool {
+func newFunctionPool() *ContainerPool {
 	fp := &ContainerPool{}
 	fp.busy = list.New()
 	fp.ready = list.New()
@@ -117,8 +135,12 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	defer Resources.Unlock()
 
 	fp := getFunctionPool(f)
-	contID, found := fp.getWarmContainer()
+	// fmt.Printf("ready containers: %+v\nbusy containers: %+v\n", fp.ready.Len(), fp.busy.Len())
+	contID, found := fp.getWarmContainer(f.Name)
 	if !found {
+		if contID == "no function" {
+			return "", fmt.Errorf("the container exists, but doesn't have the function %s", f.Name)
+		}
 		return "", NoWarmFoundErr
 	}
 
@@ -132,31 +154,35 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
-func ReleaseContainer(contID container.ContainerID, f *function.Function) {
+func ReleaseContainer(contID container.ContainerID, f *function.Function) { // TODO: questa funzione andrebbe eseguita prima di eseguire SubmitRequest
 	// setup Expiration as time duration from now
 	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
 	expTime := time.Now().Add(d).UnixNano()
 
 	Resources.Lock()
 	defer Resources.Unlock()
-
+	// fmt.Printf("getting function pool for function %s\n", f.Name)
 	fp := getFunctionPool(f)
-
+	fName := f.Name
 	// we must update the busy list by removing this element
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
-		if elem.Value.(container.ContainerID) == contID {
+		if elem.Value.(busyContainer).contID == contID {
 			fp.busy.Remove(elem) // delete the element from the busy list
+			fName = elem.Value.(busyContainer).Function
 			break
 		}
 		elem = elem.Next()
 	}
 
-	fp.putReadyContainer(contID, expTime)
+	fp.putReadyContainer(contID, fName, expTime) // FIXME: passare la funzione giusta, l'ultima che è stata eseguita
 
 	releaseResources(f.CPUDemand, 0)
-
-	//log.Printf("Released resources. Now: %v", Resources)
+	go func() {
+		// fmt.Println("Sending ok after putting ready container")
+		types.NodeDoneChan <- "ok"
+		// fmt.Printf("Released resources. Now: %v\n", &Resources)
+	}()
 }
 
 // NewContainer creates and starts a new container for the given function.
@@ -209,7 +235,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 	}
 
 	fp := getFunctionPool(fun)
-	fp.putBusyContainer(contID) // We immediately mark it as busy
+	fp.putBusyContainer(contID, fun.Name) // We immediately mark it as busy
 
 	return contID, nil
 }
@@ -366,16 +392,21 @@ func ShutdownAllContainers() {
 
 		elem = pool.busy.Front()
 		for ok := elem != nil; ok; ok = elem != nil {
-			contID := elem.Value.(container.ContainerID)
+			contID := elem.Value.(busyContainer).contID
 			temp := elem
 			elem = elem.Next()
 			log.Printf("Removing container with ID %s\n", contID)
 			pool.ready.Remove(temp)
 
-			memory, _ := container.GetMemoryMB(contID)
+			memory, errMem := container.GetMemoryMB(contID)
+			if errMem != nil {
+				log.Printf("failed to get memory from container %s before destroying it: %v", contID, errMem)
+				continue
+			}
 			err := container.Destroy(contID)
 			if err != nil {
-				log.Printf("Error while destroying container %s: %s", contID, err)
+				log.Printf("failed to destroy container %s: %v\n", contID, err)
+				continue
 			}
 			Resources.AvailableMemMB += memory
 			Resources.AvailableCPUs += functionDescriptor.CPUDemand
