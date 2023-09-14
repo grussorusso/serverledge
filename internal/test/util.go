@@ -7,6 +7,9 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
+const PY_MEMORY = 20
+const JS_MEMORY = 50
+
 func initializeExamplePyFunction() (*function.Function, error) {
 	srcPath := "../../examples/inc.py"
 	srcContent, err := cli.ReadSourcesAsTar(srcPath)
@@ -17,7 +20,7 @@ func initializeExamplePyFunction() (*function.Function, error) {
 	f := function.Function{
 		Name:            "inc",
 		Runtime:         "python310",
-		MemoryMB:        20,
+		MemoryMB:        PY_MEMORY,
 		CPUDemand:       1.0,
 		Handler:         "inc.handler", // on python, for now is needed file name and handler name!!
 		TarFunctionCode: encoded,
@@ -40,7 +43,7 @@ func initializeExampleJSFunction() (*function.Function, error) {
 	f := function.Function{
 		Name:            "inc",
 		Runtime:         "nodejs17ng",
-		MemoryMB:        50,
+		MemoryMB:        JS_MEMORY,
 		CPUDemand:       1.0,
 		Handler:         "inc", // for js, only the file name is needed!!
 		TarFunctionCode: encoded,
@@ -57,15 +60,34 @@ func initializePyFunction(name string, handler string, sign *function.Signature)
 	srcPath := "../../examples/" + name + ".py"
 	srcContent, err := cli.ReadSourcesAsTar(srcPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read js sources %s as tar: %v", srcPath, err)
+		return nil, fmt.Errorf("cannot read python sources %s as tar: %v", srcPath, err)
 	}
 	encoded := base64.StdEncoding.EncodeToString(srcContent)
 	f := function.Function{
 		Name:            name,
 		Runtime:         "python310",
-		MemoryMB:        20,
+		MemoryMB:        PY_MEMORY,
 		CPUDemand:       1.0,
 		Handler:         fmt.Sprintf("%s.%s", name, handler), // on python, for now is needed file name and handler name!!
+		TarFunctionCode: encoded,
+		Signature:       sign,
+	}
+	return &f, nil
+}
+
+func initializeJsFunction(name string, sign *function.Signature) (*function.Function, error) {
+	srcPath := "../../examples/" + name + ".js"
+	srcContent, err := cli.ReadSourcesAsTar(srcPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read js sources %s as tar: %v", srcPath, err)
+	}
+	encoded := base64.StdEncoding.EncodeToString(srcContent)
+	f := function.Function{
+		Name:            name,
+		Runtime:         "nodejs17ng",
+		MemoryMB:        JS_MEMORY,
+		CPUDemand:       1.0,
+		Handler:         name, // on js only file name is needed!!
 		TarFunctionCode: encoded,
 		Signature:       sign,
 	}

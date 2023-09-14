@@ -51,15 +51,26 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	}
 
 	postBody, _ := json.Marshal(req)
-	postBodyB := bytes.NewBuffer(postBody)
+	postBodyB := bytes.NewBuffer(postBody) // this buffer will be erased after send
 	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
-	if err != nil || resp == nil || resp.StatusCode >= 400 {
+	if err != nil {
+		if resp != nil {
+			buffer, err2 := io.ReadAll(resp.Body)
+			if err2 != nil {
+				return nil, waitDuration, fmt.Errorf("request to executor failed: %v - can't get response buffer: %v", err, err2)
+			}
+			return nil, waitDuration, fmt.Errorf("request to executor failed: %v - response: %s", err, buffer)
+		}
+		return nil, waitDuration, fmt.Errorf("request to executor failed: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
 		buffer, err2 := io.ReadAll(resp.Body)
 		if err2 != nil {
-			return nil, waitDuration, fmt.Errorf("request to executor failed (not all buffer red): %v. Status: %s. Buffer: %s", err, resp.Status, buffer)
+			return nil, waitDuration, fmt.Errorf("function invocation with params: %s failed with status %s: - can't get response buffer %v", postBodyB, resp.Status, err2)
 		}
-		return nil, waitDuration, fmt.Errorf("request to executor failed: %v. Status: %s. Buffer: %s", err, resp.Status, buffer)
+		return nil, waitDuration, fmt.Errorf("function invocation with params: %s failed with status %s: %s", postBodyB, resp.Status, buffer)
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -91,8 +102,8 @@ func GetLog(id ContainerID) (string, error) {
 
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
 	const TIMEOUT_MILLIS = 30000
-	const MAX_BACKOFF_MILLIS = 500
-	var backoffMillis = 25
+	const MAX_BACKOFF_MILLIS = 1000
+	var backoffMillis = 50
 	var totalWaitMillis = 0
 	var attempts = 1
 

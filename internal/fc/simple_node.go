@@ -65,7 +65,7 @@ func (s *SimpleNode) Exec() (map[string]interface{}, error) {
 	// the rest of the code is similar to a single function execution
 	invocationRequest := client.InvocationRequest{
 		Params:          s.input,
-		QoSMaxRespT:     250,
+		QoSMaxRespT:     500,
 		CanDoOffloading: true,
 		Async:           false, // should always be synchronous. If we need to call the dag asynchronously, we can do that regardless.
 		// TODO: aggiungere un campo che distingue se l'invocazione fa parte di una composizione o è una funzione singola
