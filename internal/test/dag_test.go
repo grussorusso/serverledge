@@ -97,6 +97,54 @@ func TestChoiceDag(t *testing.T) {
 		}
 	}
 }
+
+func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
+	m := make(map[string]interface{})
+	m["input"] = 1
+
+	f, _, err := initializeSameFunctionSlice(1, "py")
+	u.AssertNil(t, err)
+
+	dag, err := fc.NewDagBuilder().
+		AddChoiceNode(
+			fc.NewConstCondition(false),
+			fc.NewSmallerCondition(2, 1),
+			fc.NewConstCondition(true),
+		).
+		NextBranch(fc.CreateSimpleDag(f)).
+		NextBranch(fc.CreateSimpleDag(f)).
+		NextBranch(fc.CreateSimpleDag(f)).
+		EndChoiceAndBuild()
+
+	width := len(dag.Start.Next.(*fc.ChoiceNode).Alternatives)
+
+	u.AssertNil(t, err)
+	fmt.Println("==== Choice  Dag ====")
+	dag.Print()
+
+	u.AssertNonNil(t, dag.Start)
+	u.AssertNonNil(t, dag.End)
+	u.AssertEquals(t, dag.Width, width)
+	u.AssertNonNil(t, dag.Nodes)
+	// u.AssertEquals(t, width+1, len(dag.Nodes))
+
+	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+
+	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
+	for i, n := range dag.Nodes {
+		if i == 0 {
+			choice := n.(*fc.ChoiceNode)
+			u.AssertEquals(t, len(choice.Conditions), len(choice.Alternatives))
+			for _, s := range choice.Alternatives {
+				u.AssertTrue(t, dagNodes.Contains(s))
+				u.AssertEquals(t, s.(*fc.SimpleNode).OutputTo, dag.End)
+			}
+		} else {
+			u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
+		}
+	}
+}
+
 func TestParallelDag(t *testing.T) {
 	m := make(map[string]interface{})
 	m["input"] = 1

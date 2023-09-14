@@ -20,7 +20,8 @@ type ChoiceNode struct {
 
 func NewChoiceNode(conds []Condition) *ChoiceNode {
 	return &ChoiceNode{
-		Conditions: conds,
+		Conditions:   conds,
+		Alternatives: make([]DagNode, len(conds)),
 	}
 }
 

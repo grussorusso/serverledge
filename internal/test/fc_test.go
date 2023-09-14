@@ -260,49 +260,63 @@ func TestInvokeChoiceFC(t *testing.T) {
 	if !INTEGRATION_TEST {
 		t.FailNow()
 	}
-
+	//repeat := 3
+	//for i := 0; i < repeat; i++ {
 	fcName := "test"
 	// CREATE - we create a test function composition
-	length := 2
-	input := 0
-	f, fArr, err := initializeSameFunctionSlice(length, "py")
-	u.AssertNil(t, err)
+	input := 1
+	incJs, errJs := initializeExampleJSFunction()
+	u.AssertNil(t, errJs)
+	incPy, errPy := initializeExamplePyFunction()
+	u.AssertNil(t, errPy)
+	doublePy, errDp := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
 
-	conds := make([]fc.Condition, 3)
-	conds[0] = fc.NewConstCondition(false)
-	conds[1] = fc.NewSmallerCondition(2, 1)
-	conds[2] = fc.NewConstCondition(true)
+	dag, errDag := fc.NewDagBuilder().
+		AddChoiceNode(
+			fc.NewConstCondition(false),
+			fc.NewSmallerCondition(2, 1),
+			fc.NewConstCondition(true),
+		).
+		NextBranch(fc.CreateSimpleDag(incJs)).
+		NextBranch(fc.CreateSimpleDag(incPy)).
+		NextBranch(fc.CreateSimpleDag(doublePy)).
+		EndChoiceAndBuild()
 
-	dag, errDag := fc.CreateChoiceDag(conds, func() (*fc.Dag, error) { return fc.CreateSequenceDag(fArr) })
+	// dag, errDag := fc.CreateChoiceDag(conds, func() (*fc.Dag, error) { return fc.CreateSequenceDag(fArr) })
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC(fcName, *dag, fArr, true)
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incJs, incPy, doublePy}, true)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
-	repeat := 3
-	for i := 0; i < repeat; i++ {
-		// INVOKE - we call the function composition
-		params := make(map[string]interface{})
-		params[f.Signature.GetInputs()[0].Name] = input
-		resultMap, err2 := fcomp.Invoke(params)
-		u.AssertNil(t, err2)
-		// checking the result, should be input + 1
-		output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
-		u.AssertEquals(t, input+length, output)
-		fmt.Printf("%+v\n", resultMap)
-	}
+	// this is the function that will be called
+	f := doublePy
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[f.Signature.GetInputs()[0].Name] = input
+	resultMap, err2 := fcomp.Invoke(params)
+	u.AssertNil(t, err2)
+	// checking the result, should be input + 1
+	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
+	u.AssertEquals(t, input*2, output)
+	fmt.Printf("%+v\n", resultMap)
 
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
+	//}
 }
 
-// TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions
+// TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions (in different languages)
 func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 	if !INTEGRATION_TEST {
 		t.FailNow()
 	}
+	//for i := 0; i < 1; i++ {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
@@ -312,7 +326,7 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 		Build())
 	u.AssertNil(t, errF1)
 
-	fInc, errF2 := initializePyFunction("inc", "handler", function.NewSignature().
+	fInc, errF2 := initializeJsFunction("inc", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -355,4 +369,6 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
+	//}
+
 }

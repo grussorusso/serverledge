@@ -49,7 +49,7 @@ func (b DagBuilder) AddSimpleNode(f *function.Function) DagBuilder {
 }
 
 // AddChoiceNode connects a choice node to the previous node. From the choice node, multiple branch are created and each one of those must be fully defined
-func (b DagBuilder) AddChoiceNode(conditions []Condition) ChoiceBranchBuilder {
+func (b DagBuilder) AddChoiceNode(conditions ...Condition) ChoiceBranchBuilder {
 	nErrors := len(b.errors)
 	if nErrors > 0 {
 		fmt.Printf("NextBranch skipped, because of %d error(s) in dagBuilder\n", nErrors)
@@ -91,7 +91,7 @@ func (b DagBuilder) AddFanOutNode(fanoutType FanOutType) ParallelBranchBuilder {
 // Tip: use a NewDagBuilder() as a parameter, instead of manually creating the Dag!
 // Internally, NextBranch replaces the StartNode of the input dag with the choice alternative
 // and chains the last node of the dag to the EndNode of the building dag
-func (c ChoiceBranchBuilder) NextBranch(dag Dag) ChoiceBranchBuilder {
+func (c ChoiceBranchBuilder) NextBranch(dagToChain Dag) ChoiceBranchBuilder {
 	nErrors := len(c.dagBuilder.errors)
 	if nErrors > 0 {
 		fmt.Printf("NextBranch skipped, because of %d error(s) in dagBuilder\n", nErrors)
@@ -100,17 +100,23 @@ func (c ChoiceBranchBuilder) NextBranch(dag Dag) ChoiceBranchBuilder {
 
 	fmt.Println("Added simple node to a branch in choice node of Dag")
 	if c.HasNextBranch() {
-		// chains the alternative to the input dag, which is already connected to a whole series of nodes
-		err := c.dagBuilder.dag.Chain(c.dagBuilder.prevNode.(*ChoiceNode).Alternatives[c.completed], dag.Start.Next)
-		if err != nil {
-			c.dagBuilder.errors = append(c.dagBuilder.errors, err)
-			return c
-		}
 		// adds the nodes to the building dag
-		for _, n := range dag.Nodes {
+		for i, n := range dagToChain.Nodes {
+			if i == 0 {
+				//// chains the alternative to the input dag, which is already connected to a whole series of nodes
+				err := c.dagBuilder.dag.Chain(c.dagBuilder.prevNode.(*ChoiceNode), dagToChain.Start.Next)
+				if err != nil {
+					c.dagBuilder.errors = append(c.dagBuilder.errors, err)
+				}
+				//err := c.dagBuilder.prevNode.(*ChoiceNode).AddOutput(dagToChain.Start.Next)
+				//if err != nil {
+				//	c.dagBuilder.errors = append(c.dagBuilder.errors, err)
+				//	return c
+				//}
+			}
 			c.dagBuilder.dag.AddNode(n)
 			// chain the last node(s) of the input dag to the end node of the building dag
-			if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dag.End {
+			if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dagToChain.End {
 				switch n.(type) {
 				case *FanOutNode:
 					errFanout := fmt.Errorf("you're trying to chain a fanout node to an end node. This will interrupt the execution immediately after the fanout is reached")
@@ -164,7 +170,7 @@ func (c ChoiceBranchBuilder) EndNextBranch() ChoiceBranchBuilder {
 }
 
 func (c ChoiceBranchBuilder) HasNextBranch() bool {
-	return c.completed < c.dagBuilder.branches
+	return c.dagBuilder.branches != 0
 }
 
 // EndChoiceAndBuild connects all remaining branches to the end node and builds the dag
@@ -252,6 +258,14 @@ func CreateEmptyDag() (*Dag, error) {
 	return NewDagBuilder().Build()
 }
 
+func CreateSimpleDag(fun *function.Function) Dag {
+	build, err := NewDagBuilder().AddSimpleNode(fun).Build()
+	if err != nil {
+		return Dag{}
+	}
+	return *build
+}
+
 func CreateSequenceDag(funcs []*function.Function) (*Dag, error) {
 	builder := NewDagBuilder()
 	for _, f := range funcs {
@@ -262,7 +276,7 @@ func CreateSequenceDag(funcs []*function.Function) (*Dag, error) {
 
 func CreateChoiceDag(condArr []Condition, dagger func() (*Dag, error)) (*Dag, error) {
 	return NewDagBuilder().
-		AddChoiceNode(condArr).
+		AddChoiceNode(condArr...).
 		ForEach(dagger).
 		EndChoiceAndBuild()
 }
