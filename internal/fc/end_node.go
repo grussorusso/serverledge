@@ -54,9 +54,9 @@ func (e *EndNode) AddOutput(dagNode DagNode) error {
 }
 
 func (e *EndNode) ReceiveInput(input map[string]interface{}) error {
-	if e.result != nil {
-		return errors.New("input already received")
-	}
+	//if e.result != nil {
+	//	return errors.New("input already received")
+	//}
 	e.result = input
 	return nil
 }

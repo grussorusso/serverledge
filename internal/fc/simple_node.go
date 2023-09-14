@@ -85,9 +85,10 @@ func (s *SimpleNode) Exec() (map[string]interface{}, error) {
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0
+	r.IsInComposition = true
 
 	// executes the function, waiting for the result
-	err := scheduling.SubmitRequest(r, true)
+	err := scheduling.SubmitRequest(r)
 	if err != nil {
 		return nil, err
 	}

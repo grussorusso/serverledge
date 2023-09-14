@@ -137,6 +137,7 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 				return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
 			}
 
+			// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
 			_, wait := node.(*SimpleNode)
 			if wait {
 				// fmt.Println("Waiting previous node to complete execution")

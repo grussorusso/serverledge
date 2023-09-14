@@ -182,11 +182,11 @@ func (c ChoiceBranchBuilder) EndChoiceAndBuild() (*Dag, error) {
 
 // ForEach chains each (remaining) output of a choice node to the same subsequent node, then returns the DagBuilder
 func (c ChoiceBranchBuilder) ForEach(dagger func() (*Dag, error)) ChoiceBranchBuilder {
-	fmt.Println("Added the same node to each remaining alternative of the choice node in Dag")
 	choiceNode := c.dagBuilder.prevNode.(*ChoiceNode)
 	// we suppose the branches 0, ..., (completed-1) are already completed
 	// once := true
 	for i := c.completed; i < c.dagBuilder.branches; i++ {
+		fmt.Printf("Adding dag to branch %d\n", i)
 		// recreates a dag executing the same function
 		dagCopy, errDag := dagger()
 		if errDag != nil {
