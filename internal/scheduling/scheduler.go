@@ -63,7 +63,7 @@ func Run(p Policy) {
 		case r = <-requests: // receive request
 			go p.OnArrival(r)
 		case c = <-completions:
-			node.ReleaseContainer(c.contID, c.Fun)
+			node.ReleaseContainer(c.contID, c.Fun, c.Request.IsInComposition)
 			p.OnCompletion(c.scheduledRequest)
 
 			if metrics.Enabled {
