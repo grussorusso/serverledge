@@ -79,7 +79,7 @@ func Run(p Policy) {
 
 // TODO: maybe we should make separate function to handle request from function or function compositions
 // SubmitRequest submits a newly arrived request for scheduling and execution
-func SubmitRequest(r *function.Request, fromComposition bool) error {
+func SubmitRequest(r *function.Request) error {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
@@ -103,7 +103,7 @@ func SubmitRequest(r *function.Request, fromComposition bool) error {
 			return err
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest, fromComposition) // executing request
+		err = Execute(schedDecision.contID, &schedRequest, r.IsInComposition) // executing request
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func SubmitRequest(r *function.Request, fromComposition bool) error {
 }
 
 // SubmitAsyncRequest submits a newly arrived async request for scheduling and execution
-func SubmitAsyncRequest(r *function.Request, fromComposition bool) {
+func SubmitAsyncRequest(r *function.Request) {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
@@ -135,7 +135,7 @@ func SubmitAsyncRequest(r *function.Request, fromComposition bool) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest, fromComposition) // executing async request
+		err = Execute(schedDecision.contID, &schedRequest, r.IsInComposition) // executing async request
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}

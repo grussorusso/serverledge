@@ -74,13 +74,14 @@ func InvokeFunction(c echo.Context) error {
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0
+	r.IsInComposition = false
 
 	if r.Async {
-		go scheduling.SubmitAsyncRequest(r, false)
+		go scheduling.SubmitAsyncRequest(r)
 		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
 	}
 
-	err = scheduling.SubmitRequest(r, false)
+	err = scheduling.SubmitRequest(r)
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")

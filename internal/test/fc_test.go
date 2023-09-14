@@ -263,7 +263,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
-	length := 1
+	length := 2
 	input := 0
 	f, fArr, err := initializeSameFunctionSlice(length, "py")
 	u.AssertNil(t, err)
@@ -279,16 +279,18 @@ func TestInvokeChoiceFC(t *testing.T) {
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
-	// INVOKE - we call the function composition
-	params := make(map[string]interface{})
-	params[f.Signature.GetInputs()[0].Name] = input
-	resultMap, err2 := fcomp.Invoke(params)
-	u.AssertNil(t, err2)
-	// checking the result, should be input + 1
-	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
-
-	u.AssertEquals(t, input+1, output)
-	fmt.Printf("%+v\n", resultMap)
+	repeat := 3
+	for i := 0; i < repeat; i++ {
+		// INVOKE - we call the function composition
+		params := make(map[string]interface{})
+		params[f.Signature.GetInputs()[0].Name] = input
+		resultMap, err2 := fcomp.Invoke(params)
+		u.AssertNil(t, err2)
+		// checking the result, should be input + 1
+		output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
+		u.AssertEquals(t, input+length, output)
+		fmt.Printf("%+v\n", resultMap)
+	}
 
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
