@@ -191,7 +191,8 @@ func (c ChoiceBranchBuilder) ForEach(dagger func() (*Dag, error)) ChoiceBranchBu
 	choiceNode := c.dagBuilder.prevNode.(*ChoiceNode)
 	// we suppose the branches 0, ..., (completed-1) are already completed
 	// once := true
-	for i := c.completed; i < c.dagBuilder.branches; i++ {
+	remainingBranches := c.dagBuilder.branches
+	for i := c.completed; i < remainingBranches; i++ {
 		fmt.Printf("Adding dag to branch %d\n", i)
 		// recreates a dag executing the same function
 		dagCopy, errDag := dagger()
@@ -223,6 +224,7 @@ func (c ChoiceBranchBuilder) ForEach(dagger func() (*Dag, error)) ChoiceBranchBu
 		}
 		// so we completed a branch
 		c.completed++
+		c.dagBuilder.branches--
 	}
 	return c
 }
