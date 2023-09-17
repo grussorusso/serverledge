@@ -3,7 +3,6 @@ package fc
 import (
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
 	"strings"
@@ -30,8 +29,8 @@ func NewDAG() Dag {
 // TODO: only the subsequent APIs should be public: NewDag, Print, GetUniqueDagFunctions, Equals
 //  the remaining should be private after the builder APIs work well!!!
 
-// AddNode can be used to add a new node to the Dag. Does not chain anything, but updates Dag width
-func (dag *Dag) AddNode(node DagNode) {
+// addNode can be used to add a new node to the Dag. Does not chain anything, but updates Dag width
+func (dag *Dag) addNode(node DagNode) {
 	dag.Nodes = append(dag.Nodes, node)
 	// updates width
 	nodeWidth := node.Width()
@@ -191,27 +190,4 @@ func (dag *Dag) Equals(comparer types.Comparable) bool {
 		dag.End == dag2.End &&
 		dag.Width == dag2.Width &&
 		len(dag.Nodes) == len(dag2.Nodes)
-}
-
-// CreateParallelDag TODO: move to dag_builder.go, using the DagBuilder APIs
-func CreateParallelDag(degree int, funcs []*function.Function) Dag {
-	dag := NewDAG()
-	fanOutNode := &FanOutNode{FanOutDegree: degree, Type: Broadcast}
-	dag.AddNode(fanOutNode)
-	fanInNode := &FanInNode{FanInDegree: degree, Mode: AddNewMapEntry}
-	dag.AddNode(fanInNode)
-	_ = dag.SetStart(fanOutNode)
-
-	i := 0
-	for i < degree {
-		node := NewSimpleNode(funcs[i].Name)
-		dag.AddNode(node)
-		_ = dag.Chain(fanOutNode, node)
-		_ = dag.Chain(node, fanInNode)
-		i++
-	}
-
-	_ = dag.ChainToEndNode(fanInNode)
-
-	return dag
 }

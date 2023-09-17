@@ -26,7 +26,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = true
+const INTEGRATION_TEST = false
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -168,7 +168,7 @@ func teardownServerledge(registry *registration.Registry, e *echo.Echo) error {
 func TestComposeFC(t *testing.T) {
 
 	if !INTEGRATION_TEST {
-		t.FailNow()
+		t.Skip()
 	}
 
 	// GET1 - initially we do not have any function composition
@@ -186,7 +186,7 @@ func TestComposeFC(t *testing.T) {
 	_, fArr, err := initializeSameFunctionSlice(length, "js")
 	u.AssertNil(t, err)
 
-	dag, err := fc.CreateSequenceDag(fArr)
+	dag, err := fc.CreateSequenceDag(fArr...)
 	u.AssertNil(t, err)
 
 	fcomp := fc.NewFC(fcName, *dag, fArr, true)
@@ -222,7 +222,7 @@ func TestComposeFC(t *testing.T) {
 func TestInvokeFC(t *testing.T) {
 
 	if !INTEGRATION_TEST {
-		t.FailNow()
+		t.Skip()
 	}
 
 	fcName := "test"
@@ -230,7 +230,7 @@ func TestInvokeFC(t *testing.T) {
 	length := 5
 	f, fArr, err := initializeSameFunctionSlice(length, "js")
 	u.AssertNil(t, err)
-	dag, errDag := fc.CreateSequenceDag(fArr)
+	dag, errDag := fc.CreateSequenceDag(fArr...)
 	u.AssertNil(t, errDag)
 	fcomp := fc.NewFC(fcName, *dag, fArr, true)
 	err1 := fcomp.SaveToEtcd()
@@ -258,7 +258,7 @@ func TestInvokeFC(t *testing.T) {
 func TestInvokeChoiceFC(t *testing.T) {
 
 	if !INTEGRATION_TEST {
-		t.FailNow()
+		t.Skip()
 	}
 	//repeat := 3
 	//for i := 0; i < repeat; i++ {
@@ -280,9 +280,9 @@ func TestInvokeChoiceFC(t *testing.T) {
 			fc.NewSmallerCondition(2, 1),
 			fc.NewConstCondition(true),
 		).
-		NextBranch(fc.CreateSimpleDag(incJs)).
-		NextBranch(fc.CreateSimpleDag(incPy)).
-		NextBranch(fc.CreateSimpleDag(doublePy)).
+		NextBranch(fc.CreateSequenceDag(incJs)).
+		NextBranch(fc.CreateSequenceDag(incPy)).
+		NextBranch(fc.CreateSequenceDag(doublePy)).
 		EndChoiceAndBuild()
 
 	// dag, errDag := fc.CreateChoiceDag(conds, func() (*fc.Dag, error) { return fc.CreateSequenceDag(fArr) })
@@ -314,7 +314,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 	if !INTEGRATION_TEST {
-		t.FailNow()
+		t.Skip()
 	}
 	//for i := 0; i < 1; i++ {
 

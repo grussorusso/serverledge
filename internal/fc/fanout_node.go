@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/lithammer/shortuuid"
+	"log"
 	"math"
 	"strings"
 )
@@ -22,6 +24,15 @@ const (
 	Broadcast = iota
 	Scatter
 )
+
+func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
+	return &FanOutNode{
+		Id:           shortuuid.New(),
+		OutputTo:     make([]DagNode, 0),
+		FanOutDegree: fanOutDegree,
+		Type:         fanOutType,
+	}
+}
 
 func (f *FanOutNode) Equals(cmp types.Comparable) bool {
 	switch cmp.(type) {
@@ -75,17 +86,21 @@ func (f *FanOutNode) PrepareOutput(output map[string]interface{}) error {
 func (f *FanOutNode) GetNext() []DagNode {
 	// we have multiple outputs
 	if f.FanOutDegree <= 1 {
-		panic("You should have used a SimpleNode or EndNode for fanOutDegree less than 2")
+		log.Printf("You should have used a SimpleNode or EndNode for fanOutDegree less than 2")
+		return []DagNode{}
+	}
+
+	if f.OutputTo == nil {
+		log.Printf("You forgot to initialize OutputTo for FanOutNode")
+		return []DagNode{}
 	}
 
 	if f.FanOutDegree != len(f.OutputTo) {
-		panic("The fanOutDegree and number of outputs does not match")
+		log.Printf("The fanOutDegree and number of outputs does not match")
+		return []DagNode{}
 	}
 
-	if f.OutputTo != nil {
-		return f.OutputTo
-	}
-	panic("you forgot to initialize OutputTo for FanOutNode")
+	return f.OutputTo
 }
 
 func (f *FanOutNode) Width() int {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/lithammer/shortuuid"
 	"math"
 	// "strconv"
 	"strings"
@@ -11,8 +12,8 @@ import (
 
 // ChoiceNode receives one input and produces one result to one of two alternative nodes, based on condition
 type ChoiceNode struct {
-	input map[string]interface{}
-	// InputFrom    DagNode
+	Id           string
+	input        map[string]interface{}
 	Alternatives []DagNode
 	Conditions   []Condition
 	firstMatch   int
@@ -20,6 +21,7 @@ type ChoiceNode struct {
 
 func NewChoiceNode(conds []Condition) *ChoiceNode {
 	return &ChoiceNode{
+		Id:           shortuuid.New(),
 		Conditions:   conds,
 		Alternatives: make([]DagNode, len(conds)),
 	}
