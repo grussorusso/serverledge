@@ -1,9 +1,10 @@
 package fc
 
 import (
-	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/lithammer/shortuuid"
+	"time"
 )
 
 type MergeMode int
@@ -16,22 +17,41 @@ const (
 
 // FanInNode receives and merges multiple input and produces a single result
 type FanInNode struct {
-	InputFrom   []DagNode
+	Id          string
+	InputFrom   []map[string]interface{} // we need this because fan in should know which node to wait.
 	OutputTo    DagNode
 	FanInDegree int
-	timeout     int // default 60
+	timeout     time.Duration
 	Mode        MergeMode
+}
+
+var DefaultTimeout = 60 * time.Second
+
+func NewFanInNode(mergeMode MergeMode, nillableTimeout *time.Duration) *FanInNode {
+	timeout := nillableTimeout
+	if timeout == nil {
+		timeout = &DefaultTimeout
+	}
+
+	return &FanInNode{
+		Id:          shortuuid.New(),
+		InputFrom:   nil,
+		OutputTo:    nil,
+		FanInDegree: 0,
+		timeout:     *timeout,
+		Mode:        mergeMode,
+	}
 }
 
 func (f *FanInNode) Equals(cmp types.Comparable) bool {
 	switch cmp.(type) {
 	case *FanInNode:
 		f2 := cmp.(*FanInNode)
-		for i := 0; i < len(f.InputFrom); i++ {
-			if f.InputFrom[i] != f2.InputFrom[i] {
-				return false
-			}
-		}
+		//for i := 0; i < len(f.InputFrom); i++ {
+		//	if f.InputFrom[i] != f2.InputFrom[i] {
+		//		return false
+		//	}
+		//}
 		return f.FanInDegree == f2.FanInDegree &&
 			f.OutputTo == f2.OutputTo // && f.timeout == f2.timeout
 	default:
@@ -46,18 +66,18 @@ func (f *FanInNode) Exec() (map[string]interface{}, error) {
 }
 
 func (f *FanInNode) AddInput(dagNode DagNode) error {
-	if len(f.InputFrom) == f.FanInDegree {
-		return errors.New("input already present in node")
-	}
-
-	f.InputFrom = append(f.InputFrom, dagNode)
+	//if len(f.InputFrom) == f.FanInDegree {
+	//	return errors.New("input already present in node")
+	//}
+	//
+	//f.InputFrom = append(f.InputFrom, dagNode)
 	return nil
 }
 
 func (f *FanInNode) AddOutput(dagNode DagNode) error {
-	if f.OutputTo != nil {
-		return errors.New("result already present in node")
-	}
+	//if f.OutputTo != nil {
+	//	return errors.New("result already present in node")
+	//}
 
 	f.OutputTo = dagNode
 	return nil
@@ -93,13 +113,5 @@ func (f *FanInNode) Name() string {
 }
 
 func (f *FanInNode) ToString() string {
-	inputs := "["
-	for i, inputFrom := range f.InputFrom {
-		inputs += inputFrom.Name()
-		if i != len(f.InputFrom)-1 {
-			inputs += ", "
-		}
-	}
-	inputs += "]"
-	return fmt.Sprintf("[FanInNode(%d)]<-%s ", f.FanInDegree, inputs)
+	return fmt.Sprintf("[FanInNode(%d)]", f.FanInDegree)
 }

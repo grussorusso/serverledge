@@ -12,7 +12,7 @@ import (
 
 func TestContainerPool(t *testing.T) {
 	if !INTEGRATION_TEST {
-		t.FailNow()
+		t.Skip()
 	}
 	funcs := []string{"inc", "double"}
 	for _, name := range funcs {
