@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/lithammer/shortuuid"
 	"reflect"
 )
 
@@ -16,9 +17,15 @@ const (
 
 // EndNode is a DagNode that represents the end of the Dag.
 type EndNode struct {
-	// InputFrom []DagNode // TODO: maybe useless
+	Id     string
 	result map[string]interface{} // TODO: maybe useless
 	Reason Reason                 // TODO: maybe useless
+}
+
+func NewEndNode() *EndNode {
+	return &EndNode{
+		Id: shortuuid.New(),
+	}
 }
 
 func (e *EndNode) Equals(cmp types.Comparable) bool {

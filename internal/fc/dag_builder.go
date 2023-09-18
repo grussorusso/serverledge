@@ -416,7 +416,6 @@ func (p ParallelBroadcastBranchBuilder) NextFanOutBranch(dagToChain *Dag, err1 e
 					p.dagBuilder.appendError(errFanout)
 					continue
 				default:
-					// TODO: non così errEnd := p.dagBuilder.dag.ChainToEndNode(n)
 					p.terminalNodes = append(p.terminalNodes, n)
 				}
 			}
@@ -475,10 +474,10 @@ func CreateChoiceDag(dagger func() (*Dag, error), condArr ...Condition) (*Dag, e
 }
 
 // CreateScatterSingleFunctionDag if successful, returns a dag with one fan out, N simple node with the same function
-// and then a fan in node that merges all the result in an array. TODO: The number N is defined by the input cardinality (i.e. each map key is sent to different nodes / each entry in an array map key is ent to a different node)
-func CreateScatterSingleFunctionDag(fun *function.Function, fanOutdegree int) (*Dag, error) {
+// and then a fan in node that merges all the result in an array.
+func CreateScatterSingleFunctionDag(fun *function.Function, fanOutDegree int) (*Dag, error) {
 	return NewDagBuilder().
-		AddScatterFanOutNode(fanOutdegree).
+		AddScatterFanOutNode(fanOutDegree).
 		ForEachParallelBranch(func() (*Dag, error) { return CreateSequenceDag(fun) }).
 		AddFanInNode(AddToArrayEntry).
 		Build()

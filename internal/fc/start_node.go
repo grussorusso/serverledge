@@ -4,12 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/lithammer/shortuuid"
 	"reflect"
 )
 
 // StartNode is a DagNode from which the execution of the Dag starts. Invokes the first DagNode
 type StartNode struct {
+	Id   string
 	Next DagNode
+}
+
+func NewStartNode() *StartNode {
+	return &StartNode{
+		Id: shortuuid.New(),
+	}
 }
 
 func (s *StartNode) Equals(cmp types.Comparable) bool {

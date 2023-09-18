@@ -19,6 +19,7 @@ type FunctionComposition struct {
 	Name               string // al posto del nome potrebbe essere un id da mettere in etcd
 	Functions          map[string]*function.Function
 	Workflow           Dag
+	Progress           *Progress
 	RemoveFnOnDeletion bool
 	// ExecReport ExecutionReport
 }

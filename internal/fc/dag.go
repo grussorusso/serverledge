@@ -18,8 +18,8 @@ type Dag struct {
 
 func NewDAG() Dag {
 	dag := Dag{
-		Start: &StartNode{},
-		End:   &EndNode{},
+		Start: NewStartNode(),
+		End:   NewEndNode(),
 		Nodes: []DagNode{},
 		Width: 1,
 	}
@@ -123,7 +123,7 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 		var nextCurrentNodes []DagNode
 		for _, node := range currentNodes {
 			// make transition
-			errRecv := node.ReceiveInput(previousOutput)
+			errRecv := node.ReceiveInput(previousOutput) // TODO: Retrieve input from ETCD (or from local cache, if the previous node is colocated with the current one)
 			if errRecv != nil {
 				return nil, fmt.Errorf("the node %s cannot receive the input: %v", node.ToString(), errRecv)
 			}

@@ -26,7 +26,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = false
+const INTEGRATION_TEST = true
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -363,6 +363,58 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 	// res, errConv := strconv.Atoi(output.(string))
 	u.AssertEquals(t, (2*2+1)*2+1, output)
+	// u.AssertNil(t, errConv)
+	fmt.Println(resultMap)
+
+	// cleaning up function composition and function
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+	//}
+
+}
+
+// TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
+func TestInvokeFC_BroadcastFanOut(t *testing.T) {
+
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+	//for i := 0; i < 1; i++ {
+
+	fcName := "test"
+	// CREATE - we create a test function composition
+	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF1)
+
+	fInc, errF2 := initializeJsFunction("inc", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF2)
+
+	width := 3
+	dag, errDag := fc.CreateBroadcastDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(fDouble) }, width)
+	u.AssertNil(t, errDag)
+	dag.Print()
+
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[fDouble.Signature.GetInputs()[0].Name] = 1
+	resultMap, err2 := fcomp.Invoke(params)
+	u.AssertNil(t, err2)
+
+	// check result
+	output := resultMap.Result[fInc.Signature.GetOutputs()[0].Name]
+
+	// res, errConv := strconv.Atoi(output.(string))
+	u.AssertEquals(t, 2, output)
 	// u.AssertNil(t, errConv)
 	fmt.Println(resultMap)
 
