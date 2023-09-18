@@ -80,3 +80,9 @@ func (s *StartNode) Name() string {
 func (s *StartNode) ToString() string {
 	return fmt.Sprintf("[%s]-next->%s", s.Name(), s.Next.Name())
 }
+
+func (s *StartNode) setBranchId(number int) {
+}
+func (s *StartNode) GetBranchId() int {
+	return 0
+}

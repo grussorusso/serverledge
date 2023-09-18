@@ -90,3 +90,8 @@ func (e *EndNode) Name() string {
 func (e *EndNode) ToString() string {
 	return fmt.Sprintf("[EndNode]")
 }
+func (e *EndNode) setBranchId(number int) {
+}
+func (e *EndNode) GetBranchId() int {
+	return 0
+}

@@ -22,6 +22,8 @@ type DagNode interface {
 	GetNext() []DagNode
 	Width() int
 	Name() string
+	setBranchId(number int)
+	GetBranchId() int
 }
 
 type Id interface {
