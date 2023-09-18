@@ -23,6 +23,7 @@ type FanInNode struct {
 	FanInDegree int
 	timeout     time.Duration
 	Mode        MergeMode
+	input       map[string]interface{}
 }
 
 var DefaultTimeout = 60 * time.Second
@@ -84,8 +85,9 @@ func (f *FanInNode) AddOutput(dagNode DagNode) error {
 }
 
 func (f *FanInNode) ReceiveInput(input map[string]interface{}) error {
-	//TODO implement me
-	panic("implement me")
+	// TODO: devi ricevere gli input separatamente dai nodi precedenti.
+	f.input = input
+	return nil
 }
 
 func (f *FanInNode) PrepareOutput(output map[string]interface{}) error {
@@ -97,11 +99,11 @@ func (f *FanInNode) GetNext() []DagNode {
 	// we only have one output
 	// TODO: we should wait for function to complete!
 	arr := make([]DagNode, 1)
-	if f.OutputTo != nil {
-		arr[0] = f.OutputTo
-		return arr
+	if f.OutputTo == nil {
+		panic("you forgot to initialize OutputTo for FanInNode")
 	}
-	panic("you forgot to initialize OutputTo for FanInNode")
+	arr[0] = f.OutputTo
+	return arr
 }
 
 func (f *FanInNode) Width() int {

@@ -12,8 +12,8 @@ import (
 
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
-	Id string
-	// InputFrom    DagNode
+	Id           string
+	input        map[string]interface{}
 	OutputTo     []DagNode
 	FanOutDegree int
 	Type         FanOutType
@@ -23,6 +23,15 @@ type FanOutType int
 const (
 	Broadcast = iota
 	Scatter
+)
+
+type ScatterMode int
+
+const (
+	RoundRobin                    = iota // copies each map entry in an unordered, round-robin manner, so that more or less all branches have the same number of input
+	SplitEqually                         // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
+	OneMapEntryForEachBranch             // Given N branch, gives one entry in an unordered manner to one branch. If there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
+	OneMapArrayEntryForEachBranch        // Given N branch, gives each array entry in an ordered manner to one branch. When there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
 )
 
 func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
@@ -43,16 +52,30 @@ func (f *FanOutNode) Equals(cmp types.Comparable) bool {
 				return false
 			}
 		}
-		return f.FanOutDegree == f2.FanOutDegree // &&
-		// f.InputFrom == f2.InputFrom
+		return f.FanOutDegree == f2.FanOutDegree
 	default:
 		return false
 	}
 }
 
+// Exec splits the output for the next parallel dags
+// Scatter mode can only be used if the value held in the map is of type slice. Subdivides each map entry to a different node
+// Broadcast mode can always be used. Copies the entire map to each of the subsequent nodes
 func (f *FanOutNode) Exec() (map[string]interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	// input -> output: map["input":1] -> map["0":map["input":1], "1":map["input":1]]
+	if f.Type == Broadcast {
+		return f.input, nil // simply returns input, that will be copied to each subsequent node
+	} else if f.Type == Scatter {
+		// get inputs
+		inputToCopy := f.input
+		scatter := make(map[string]interface{})
+		for i := 0; i < f.FanOutDegree; i++ {
+			scatter[fmt.Sprintf("%d", i)] = inputToCopy // TODO: problem is that the fanout degree is fixed
+		}
+		return scatter, nil
+	} else {
+		return nil, fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
+	}
 }
 
 func (f *FanOutNode) AddInput(dagNode DagNode) error {
@@ -73,14 +96,33 @@ func (f *FanOutNode) AddOutput(dagNode DagNode) error {
 }
 
 func (f *FanOutNode) ReceiveInput(input map[string]interface{}) error {
-
-	//TODO implement me
-	panic("implement me")
+	f.input = input
+	return nil
 }
 
+// PrepareOutput sends output to the next node in each parallel branch
 func (f *FanOutNode) PrepareOutput(output map[string]interface{}) error {
-	//TODO implement me
-	panic("implement me")
+	for i, node := range f.GetNext() {
+		if f.Type == Broadcast {
+			err := node.ReceiveInput(output)
+			if err != nil {
+				return err
+			}
+		} else if f.Type == Scatter {
+			mapForBranch, ok := output[fmt.Sprintf("%d", i)].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("FanOutNode.PrepareOutput: failed to convert output interface{} to map[string]interface{}")
+			}
+			err := node.ReceiveInput(mapForBranch)
+			if err != nil {
+				return err
+			}
+			return nil
+		} else {
+			return fmt.Errorf("invalid argument")
+		}
+	}
+	return nil
 }
 
 func (f *FanOutNode) GetNext() []DagNode {

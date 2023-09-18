@@ -235,6 +235,14 @@ func TestScatterDag(t *testing.T) {
 }
 
 func TestCreateBroadcastMultiFunctionDag(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		} else {
+			t.Errorf("The program has panicked %v", r)
+		}
+	}()
+
 	width1 := 2
 	f, fArrPy, err := initializeSameFunctionSlice(width1, "py")
 	u.AssertNil(t, err)
