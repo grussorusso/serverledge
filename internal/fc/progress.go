@@ -38,14 +38,17 @@ func (p *Progress) Update() {
 	p.doneNodes++ // TODO: how to deal with choice nodes?
 }
 
-// Save should be used by a completed node after its execution
-func (p *Progress) Save(reqId string) {
+// SaveProgress should be used by a completed node after its execution
+func SaveProgress(p *Progress) error {
 	// TODO: save progress in ETCD
+	return nil
+
 }
 
-// Retrieve should be used by the next node to execute
-func (p *Progress) Retrieve(reqId string) {
+// RetrieveProgress should be used by the next node to execute
+func RetrieveProgress(reqId string) *Progress {
 	// TODO: retrieve progress from ETCD
+	return nil
 }
 
 func (p *Progress) IsCompleted() bool {

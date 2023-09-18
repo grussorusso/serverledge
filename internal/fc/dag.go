@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// used to send output from parallel nodes to fan in node or to the next node
+var outputChannel = make(chan map[string]interface{})
+
 // Dag is a Workflow to drive the execution of the function composition
 type Dag struct {
 	Start *StartNode // a single start must be added
@@ -116,6 +119,8 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 	currentNodes := previousNode.GetNext()
 	previousOutput := input // nil???
 
+	parallel := false // TODO: maybe we need a stack of boolean variables. The top of the stack is the current section
+
 	// while loop to execute dag until we reach the end
 	for len(currentNodes) > 0 {
 		// execute a single node
@@ -131,18 +136,31 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 			// For ChoiceNode, output is sent to first successful branch
 			// FIXME: For FanOutNode, output can be a simple copy of previous node output, but here we are calling multiple times
 			// FIXME: For FanInNode, output is a merge of all output from back. Todo: How to merge can be a problem... We should also check timeout and exiting if it happens
-			output, errExec := node.Exec()
-			if errExec != nil {
-				return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
+			var output map[string]interface{}
+			if !parallel {
+				o, errExec := node.Exec()
+				if errExec != nil {
+					return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
+				}
+				output = o
+			} else {
+				go func() (map[string]interface{}, error) {
+					output, err := node.Exec()
+					if err != nil {
+						return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), err)
+					}
+					return output, nil
+				}()
 			}
 
 			// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
-			_, wait := node.(*SimpleNode)
-			if wait {
-				// fmt.Println("Waiting previous node to complete execution")
+			switch node.(type) {
+			case *SimpleNode:
 				<-types.NodeDoneChan
-				// recv := <-types.NodeDoneChan
-				// fmt.Printf("Finished waiting, received %s\n", recv)
+			case *FanOutNode:
+				parallel = true
+			case *FanInNode:
+				parallel = false
 			}
 
 			previousOutput = output

@@ -46,6 +46,7 @@ func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDelet
 		Functions:          functionMap,
 		Workflow:           dag,
 		RemoveFnOnDeletion: removeFnOnDeletion,
+		Progress:           InitProgress(&dag),
 		// ExecReport: ExecutionReport{},
 	}
 }
@@ -159,6 +160,8 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 
 // Invoke schedules each function of the composition and invokes them
 func (fc *FunctionComposition) Invoke(input map[string]interface{}) (ExecutionReport, error) {
+	// fc.Progress.Retrieve()
+
 	output, err := fc.Workflow.Execute(input)
 	// fc.ExecReport.Result = output
 	return ExecutionReport{Result: output}, err
