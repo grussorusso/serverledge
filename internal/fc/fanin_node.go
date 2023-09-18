@@ -18,10 +18,11 @@ const (
 // FanInNode receives and merges multiple input and produces a single result
 type FanInNode struct {
 	Id          string
-	InputFrom   []map[string]interface{} // we need this because fan in should know which node to wait.
+	BranchId    int
 	OutputTo    DagNode
 	FanInDegree int
 	timeout     time.Duration
+	Channels    map[int]map[string]interface{} // we need this double map because fan in should know which node to wait.
 	Mode        MergeMode
 	input       map[string]interface{}
 }
@@ -36,7 +37,6 @@ func NewFanInNode(mergeMode MergeMode, nillableTimeout *time.Duration) *FanInNod
 
 	return &FanInNode{
 		Id:          shortuuid.New(),
-		InputFrom:   nil,
 		OutputTo:    nil,
 		FanInDegree: 0,
 		timeout:     *timeout,
@@ -116,4 +116,11 @@ func (f *FanInNode) Name() string {
 
 func (f *FanInNode) ToString() string {
 	return fmt.Sprintf("[FanInNode(%d)]", f.FanInDegree)
+}
+
+func (f *FanInNode) setBranchId(number int) {
+	f.BranchId = number
+}
+func (f *FanInNode) GetBranchId() int {
+	return f.BranchId
 }

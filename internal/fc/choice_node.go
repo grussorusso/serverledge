@@ -13,6 +13,7 @@ import (
 // ChoiceNode receives one input and produces one result to one of two alternative nodes, based on condition
 type ChoiceNode struct {
 	Id           string
+	BranchId     int
 	input        map[string]interface{}
 	Alternatives []DagNode
 	Conditions   []Condition
@@ -142,6 +143,14 @@ func (c *ChoiceNode) Name() string {
 		pad := "-------"
 		return strings.Repeat(pad, int(math.Max(float64(n/2), 0.))) + "Choice" + strings.Repeat(pad, int(math.Max(float64(n/2), 0.)))
 	}
+}
+
+func (c *ChoiceNode) setBranchId(number int) {
+	c.BranchId = number
+}
+
+func (c *ChoiceNode) GetBranchId() int {
+	return c.BranchId
 }
 
 func (c *ChoiceNode) ToString() string {

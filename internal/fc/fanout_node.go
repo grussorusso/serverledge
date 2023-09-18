@@ -13,6 +13,7 @@ import (
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
 	Id           string
+	BranchId     int
 	input        map[string]interface{}
 	OutputTo     []DagNode
 	FanOutDegree int
@@ -169,4 +170,12 @@ func (f *FanOutNode) ToString() string {
 	}
 	outputs += "]"
 	return fmt.Sprintf("[FanOutNode(%d)]->%s ", f.FanOutDegree, outputs)
+}
+
+func (f *FanOutNode) setBranchId(number int) {
+	f.BranchId = number
+}
+
+func (f *FanOutNode) GetBranchId() int {
+	return f.BranchId
 }

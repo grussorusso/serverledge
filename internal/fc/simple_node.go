@@ -20,11 +20,11 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id    string
-	input map[string]interface{}
-	// InputFrom DagNode // TODO: maybe we do not need it because from this we shouldn't be able to go back. We are creating an DIRECTED Acyclic Graph!
+	Id       string
+	BranchId int
+	input    map[string]interface{}
 	OutputTo DagNode
-	Func     string // *function.Function
+	Func     string
 	// Request   *function.Request
 	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
@@ -244,4 +244,11 @@ func (s *SimpleNode) Name() string {
 
 func (s *SimpleNode) ToString() string {
 	return fmt.Sprintf("[SimpleNode (%s) func %s(%v)]->%s", s.Id, s.Func, s.input, s.OutputTo.Name())
+}
+
+func (s *SimpleNode) setBranchId(number int) {
+	s.BranchId = number
+}
+func (s *SimpleNode) GetBranchId() int {
+	return s.BranchId
 }
