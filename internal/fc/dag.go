@@ -29,6 +29,15 @@ func NewDAG() Dag {
 	return dag
 }
 
+func (dag *Dag) find(nodeId string) (DagNode, bool) {
+	for _, node := range dag.Nodes {
+		if node.GetId() == nodeId {
+			return node, true
+		}
+	}
+	return nil, false
+}
+
 // TODO: only the subsequent APIs should be public: NewDag, Print, GetUniqueDagFunctions, Equals
 //  the remaining should be private after the builder APIs work well!!!
 
@@ -107,7 +116,7 @@ func (dag *Dag) Print() string {
 // TODO: assicurarsi che si esegua in parallelo
 // TODO: aggiungere lo stato di avanzamento: ad esempio su ETCD, compresi i parametri di input/output
 func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, error) {
-
+	errChan := make(chan error)
 	if &dag.Start == nil && &dag.End == nil && dag.Width == 0 {
 		return nil, errors.New("you must instantiate the dag correctly with all fields")
 	}
@@ -138,42 +147,92 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 			// FIXME: For FanInNode, output is a merge of all output from back. Todo: How to merge can be a problem... We should also check timeout and exiting if it happens
 			var output map[string]interface{}
 			if !parallel {
-				o, errExec := node.Exec()
+				o, errExec := node.Exec() // simple, choice or fanout
 				if errExec != nil {
 					return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
 				}
 				output = o
-			} else {
-				go func() (map[string]interface{}, error) {
-					output, err := node.Exec()
-					if err != nil {
-						return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), err)
-					}
-					return output, nil
-				}()
+				// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
+				switch node.(type) {
+				case *SimpleNode:
+					<-types.NodeDoneChan
+				}
+				previousOutput = output
+				// prepares the output for the next function(s)
+				errSend := node.PrepareOutput(output)
+				if errRecv != nil {
+					return nil, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
+				}
+				nextNodes := node.GetNext()
+				if len(nextNodes) > 0 {
+					// adding the next nodes to a set and to a list
+					nodeSet.AddAll(nextNodes)
+					nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
+				}
+			} else { // if parallel (only if it's not a fan in)
+				if _, ok := node.(*FanInNode); !ok {
+					// async
+					go func() {
+						o, err := node.Exec()
+						if err != nil {
+							errChan <- fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), err)
+							return
+						}
+						// if the next node is fanIn, send the output to it
+						errChan <- nil
+						if fanIn, ok := node.GetNext()[0].(*FanInNode); ok {
+							fmt.Printf("node in branchId %d sent output to fanIn\n", node.GetBranchId())
+							fanInChannel := getChannelForParallelBranch(fanIn.Id, node.GetBranchId())
+							fanInChannel <- o
+						} else {
+							// output should go to the next node
+							previousOutput = output
+							// prepares the output for the next function(s)
+							errSend := node.PrepareOutput(output)
+							if errRecv != nil {
+								errChan <- fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
+								return
+							}
+							nextNodes := node.GetNext()
+							if len(nextNodes) > 0 {
+								// adding the next nodes to a set and to a list
+								nodeSet.AddAll(nextNodes)
+								nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
+							}
+						}
+						errChan <- nil
+					}()
+				}
 			}
 
-			// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
-			switch node.(type) {
-			case *SimpleNode:
-				<-types.NodeDoneChan
+			switch fan := node.(type) {
 			case *FanOutNode:
 				parallel = true
+				associatedFanIn, _ := dag.find(fan.AssociatedFanIn)
+				nextCurrentNodes = append(nextCurrentNodes, associatedFanIn) // FIXME: problem when there are more than 1 node in each branch
 			case *FanInNode:
 				parallel = false
-			}
 
-			previousOutput = output
-			// prepares the output for the next function(s)
-			errSend := node.PrepareOutput(output)
-			if errRecv != nil {
-				return nil, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
-			}
-			nextNodes := node.GetNext()
-			if len(nextNodes) > 0 {
-				// adding the next nodes to a set and to a list
-				nodeSet.AddAll(nextNodes)
-				nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
+				for i := 0; i < fan.FanInDegree; i++ {
+					erro := <-errChan
+					if erro != nil {
+						return nil, erro
+					}
+				}
+				fmt.Println("FanIn: all function returned an output!")
+				// fan.PrepareOutput()
+				previousOutput = output
+				// prepares the output for the next function(s)
+				//errSend := node.PrepareOutput(output)
+				//if errSend != nil {
+				//	return nil, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
+				//}
+				nextNodes := node.GetNext()
+				if len(nextNodes) > 0 {
+					// adding the next nodes to a set and to a list
+					nodeSet.AddAll(nextNodes)
+					nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
+				}
 			}
 		}
 		currentNodes = nextCurrentNodes

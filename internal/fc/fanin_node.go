@@ -22,48 +22,142 @@ type FanInNode struct {
 	OutputTo    DagNode
 	FanInDegree int
 	timeout     time.Duration
-	Channels    map[int]map[string]interface{} // we need this double map because fan in should know which node to wait.
 	Mode        MergeMode
 	input       map[string]interface{}
+	IsReached   bool
 }
+
+// FanInChannels is needed because we cannot marshal channels, so we need a different struct, that will be created each time a FanIn is used.
+type FanInChannels struct {
+	// Channels: used by simple nodes to send data to a fan in node
+	Channels map[int]chan map[string]interface{} // we need this double map because fan in should know which node to wait.
+	// OutputChannel: used by fan in node to send merged output
+	OutputChannel chan map[string]interface{}
+}
+
+// usedChannel is used by fanIn nodes
+var usedChannels = make(map[string]FanInChannels)
+
+func createChannels(fanInId string, fanInDegree int, branchNumbers []int) {
+	// initializing the channel with branch numbers
+	channels := make(map[int]chan map[string]interface{})
+	for i := 0; i < fanInDegree; i++ {
+		channels[branchNumbers[i]] = make(chan map[string]interface{})
+	}
+	usedChannels[fanInId] = FanInChannels{
+		Channels:      channels,
+		OutputChannel: make(chan map[string]interface{}),
+	}
+}
+
+func getChannelForParallelBranch(fanInId string, branchId int) chan map[string]interface{} {
+	return usedChannels[fanInId].Channels[branchId]
+}
+
+func getChannelsForFanIn(fanInId string) map[int]chan map[string]interface{} {
+	return usedChannels[fanInId].Channels
+}
+
+func getOutputChannelForFanIn(fanInId string) chan map[string]interface{} {
+	return usedChannels[fanInId].OutputChannel
+}
+
+func clearChannelForFanIn(fanInId string) {
+	delete(usedChannels, fanInId)
+}
+
+/*
+How the fan wait for previous output works:
+- [v] who should hold the channel(s)? Fan-in
+- [v] when initialize the channel(s)? when constructing the fan-in, but we need the branchNumbers
+- [v] how should fan-in pass the channel? Providing a getChannelForParallelBranch(branchId) that return the corresponding channel for that branch
+- [v] when should a node use the getChannelForParallelBranch method and send the result? Only when the next node is a Fan-In node, when passing output.
+- [v] who should send to the channel(s)? The terminal node before the fan in each parallel branch
+- [ ] when should send to the channel(s)? After the execution of the terminal node in each parallel branch
+- [ ] who should receive from the channel(s)? This node, fan in.
+- [ ] when should receive from the channel(s)? In this function, Exec.
+*/
 
 var DefaultTimeout = 60 * time.Second
 
-func NewFanInNode(mergeMode MergeMode, nillableTimeout *time.Duration) *FanInNode {
+func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nillableTimeout *time.Duration) *FanInNode {
 	timeout := nillableTimeout
 	if timeout == nil {
 		timeout = &DefaultTimeout
 	}
-
-	return &FanInNode{
+	fanIn := FanInNode{
 		Id:          shortuuid.New(),
 		OutputTo:    nil,
-		FanInDegree: 0,
+		FanInDegree: fanInDegree,
 		timeout:     *timeout,
 		Mode:        mergeMode,
+		IsReached:   false,
 	}
+	createChannels(fanIn.Id, fanInDegree, branchNumbers)
+
+	return &fanIn
 }
 
 func (f *FanInNode) Equals(cmp types.Comparable) bool {
-	switch cmp.(type) {
+	switch f1 := cmp.(type) {
 	case *FanInNode:
-		f2 := cmp.(*FanInNode)
-		//for i := 0; i < len(f.InputFrom); i++ {
-		//	if f.InputFrom[i] != f2.InputFrom[i] {
-		//		return false
-		//	}
-		//}
-		return f.FanInDegree == f2.FanInDegree &&
-			f.OutputTo == f2.OutputTo // && f.timeout == f2.timeout
+		return f.Id == f1.Id && f.FanInDegree == f1.FanInDegree && f.OutputTo == f1.OutputTo &&
+			f.timeout == f1.timeout && f.Mode == f1.Mode
 	default:
 		return false
 	}
 }
 
+// Exec waits all output from previous nodes or return an error after a timeout expires
 func (f *FanInNode) Exec() (map[string]interface{}, error) {
-	//TODO You must wait all output from all InputFrom nodes
-	// or you should return an error after a timeout expires
-	panic("implement me")
+	if !f.IsReached {
+		f.IsReached = true
+	} else {
+		return nil, nil // fmt.Errorf("node is already reached, skip me")
+	}
+
+	okChan := make(chan bool)
+	// getting outputs
+	go func() {
+		outputs := make(map[int]map[string]interface{})
+		channels := getChannelsForFanIn(f.Id)
+		for br, ch := range channels {
+			outputs[br] = <-ch // TODO: no one send to this channel!!!
+		}
+		fmt.Println("retrieved all inputs")
+		okChan <- true
+		fanInOutput := make(map[string]interface{})
+		if f.Mode == OneMapEntryForEachBranch {
+			for i, outMap := range outputs {
+				for name, value := range outMap {
+					fanInOutput[fmt.Sprintf("%s_%d", name, i)] = value
+				}
+			}
+		} else if f.Mode == OneMapArrayEntryForEachBranch {
+			fmt.Println("OneMapArrayEntryForEachBranch not implemented")
+			okChan <- false
+			return
+		}
+		fanInOutputChannel := getOutputChannelForFanIn(f.Id)
+		fanInOutputChannel <- fanInOutput
+
+	}()
+	// implementing timeout
+	cancel := time.AfterFunc(f.timeout, func() {
+		fmt.Println("timeout elapsed")
+		okChan <- false
+	})
+
+	ok := <-okChan
+	if ok {
+		cancel.Stop() // stopping timer, we're all good
+		// merging outputs with the chosen mergeMode
+		fanInOutputChannel := getOutputChannelForFanIn(f.Id)
+		output := <-fanInOutputChannel
+		return output, nil
+	} else {
+		return nil, fmt.Errorf("fan-in merge failed - timeout occurred")
+	}
 }
 
 func (f *FanInNode) AddInput(dagNode DagNode) error {
@@ -91,8 +185,7 @@ func (f *FanInNode) ReceiveInput(input map[string]interface{}) error {
 }
 
 func (f *FanInNode) PrepareOutput(output map[string]interface{}) error {
-	//TODO implement me
-	panic("implement me")
+	return nil // we should not do nothing, the output should be already ok
 }
 
 func (f *FanInNode) GetNext() []DagNode {
@@ -123,4 +216,8 @@ func (f *FanInNode) setBranchId(number int) {
 }
 func (f *FanInNode) GetBranchId() int {
 	return f.BranchId
+}
+
+func (f *FanInNode) GetId() string {
+	return f.Id
 }

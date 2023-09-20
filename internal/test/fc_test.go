@@ -26,7 +26,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = false
+const INTEGRATION_TEST = true
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -375,7 +375,7 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 // TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_BroadcastFanOut(t *testing.T) {
-	t.Skip() // TODO: correggere
+	// t.Skip() // TODO: correggere
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
@@ -410,17 +410,17 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	resultMap, err2 := fcomp.Invoke(params)
 	u.AssertNil(t, err2)
 
-	// check result
+	// check multiple result
 	output := resultMap.Result[fInc.Signature.GetOutputs()[0].Name]
-
-	// res, errConv := strconv.Atoi(output.(string))
-	u.AssertEquals(t, 2, output)
+	u.AssertNonNil(t, output)
+	for _, res := range output.(map[string]interface{}) {
+		u.AssertEquals(t, 2, res)
+	}
 	// u.AssertNil(t, errConv)
 	fmt.Println(resultMap)
 
-	// cleaning up function composition and function
+	// cleaning up function composition and functions
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
-	//}
 
 }

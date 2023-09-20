@@ -20,19 +20,21 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id       string
-	BranchId int
-	input    map[string]interface{}
-	OutputTo DagNode
-	Func     string
+	Id         string
+	BranchId   int
+	input      map[string]interface{}
+	OutputTo   DagNode
+	Func       string
+	IsParallel bool
 	// Request   *function.Request
 	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
 
 func NewSimpleNode(f string) *SimpleNode {
 	return &SimpleNode{
-		Id:   shortuuid.New(),
-		Func: f,
+		Id:         shortuuid.New(),
+		Func:       f,
+		IsParallel: false,
 		// Request: nil,
 	}
 }
@@ -56,7 +58,7 @@ func (s *SimpleNode) Exec() (map[string]interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
 	}
-
+	fmt.Printf("executing simple node %s", s.Id)
 	// creates the function if not exists. Maybe someone deleted by accident the function before starting the dag.
 	//if !s.Func.Exists() {
 	//	errNotSaved := s.Func.SaveToEtcd()
@@ -160,38 +162,20 @@ func (s *SimpleNode) PrepareOutput(output map[string]interface{}) error {
 	for _, n := range s.GetNext() {
 		// TODO: this mapping should only be done with SimpleNode(s)? Yes, but this method must be implemented for all nodes
 		// we have only one output node
-		switch n.(type) {
+		switch nodeType := n.(type) {
 		case *SimpleNode:
-			return n.(*SimpleNode).MapOutput(output)
-			//sign := n.(*SimpleNode).function.Signature
-			//// if there are no inputs, we do nothing
-			//for _, def := range sign.GetInputs() {
-			//	// if output has same name as input, we do not need to change name
-			//	_, present := output[def.Name]
-			//	if present {
-			//		continue
-			//	}
-			//	// find an entry in the output map that successfully checks the type of the InputDefinition
-			//	key, ok := def.FindEntryThatTypeChecks(output)
-			//	if ok {
-			//		// we get the output value
-			//		val := output[key]
-			//		// we remove the output entry ...
-			//		delete(output, key)
-			//		// and replace with the input entry
-			//		output[def.Name] = val
-			//	} else {
-			//		// otherwise if no one of the entry typechecks we are doomed
-			//		return fmt.Errorf("no output entry input-checks with the next function")
-			//	}
-			//}
-			//// if the outputs are more than the needed input, we do nothing
+			return nodeType.MapOutput(output) // needed to convert type of data from one node to the next so that its signature type-checks
+			//case *FanInNode:
+			//	fanInChannel := nodeType.getChannelForParallelBranch(s.BranchId) // TODO: MapOutput is needed?
+			//	fanInChannel <- output
+			//	return nil
 		}
 	}
 
 	return nil
 }
 
+// MapOutput transforms the output for the next simpleNode, to make it compatible with its Signature
 func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 	funct, exists := function.GetFunction(s.Func)
 	if !exists {
@@ -251,4 +235,8 @@ func (s *SimpleNode) setBranchId(number int) {
 }
 func (s *SimpleNode) GetBranchId() int {
 	return s.BranchId
+}
+
+func (s *SimpleNode) GetId() string {
+	return s.Id
 }

@@ -33,6 +33,7 @@ type ParallelScatterBranchBuilder struct {
 	dagBuilder    *DagBuilder
 	completed     int
 	terminalNodes []DagNode
+	fanOutId      string
 }
 
 // ParallelBroadcastBranchBuilder can hold different dags executed in parallel
@@ -40,6 +41,7 @@ type ParallelBroadcastBranchBuilder struct {
 	dagBuilder    *DagBuilder
 	completed     int
 	terminalNodes []DagNode
+	fanOutId      string
 }
 
 func NewDagBuilder() *DagBuilder {
@@ -120,8 +122,7 @@ func (b *DagBuilder) AddScatterFanOutNode(fanOutDegree int) *ParallelScatterBran
 	b.branches = fanOutDegree
 	b.prevNode = fanOut
 	b.dag.Width = fanOutDegree
-
-	return &ParallelScatterBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0)}
+	return &ParallelScatterBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0), fanOutId: fanOut.Id}
 }
 
 // AddBroadcastFanOutNode connects a fanout node to the previous node. From the fanout node, multiple branch are created and each one of those must be fully defined, eventually ending in a FanInNode
@@ -144,7 +145,7 @@ func (b *DagBuilder) AddBroadcastFanOutNode(fanOutDegree int) *ParallelBroadcast
 	b.prevNode = fanOut
 	b.dag.Width = fanOutDegree
 
-	return &ParallelBroadcastBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0)}
+	return &ParallelBroadcastBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0), fanOutId: fanOut.Id}
 }
 
 // NextBranch is used to chain the next branch to a Dag and then returns the ChoiceBranchBuilder.
@@ -375,10 +376,12 @@ func (p *ParallelScatterBranchBuilder) ForEachParallelBranch(dagger func() (*Dag
 
 func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBuilder {
 	fmt.Println("Added fan in node after fanout in Dag")
-	fanInNode := NewFanInNode(mergeMode, nil)
-	fanInNode.FanInDegree = p.dagBuilder.prevNode.Width()
+	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers()
+
+	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
 	BranchNumber++
 	fanInNode.setBranchId(BranchNumber)
+	// TODO: set fanin inside fanout, so that we know which fanin are dealing with
 	for _, n := range p.terminalNodes {
 		// terminal nodes
 		errAdd := n.AddOutput(fanInNode)
@@ -389,13 +392,20 @@ func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBui
 	}
 	p.dagBuilder.dag.addNode(fanInNode)
 	p.dagBuilder.prevNode = fanInNode
+	// finding fanOut node, then assigning corresponding fanIn
+	fanOut, ok := p.dagBuilder.dag.find(p.fanOutId)
+	if ok {
+		fanOut.(*FanOutNode).AssociatedFanIn = fanInNode.Id
+	} else {
+		p.dagBuilder.appendError(fmt.Errorf("failed to find fanOutNode"))
+	}
 	return p.dagBuilder
 }
 
 func (p *ParallelBroadcastBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBuilder {
 	fmt.Println("Added fan in node after fanout in Dag")
-	fanInNode := NewFanInNode(mergeMode, nil)
-	fanInNode.FanInDegree = p.dagBuilder.prevNode.Width()
+	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers()
+	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
 	BranchNumber++
 	fanInNode.setBranchId(BranchNumber)
 	for _, n := range p.terminalNodes {
@@ -408,6 +418,13 @@ func (p *ParallelBroadcastBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagB
 	}
 	p.dagBuilder.dag.addNode(fanInNode)
 	p.dagBuilder.prevNode = fanInNode
+	// finding fanOut node, then assigning corresponding fanIn
+	fanOut, ok := p.dagBuilder.dag.find(p.fanOutId)
+	if ok {
+		fanOut.(*FanOutNode).AssociatedFanIn = fanInNode.Id
+	} else {
+		p.dagBuilder.appendError(fmt.Errorf("failed to find fanOutNode"))
+	}
 	return p.dagBuilder
 }
 

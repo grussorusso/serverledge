@@ -95,3 +95,7 @@ func (e *EndNode) setBranchId(number int) {
 func (e *EndNode) GetBranchId() int {
 	return 0
 }
+
+func (e *EndNode) GetId() string {
+	return e.Id
+}

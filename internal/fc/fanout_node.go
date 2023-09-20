@@ -12,12 +12,13 @@ import (
 
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
-	Id           string
-	BranchId     int
-	input        map[string]interface{}
-	OutputTo     []DagNode
-	FanOutDegree int
-	Type         FanOutType
+	Id              string
+	BranchId        int
+	input           map[string]interface{}
+	OutputTo        []DagNode
+	FanOutDegree    int
+	Type            FanOutType
+	AssociatedFanIn string
 }
 type FanOutType int
 
@@ -30,7 +31,7 @@ type ScatterMode int
 
 const (
 	RoundRobin                    = iota // copies each map entry in an unordered, round-robin manner, so that more or less all branches have the same number of input
-	SplitEqually                         // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
+	SplitEqually                  = iota // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
 	OneMapEntryForEachBranch             // Given N branch, gives one entry in an unordered manner to one branch. If there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
 	OneMapArrayEntryForEachBranch        // Given N branch, gives each array entry in an ordered manner to one branch. When there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
 )
@@ -42,6 +43,14 @@ func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
 		FanOutDegree: fanOutDegree,
 		Type:         fanOutType,
 	}
+}
+
+func (f *FanOutNode) getBranchNumbers() []int {
+	branchNumbers := make([]int, f.FanOutDegree)
+	for i, o := range f.OutputTo {
+		branchNumbers[i] = o.GetBranchId()
+	}
+	return branchNumbers
 }
 
 func (f *FanOutNode) Equals(cmp types.Comparable) bool {
@@ -178,4 +187,8 @@ func (f *FanOutNode) setBranchId(number int) {
 
 func (f *FanOutNode) GetBranchId() int {
 	return f.BranchId
+}
+
+func (f *FanOutNode) GetId() string {
+	return f.Id
 }

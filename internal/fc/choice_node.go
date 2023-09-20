@@ -165,3 +165,7 @@ func (c *ChoiceNode) ToString() string {
 	conditions += ">"
 	return fmt.Sprintf("[ChoiceNode(%d): %s] ", c.Alternatives, conditions)
 }
+
+func (c *ChoiceNode) GetId() string {
+	return c.Id
+}
