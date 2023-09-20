@@ -30,7 +30,7 @@ func (p *CustomCloudOffloadPolicy) Init() {
 func (p *CustomCloudOffloadPolicy) OnCompletion(r *scheduledRequest) {
 	//log.Printf("Completed execution of %s in %f\n", r.Fun.Name, r.ExecReport.ResponseTime)
 	//Completed(r.Request, false)
-	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD {
+	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD_CLOUD {
 		de.Completed(r, OFFLOADED_CLOUD)
 	} else {
 		de.Completed(r, LOCAL)

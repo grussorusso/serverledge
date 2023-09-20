@@ -76,11 +76,13 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	//FIXME
 	if !r.CanDoOffloading {
+		// Can be executed only locally or dropped
 		pD = pD / (pD + pL)
 		pL = pL / (pD + pL)
 		pC = 0
 		pE = 0
 	} else if !canExecute(r.Fun) {
+		// Node can't execute function locally
 		if pD == 0 && pC == 0 {
 			pD = 0
 			pC = 1
@@ -113,6 +115,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		return EDGE_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
+		// fixme: why dropped is false here?
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
 			dropped:          false,
@@ -325,9 +328,10 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println("DB error", err)
 	}
 
+	// Query for OffloadLatencyCloud
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: %d)
-										|> filter(fn: (r) => r["_field"] == "offload_latency" and r["completed"] == "true")
+										|> filter(fn: (r) => r["_field"] == "offload_latency_cloud" and r["completed"] == "true")
 										|> group()
 										|> median()`, bucketName, start.Unix())
 
@@ -336,6 +340,28 @@ func (d *decisionEngineFlux) queryDb() {
 		// Iterate over query response
 		for result.Next() {
 			CloudOffloadLatency = result.Record().Values()["_value"].(float64)
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for offloadLatencyEdge
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> filter(fn: (r) => r["_field"] == "offload_latency_edge" and r["completed"] == "true")
+										|> group()
+										|> median()`, bucketName, start.Unix())
+
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			EdgeOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
 
 		// check for an error
@@ -437,8 +463,10 @@ func (d *decisionEngineFlux) queryDb() {
 }
 
 /*
-**
-Function that handles the evaluation - maybe here is data!
+Function that:
+- Handles the evaluation and calculation of the cold start probabilities.
+- Writes the report of the request completion into the data store (influxdb).
+- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
 */
 func (d *decisionEngineFlux) handler() {
 	evaluationTicker :=
@@ -446,8 +474,7 @@ func (d *decisionEngineFlux) handler() {
 
 	for {
 		select {
-		case _ = <-evaluationTicker.C:
-			// FIXME new evaluation - add edge offloading probability in updateProbability
+		case _ = <-evaluationTicker.C: // Evaluation handler
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
@@ -470,11 +497,10 @@ func (d *decisionEngineFlux) handler() {
 			d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
-			// FIXME: add update probabiliy edge offloading
 			d.updateProbabilities()
 
-		case r := <-requestChannel:
-			// FIXME: new request received - added data to influxdb - maybe differentiate betweek edge offloading and cloud offloading
+		case r := <-requestChannel: // Result storage handler
+			// New request received - added data to influxdb - need to differentiate between edge offloading and cloud offloading
 			var fKeys map[string]interface{}
 			offloaded := "false"
 			warmStart := "false"
@@ -485,9 +511,14 @@ func (d *decisionEngineFlux) handler() {
 				completed = "true"
 			}
 
-			if r.ExecReport.OffloadLatency != 0 {
+			if r.ExecReport.OffloadLatencyCloud != 0 {
 				offloaded = "true"
-				fKeys["offload_latency"] = r.ExecReport.OffloadLatency
+				fKeys["offload_latency_cloud"] = r.ExecReport.OffloadLatencyCloud
+			}
+
+			if r.ExecReport.OffloadLatencyEdge != 0 {
+				offloaded = "true"
+				fKeys["offload_latency_edge"] = r.ExecReport.OffloadLatencyEdge
 			}
 
 			if r.ExecReport.IsWarmStart {
@@ -500,9 +531,15 @@ func (d *decisionEngineFlux) handler() {
 				time.Now())
 
 			writeAPI.WritePoint(p)
-		case arr := <-arrivalChannel:
-			// FIXME: new function arrival - change classFunctionInfo to add probEdgeOffloading
+		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			name := arr.Fun.Name
+
+			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
+			// Packet size is useful to calculate bandwidth
+			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
+			log.Println("packet size cloud: ", packetSizeCloud)
+			log.Println("packet size edge: ", packetSizeEdge)
 
 			fInfo, prs := d.m[name]
 			if !prs {
@@ -511,6 +548,8 @@ func (d *decisionEngineFlux) handler() {
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{1, 1, 1},
+					packetSizeCloud: packetSizeCloud,
+					packetSizeEdge:  packetSizeEdge,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo
@@ -532,14 +571,6 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			cFInfo.timeSlotsWithoutArrivals = 0
-			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
-			// Packet size is useful to calculate bandwidth
-			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
-			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
-			log.Println("packet size cloud: ", packetSizeCloud)
-			log.Println("packet size edge: ", packetSizeEdge)
-
-			// TODO: aggiungi a fInfo il valore della dimensione del pacchetto (secondo me è diverso per ogni funzione)
 
 		}
 	}

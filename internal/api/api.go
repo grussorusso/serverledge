@@ -76,7 +76,8 @@ func InvokeFunction(c echo.Context) error {
 	r.ExecReport.Name = funcName
 	r.ExecReport.Class = className
 	r.ExecReport.SchedAction = ""
-	r.ExecReport.OffloadLatency = 0.0
+	r.ExecReport.OffloadLatencyCloud = 0.0
+	r.ExecReport.OffloadLatencyEdge = 0.0
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)

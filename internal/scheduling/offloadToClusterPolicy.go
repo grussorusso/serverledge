@@ -25,8 +25,10 @@ func (p *OffloadToCluster) Init() {
 }
 
 func (p *OffloadToCluster) OnCompletion(r *scheduledRequest) {
-	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD {
+	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD_CLOUD {
 		engine.Completed(r, OFFLOADED_CLOUD)
+	} else if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD_EDGE {
+		engine.Completed(r, OFFLOADED_EDGE)
 	} else {
 		engine.Completed(r, LOCAL)
 	}

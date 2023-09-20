@@ -43,6 +43,8 @@ message Function {
   required float pcold = 11;                    // probabilità cold start locale
   required float pcold_offloaded_cloud = 12;    // probabilità cold start nel cloud
   required float pcold_offloaded_edge = 13;     // probabilità cold start nell'edge
+  required float bandwidth_cloud = 14;        // bandwidth to cloud node calculated with the request packet
+  required float bandwidth_edge = 15;         // bandwidth to edge node calculated with the request packet
 }
 
 message QosClass {

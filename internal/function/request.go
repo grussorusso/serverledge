@@ -24,17 +24,18 @@ type RequestQoS struct {
 }
 
 type ExecutionReport struct {
-	// fixme: add fields to handle edge offloading report
-	Name           string
-	Class          string
-	Result         string
-	ResponseTime   float64
-	IsWarmStart    bool
-	InitTime       float64
-	OffloadLatency float64
-	Duration       float64
-	SchedAction    string
-}
+	Name                string
+	Class               string
+	Result              string
+	ResponseTime        float64
+	IsWarmStart         bool
+	InitTime            float64
+	Duration            float64
+	SchedAction         string
+	VerticallyOffloaded bool
+	OffloadLatencyCloud float64
+	OffloadLatencyEdge  float64
+} // if verticallyOffloaded == true and SchedAction == "offloa
 
 type Response struct {
 	Success bool

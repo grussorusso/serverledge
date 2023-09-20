@@ -17,9 +17,10 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	prob := rGen.Float64()
 
-	var pe float64
-	var po float64
-	var pd float64
+	var pL float64
+	var pC float64
+	var pE float64
+	var pD float64
 
 	var cFInfo *classFunctionInfo
 
@@ -27,46 +28,62 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	fInfo, prs := d.m[name]
 	if !prs {
-		pe = startingLocalProb
-		po = startingCloudOffloadProb
-		pd = 1 - (pe + po)
+		pL = startingLocalProb
+		pC = startingCloudOffloadProb
+		pE = startingEdgeOffloadProb
+		pD = 1 - (pL + pC + pE)
 	} else {
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
 		if !prs {
-			pe = startingLocalProb
-			po = startingCloudOffloadProb
-			pd = 1 - (pe + po)
+			pL = startingLocalProb
+			pC = startingCloudOffloadProb
+			pE = startingEdgeOffloadProb
+			pD = 1 - (pL + pC + pE)
 		} else {
-			pe = cFInfo.probExecuteLocal
-			po = cFInfo.probOffloadCloud
-			pd = cFInfo.probDrop
+			pL = cFInfo.probExecuteLocal
+			pC = cFInfo.probOffloadCloud
+			pE = cFInfo.probOffloadEdge
+			pD = cFInfo.probDrop
 		}
 	}
 
-	log.Println("Probabilities are", pe, po, pd)
+	log.Println("Probabilities are", pL, pC, pE, pD)
 
 	if !r.CanDoOffloading {
-		pd = pd / (pd + pe)
-		pe = pe / (pd + pe)
-		po = 0
+		// Can be executed only locally or dropped
+		pD = pD / (pD + pL)
+		pL = pL / (pD + pL)
+		pC = 0
+		pE = 0
 	} else if !canExecute(r.Fun) {
-		if pd == 0 && po == 0 {
-			pd = 0
-			po = 1
-			pe = 0
+		// Node can't execute function locally
+		if pD == 0 && pC == 0 {
+			pD = 0
+			pC = 1
+			pE = 0
+			pL = 0
+		} else if pD == 0 && pE == 0 {
+			pD = 0
+			pC = 0
+			pE = 1
+			pL = 0
 		} else {
-			pd = pd / (pd + po)
-			po = po / (pd + po)
-			pe = 0
+			pD = pD / (pD + pC + pE)
+			pC = pC / (pD + pC + pE)
+			pE = pE / (pD + pC + pE)
+			pL = 0
 		}
 	}
 
-	if prob <= pe {
+	if prob <= pL {
 		log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
-	} else if prob <= pe+po {
+	} else if prob <= pL+pC {
 		log.Println("Execute OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
+	} else if prob <= pL+pC+pE {
+		log.Println("Execute EDGE OFFLOAD")
+		return EDGE_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
 		return DROP_REQUEST
@@ -86,6 +103,12 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 	go d.handler()
 }
 
+/*
+Function that:
+- Handles the evaluation and calculation of the cold start probabilities.
+- Writes the report of the request completion into the data store (influxdb).
+- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
+*/
 func (d *decisionEngineMem) handler() {
 	evaluationTicker :=
 		time.NewTicker(evaluationInterval)
@@ -94,7 +117,7 @@ func (d *decisionEngineMem) handler() {
 
 	for {
 		select {
-		case _ = <-evaluationTicker.C:
+		case _ = <-evaluationTicker.C: // Evaluation handler
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
 			log.Println("Evaluating")
@@ -123,10 +146,18 @@ func (d *decisionEngineMem) handler() {
 				}
 			}
 
-		case r := <-requestChannel:
+		case r := <-requestChannel: // Result storage handler
+			// New request received - data is updated in local memory - need to differentiate between edge offloading and cloud offloading
 			d.updateData(r)
-		case arr := <-arrivalChannel:
+		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			name := arr.Fun.Name
+
+			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
+			// Packet size is useful to calculate bandwidth
+			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
+			log.Println("packet size cloud: ", packetSizeCloud)
+			log.Println("packet size edge: ", packetSizeEdge)
 
 			fInfo, prs := d.m[name]
 			if !prs {
@@ -135,6 +166,8 @@ func (d *decisionEngineMem) handler() {
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{1, 1, 1},
+					packetSizeCloud: packetSizeCloud,
+					packetSizeEdge:  packetSizeEdge,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo
@@ -145,6 +178,7 @@ func (d *decisionEngineMem) handler() {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
+					probOffloadEdge:          startingEdgeOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
@@ -157,14 +191,6 @@ func (d *decisionEngineMem) handler() {
 			cFInfo.arrivalCount++
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
 			cFInfo.timeSlotsWithoutArrivals = 0
-			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
-			// Packet size is useful to calculate bandwidth
-			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
-			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
-			log.Println("packet size cloud: ", packetSizeCloud)
-			log.Println("packet size edge: ", packetSizeEdge)
-
-			// TODO: aggiungi a fInfo il valore della dimensione del pacchetto (secondo me è diverso per ogni funzione)
 
 		case _ = <-pcoldTicker.C:
 			//Reset arrivals for the time slot
@@ -305,9 +331,15 @@ func (d *decisionEngineMem) updateData(r completedRequest) {
 		fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
 	}
 
-	if r.ExecReport.OffloadLatency != 0 {
-		diff := r.ExecReport.OffloadLatency - CloudOffloadLatency
-		CloudOffloadLatency = CloudOffloadLatency +
-			(1/float64(fInfo.count[location]))*(diff)
+	// Update offload latency cloud
+	if r.ExecReport.OffloadLatencyCloud != 0 {
+		diff := r.ExecReport.OffloadLatencyCloud - CloudOffloadLatency
+		CloudOffloadLatency = CloudOffloadLatency + (1/float64(fInfo.count[location]))*(diff)
+	}
+
+	// Update offload latency edge
+	if r.ExecReport.OffloadLatencyEdge != 0 {
+		diff := r.ExecReport.OffloadLatencyEdge - EdgeOffloadLatency
+		EdgeOffloadLatency = EdgeOffloadLatency + (1/float64(fInfo.count[location]))*(diff)
 	}
 }

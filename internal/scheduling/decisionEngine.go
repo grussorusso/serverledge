@@ -52,7 +52,8 @@ type functionInfo struct {
 	memory           int64      //Memory requested by the function
 	cpu              float64    //CPU requested by the function
 	probCold         [3]float64 //Probability of a cold start when requesting the function
-	packetSize       int        //Size of the function packet to send to possible host
+	packetSizeCloud  int        //Size of the function packet to send to possible host (cloud)
+	packetSizeEdge   int        //Size of the function packet to send to possible host (edge)
 
 	//Map containing information about function requests for every class
 	invokingClasses map[string]*classFunctionInfo
@@ -120,6 +121,7 @@ func canExecute(function *function.Function) bool {
 	return false
 }
 
+// Recovers the remote host for cloud or edge offloading
 func recoverRemoteUrl(r *scheduledRequest, isCloudUrl bool) string {
 	if isCloudUrl {
 		return config.GetString(config.CLOUD_URL, "")
@@ -129,6 +131,7 @@ func recoverRemoteUrl(r *scheduledRequest, isCloudUrl bool) string {
 	}
 }
 
+// Calculates the packet size of the message offloaded to another host
 func calculatePacketSize(r *scheduledRequest, isCloudCalc bool) int {
 	serverUrl := recoverRemoteUrl(r, isCloudCalc)
 	request := client.InvocationRequest{Params: r.Params,

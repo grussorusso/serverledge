@@ -21,6 +21,20 @@ func calculateAggregatedMem() float32 {
 	return aggrMem
 }
 
+// Calculate bandwidth to cloud or to edge node
+func calculateBandwidth(packetSize int, isCloudCalc bool) float64 {
+	if isCloudCalc {
+		if CloudOffloadLatency != 0 {
+			return float64(packetSize) / CloudOffloadLatency
+		}
+	} else {
+		if EdgeOffloadLatency != 0 {
+			return float64(packetSize) / EdgeOffloadLatency
+		}
+	}
+	return 0
+}
+
 func solve(m map[string]*functionInfo) {
 	// FIXME: modify to implement new model with edge offloading probability
 	if len(m) == 0 {
@@ -70,6 +84,8 @@ func solve(m map[string]*functionInfo) {
 		pCold := float32(fInfo.probCold[LOCAL])
 		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
 		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
+		bandwidthCloud := float32(calculateBandwidth(fInfo.packetSizeCloud, true))
+		bandwidthEdge := float32(calculateBandwidth(fInfo.packetSizeEdge, false))
 
 		x := &pb.Function{
 			Name:                   &name,
@@ -85,6 +101,8 @@ func solve(m map[string]*functionInfo) {
 			Pcold:                  &pCold,
 			PcoldOffloadedCloud:    &pColdOffloadedCloud,
 			PcoldOffloadedEdge:     &pColdOffloadedEdge,
+			BandwidthCloud:         &bandwidthCloud,
+			BandwidthEdge:          &bandwidthEdge,
 		}
 
 		functionList = append(functionList, x)

@@ -16,7 +16,8 @@ import (
 	"github.com/grussorusso/serverledge/internal/registration"
 )
 
-const SCHED_ACTION_OFFLOAD = "O"
+const SCHED_ACTION_OFFLOAD_CLOUD = "O_C"
+const SCHED_ACTION_OFFLOAD_EDGE = "O_E"
 
 func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	nearbyServersMap := registration.Reg.NearbyServersMap
@@ -140,8 +141,15 @@ func Offload(r *function.Request, serverUrl string) error {
 	// It was originally computed as "report.Arrival - sendingTime"
 	// Check if r.ExecReport.Duration and r.ExecReport.InitTime are greater than 0
 
-	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
-	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
+	if checkIfCloudOffloading(serverUrl) {
+		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
+		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
+		r.ExecReport.VerticallyOffloaded = true
+	} else {
+		r.ExecReport.OffloadLatencyEdge = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
+		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_EDGE
+		r.ExecReport.VerticallyOffloaded = false
+	}
 
 	policy.OnCompletion(&scheduledRequest{
 		Request:         r,
@@ -156,6 +164,18 @@ func Offload(r *function.Request, serverUrl string) error {
 	return nil
 }
 
+// Checks if the offloading is vertical or horizontal
+func checkIfCloudOffloading(serverUrl string) bool {
+	allCloudNodes := registration.Reg.CloudServersMap
+	for key, info := range allCloudNodes {
+		log.Printf("Server with key %v was chosen to host offloading", key)
+		if serverUrl == info.Url {
+			return true
+		} // vertical offloading
+	}
+	return false // horizontal offloading
+}
+
 func addOffloadedMetrics(r *function.Request) {
 	metrics.AddCompletedInvocationOffloaded(r.Fun.Name)
 	metrics.AddFunctionDurationOffloadedValue(r.Fun.Name, r.ExecReport.Duration)
@@ -164,7 +184,8 @@ func addOffloadedMetrics(r *function.Request) {
 		metrics.AddColdStartOffload(r.Fun.Name, r.ExecReport.InitTime)
 	}
 
-	metrics.AddOffloadingTime(r.Fun.Name, r.ExecReport.OffloadLatency)
+	metrics.AddOffloadingTime(r.Fun.Name, r.ExecReport.OffloadLatencyCloud)
+	// todo add offloading time for edge
 }
 
 func OffloadAsync(r *function.Request, serverUrl string) error {

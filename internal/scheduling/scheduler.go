@@ -75,7 +75,8 @@ func Run(p Policy) {
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(c.scheduledRequest)
 
-			if metrics.Enabled && r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+			// fixme: why always true?
+			if metrics.Enabled && (r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD_CLOUD || r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD_EDGE) {
 				addCompletedMetrics(r)
 			}
 		}
