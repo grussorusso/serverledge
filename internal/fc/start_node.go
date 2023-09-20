@@ -86,3 +86,7 @@ func (s *StartNode) setBranchId(number int) {
 func (s *StartNode) GetBranchId() int {
 	return 0
 }
+
+func (s *StartNode) GetId() string {
+	return s.Id
+}
