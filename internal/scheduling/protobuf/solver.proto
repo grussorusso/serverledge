@@ -13,7 +13,7 @@ service Solver {
 // argument
 message Request {
   required float offload_latency_cloud = 1;   // offload latency cloud
-  required float offload_latency_edge = 2;    // offload latency edge todo to be calculated
+  required float offload_latency_edge = 2;    // offload latency edge
   repeated Function functions = 3;            // functions
   repeated QosClass classes = 4;              // classes
   required float cost_cloud = 5;              // cost of the request if executed on cloud
