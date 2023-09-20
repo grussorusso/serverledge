@@ -59,9 +59,9 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 			pE = startingEdgeOffloadProb
 			pD = 1 - (pL + pC + pE)
 		} else {
-			pL = cFInfo.probLocalExecute
-			pC = cFInfo.probCloudOffload
-			pE = cFInfo.probEdgeOffload
+			pL = cFInfo.probExecuteLocal
+			pC = cFInfo.probOffloadCloud
+			pE = cFInfo.probOffloadEdge
 			pD = cFInfo.probDrop
 		}
 	}
@@ -264,8 +264,8 @@ func (d *decisionEngineFlux) queryDb() {
 			cFInfo, prs := fInfo.invokingClasses[class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probLocalExecute:         startingLocalProb,
-					probCloudOffload:         startingCloudOffloadProb,
+					probExecuteLocal:         startingLocalProb,
+					probOffloadCloud:         startingCloudOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
@@ -519,9 +519,9 @@ func (d *decisionEngineFlux) handler() {
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probLocalExecute:         startingLocalProb,
-					probCloudOffload:         startingCloudOffloadProb,
-					probEdgeOffload:          startingEdgeOffloadProb,
+					probExecuteLocal:         startingLocalProb,
+					probOffloadCloud:         startingCloudOffloadProb,
+					probOffloadEdge:          startingEdgeOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb + startingEdgeOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
@@ -532,6 +532,15 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			cFInfo.timeSlotsWithoutArrivals = 0
+			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
+			// Packet size is useful to calculate bandwidth
+			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
+			log.Println("packet size cloud: ", packetSizeCloud)
+			log.Println("packet size edge: ", packetSizeEdge)
+
+			// TODO: aggiungi a fInfo il valore della dimensione del pacchetto (secondo me è diverso per ogni funzione)
+
 		}
 	}
 }

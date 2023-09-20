@@ -1,8 +1,13 @@
 package scheduling
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/grussorusso/serverledge/internal/client"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -29,29 +34,26 @@ var evaluationInterval time.Duration
 var CloudOffloadLatency = 0.0 //RTT cloud
 var EdgeOffloadLatency = 0.0  // RTT edge
 
+/*
+*
+
+	 	Stores the function information and metrics.
+		Metrics are stored as an array with size 3, to maintain also horizontal offloading data
+*/
 type functionInfo struct {
-	name string
-	//Number of function requests
-	count [3]int64
-	//Mean duration time
-	meanDuration [3]float64
-	//Variance of the duration time
-	varianceDuration [3]float64
-	//Count the number of cold starts to estimate probCold
-	coldStartCount [3]int64
-	//Count the number of calls in the time slot
-	timeSlotCount [3]int64
-	//TODO maybe remove
-	//Number of requests that missed the deadline
-	missed int
-	//Average of init times when cold start
-	initTime [3]float64
-	//Memory requested by the function
-	memory int64
-	//CPU requested by the function
-	cpu float64
-	//Probability of a cold start when requesting the function
-	probCold [3]float64
+	name             string
+	count            [3]int64   //Number of function requests
+	meanDuration     [3]float64 //Mean duration time
+	varianceDuration [3]float64 //Variance of the duration time
+	coldStartCount   [3]int64   //Count the number of cold starts to estimate probCold
+	timeSlotCount    [3]int64   //Count the number of calls in the time slot
+	missed           int        //Number of requests that missed the deadline TODO maybe remove
+	initTime         [3]float64 //Average of init times when cold start
+	memory           int64      //Memory requested by the function
+	cpu              float64    //CPU requested by the function
+	probCold         [3]float64 //Probability of a cold start when requesting the function
+	packetSize       int        //Size of the function packet to send to possible host
+
 	//Map containing information about function requests for every class
 	invokingClasses map[string]*classFunctionInfo
 }
@@ -60,9 +62,9 @@ type classFunctionInfo struct {
 	//Pointer used for accessing information about the function
 	*functionInfo
 	//
-	probLocalExecute float64
-	probCloudOffload float64
-	probEdgeOffload  float64
+	probExecuteLocal float64
+	probOffloadCloud float64
+	probOffloadEdge  float64
 	probDrop         float64
 	//
 	arrivals     float64
@@ -116,6 +118,37 @@ func canExecute(function *function.Function) bool {
 	}
 
 	return false
+}
+
+func recoverRemoteUrl(r *scheduledRequest, isCloudUrl bool) string {
+	if isCloudUrl {
+		return config.GetString(config.CLOUD_URL, "")
+	} else {
+		// pick the edge node used for offloading and recover its url
+		return pickEdgeNodeForOffloading(r)
+	}
+}
+
+func calculatePacketSize(r *scheduledRequest, isCloudCalc bool) int {
+	serverUrl := recoverRemoteUrl(r, isCloudCalc)
+	request := client.InvocationRequest{Params: r.Params,
+		QoSMaxRespT: r.MaxRespT,
+		Async:       r.Async}
+	invocationBody, err := json.Marshal(request)
+	if err != nil {
+		log.Print(err)
+	}
+
+	// Calculate approximate packet size
+	sizePacket := len("POST /invoke/"+r.Fun.Name+" HTTP/1.1") +
+		len("Host: "+serverUrl) +
+		len("User-Agent: Go-http-client/1.1") +
+		len("Content-Length: "+fmt.Sprintf("%d", len(invocationBody))) +
+		len("Content-Type: application/json") +
+		len("\r\n\r\n") +
+		len(invocationBody)
+	log.Println("size packet calculated")
+	return sizePacket
 }
 
 type decisionEngine interface {

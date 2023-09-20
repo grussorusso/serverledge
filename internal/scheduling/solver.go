@@ -4,10 +4,22 @@ import (
 	"context"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/grussorusso/serverledge/internal/registration"
 	pb "github.com/grussorusso/serverledge/internal/scheduling/protobuf"
 	"google.golang.org/grpc"
 	"log"
 )
+
+// Calculates the aggregated total memory of nearby nodes
+func calculateAggregatedMem() float32 {
+	aggrMem := float32(0)
+	nearbyServerMap := registration.Reg.NearbyServersMap
+	for key := range nearbyServerMap {
+		info := nearbyServerMap[key]
+		aggrMem += float32(info.AvailableMemMB)
+	}
+	return aggrMem
+}
 
 func solve(m map[string]*functionInfo) {
 	// FIXME: modify to implement new model with edge offloading probability
@@ -55,9 +67,9 @@ func solve(m map[string]*functionInfo) {
 		initTimeLocal := float32(fInfo.initTime[LOCAL])
 		initTimeOffloadedCloud := float32(fInfo.initTime[OFFLOADED_CLOUD])
 		initTimeOffloadedEdge := float32(fInfo.initTime[OFFLOADED_EDGE])
-		pcold := float32(fInfo.probCold[LOCAL])
-		pcoldOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
-		pcoldOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
+		pCold := float32(fInfo.probCold[LOCAL])
+		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
+		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
 
 		x := &pb.Function{
 			Name:                   &name,
@@ -70,9 +82,9 @@ func solve(m map[string]*functionInfo) {
 			InitTime:               &initTimeLocal,
 			InitTimeOffloadedCloud: &initTimeOffloadedCloud,
 			InitTimeOffloadedEdge:  &initTimeOffloadedEdge,
-			Pcold:                  &pcold,
-			PcoldOffloadedCloud:    &pcoldOffloadedCloud,
-			PcoldOffloadedEdge:     &pcoldOffloadedEdge,
+			Pcold:                  &pCold,
+			PcoldOffloadedCloud:    &pColdOffloadedCloud,
+			PcoldOffloadedEdge:     &pColdOffloadedEdge,
 		}
 
 		functionList = append(functionList, x)
@@ -94,19 +106,22 @@ func solve(m map[string]*functionInfo) {
 		}
 	}
 
-	latencyCloud := float32(CloudOffloadLatency)
-	latencyEdge := float32(EdgeOffloadLatency)
-	cost := float32(config.GetFloat(config.CLOUD_COST, 0.01))
-	cpu := float32(node.Resources.MaxCPUs)
-	mem := float32(node.Resources.MaxMemMB)
+	aggregatedEdgeMemory := calculateAggregatedMem()
+	// log.Println("aggregatedEdgeMemory: ", aggregatedEdgeMemory)
+	offloadLatencyCloud := float32(CloudOffloadLatency)
+	offloadLatencyEdge := float32(EdgeOffloadLatency)
+	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
+	localCpu := float32(node.Resources.MaxCPUs)
+	localMem := float32(node.Resources.MaxMemMB)
 	response, err := client.Solve(context.Background(), &pb.Request{
-		CloudOffloadLatency: &latencyCloud,
-		EdgeOffloadLatency:  &latencyEdge,
+		OffloadLatencyCloud: &offloadLatencyCloud,
+		OffloadLatencyEdge:  &offloadLatencyEdge,
 		Functions:           functionList,
 		Classes:             classList,
-		Cost:                &cost,
-		Cpu:                 &cpu,
-		Memory:              &mem,
+		CostCloud:           &costCloud,
+		MemoryLocal:         &localMem,
+		CpuLocal:            &localCpu,
+		MemoryAggregate:     &aggregatedEdgeMemory,
 	})
 
 	if err != nil {
@@ -132,11 +147,16 @@ func solve(m map[string]*functionInfo) {
 				continue
 			}
 
-			cFInfo.probLocalExecute = float64(x.GetPL())
-			cFInfo.probCloudOffload = float64(x.GetPC())
-			cFInfo.probEdgeOffload = float64(x.GetPE())
+			cFInfo.probExecuteLocal = float64(x.GetPL())
+			cFInfo.probOffloadCloud = float64(x.GetPC())
+			cFInfo.probOffloadEdge = float64(x.GetPE())
 			cFInfo.probDrop = float64(x.GetPD())
 			cFInfo.share = float64(x.GetShare())
+			log.Println("probExecuteLocal: ", cFInfo.probExecuteLocal)
+			log.Println("probOffloadCloud: ", cFInfo.probOffloadCloud)
+			log.Println("probOffloadEdge: ", cFInfo.probOffloadEdge)
+			log.Println("probDrop: ", cFInfo.probDrop)
+			log.Println("share: ", cFInfo.share)
 		}
 	}
 

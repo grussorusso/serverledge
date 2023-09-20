@@ -208,6 +208,15 @@ func (dP *decisionEnginePrometheus) handler() {
 
 				fInfo.invokingClasses[arr.class] = cFInfo
 			}
+			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
+			// Packet size is useful to calculate bandwidth
+			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
+			log.Println("packet size cloud: ", packetSizeCloud)
+			log.Println("packet size edge: ", packetSizeEdge)
+
+			// TODO: aggiungi a fInfo il valore della dimensione del pacchetto (secondo me è diverso per ogni funzione)
+
 		}
 	}
 }

@@ -37,8 +37,8 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 			po = startingCloudOffloadProb
 			pd = 1 - (pe + po)
 		} else {
-			pe = cFInfo.probLocalExecute
-			po = cFInfo.probCloudOffload
+			pe = cFInfo.probExecuteLocal
+			po = cFInfo.probOffloadCloud
 			pd = cFInfo.probDrop
 		}
 	}
@@ -143,8 +143,8 @@ func (d *decisionEngineMem) handler() {
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
 				cFInfo = &classFunctionInfo{functionInfo: fInfo,
-					probLocalExecute:         startingLocalProb,
-					probCloudOffload:         startingCloudOffloadProb,
+					probExecuteLocal:         startingLocalProb,
+					probOffloadCloud:         startingCloudOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
 					arrivals:                 0,
 					arrivalCount:             0,
@@ -157,6 +157,14 @@ func (d *decisionEngineMem) handler() {
 			cFInfo.arrivalCount++
 			cFInfo.arrivals = cFInfo.arrivalCount / float64(evaluationInterval)
 			cFInfo.timeSlotsWithoutArrivals = 0
+			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
+			// Packet size is useful to calculate bandwidth
+			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
+			log.Println("packet size cloud: ", packetSizeCloud)
+			log.Println("packet size edge: ", packetSizeEdge)
+
+			// TODO: aggiungi a fInfo il valore della dimensione del pacchetto (secondo me è diverso per ogni funzione)
 
 		case _ = <-pcoldTicker.C:
 			//Reset arrivals for the time slot
