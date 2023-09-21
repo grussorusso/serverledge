@@ -84,6 +84,13 @@ func solve(m map[string]*functionInfo) {
 		pCold := float32(fInfo.probCold[LOCAL])
 		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
 		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
+		log.Println("pCold - local: ", pCold)
+		log.Println("pCold - cloud: ", pColdOffloadedCloud)
+		log.Println("pCold - edge: ", pColdOffloadedEdge)
+		log.Println("cloud rtt: ", CloudOffloadLatency)
+		log.Println("edge rtt: ", EdgeOffloadLatency)
+		log.Println("bandwidth cloud: ", calculateBandwidth(fInfo.packetSizeCloud, true))
+		log.Println("bandwidth edge: ", calculateBandwidth(fInfo.packetSizeEdge, false))
 		bandwidthCloud := float32(calculateBandwidth(fInfo.packetSizeCloud, true))
 		bandwidthEdge := float32(calculateBandwidth(fInfo.packetSizeEdge, false))
 

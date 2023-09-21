@@ -142,10 +142,12 @@ func Offload(r *function.Request, serverUrl string) error {
 	// Check if r.ExecReport.Duration and r.ExecReport.InitTime are greater than 0
 
 	if checkIfCloudOffloading(serverUrl) {
+		log.Println("is cloud offloading time!")
 		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
 		r.ExecReport.VerticallyOffloaded = true
 	} else {
+		log.Println("is edge offloading time")
 		r.ExecReport.OffloadLatencyEdge = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_EDGE
 		r.ExecReport.VerticallyOffloaded = false

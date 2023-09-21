@@ -501,6 +501,7 @@ func (d *decisionEngineFlux) handler() {
 
 		case r := <-requestChannel: // Result storage handler
 			// New request received - added data to influxdb - need to differentiate between edge offloading and cloud offloading
+			log.Println("Result storage handler - adding data to influxdb")
 			var fKeys map[string]interface{}
 			offloaded := "false"
 			warmStart := "false"
