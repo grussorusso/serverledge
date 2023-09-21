@@ -222,16 +222,19 @@ func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
 	}
 }
 
+// Recovers data from previous executions
 func (d *decisionEngineFlux) queryDb() {
 	//TODO edit time window
 	searchInterval := 24 * time.Hour
 
-	//Reset arrivals in data map
+	//Query for arrivals
 	for _, fInfo := range d.m {
 		for _, cFInfo := range fInfo.invokingClasses {
 			cFInfo.arrivals = 0
 		}
 	}
+
+	log.Println("bucket name: ", bucketName)
 
 	start := time.Now().Add(-evaluationInterval)
 	query := fmt.Sprintf(`from(bucket: "%s")
@@ -250,14 +253,14 @@ func (d *decisionEngineFlux) queryDb() {
 			funct := x["_measurement"].(string)
 			class := x["class"].(string)
 
-			fInfo, prs := d.m[funct]
+			fInfo, prs := d.m[funct] // access function map in Decision Engine
 			if !prs {
 				f, _ := function.GetFunction(funct)
 				fInfo = &functionInfo{
 					name:            funct,
 					memory:          f.MemoryMB,
 					cpu:             f.CPUDemand,
-					probCold:        [3]float64{1, 1, 1},
+					probCold:        [3]float64{0, 0, 0},
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[funct] = fInfo
@@ -291,15 +294,17 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println("DB error", err)
 	}
 
+	// Query for meanDuration
 	start = time.Now().Add(-searchInterval)
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: %d)
-										|> group(columns: ["_measurement", "offloaded"])
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud"])
 										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
+	log.Println("result query 1: ", result)
 	if err == nil {
 		// Iterate over query response
 		for result.Next() {
@@ -308,9 +313,14 @@ func (d *decisionEngineFlux) queryDb() {
 
 			funct := x["_measurement"].(string)
 			off := x["offloaded"].(string)
+			offCloud := x["offloaded_cloud"].(string)
+
+			// retrieve location value to check if the function was executed locally, on cloud or on edge
 			location := LOCAL
-			if off == "true" {
+			if off == "true" && offCloud == "true" {
 				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
 			}
 			fInfo, prs := d.m[funct]
 			if !prs {
@@ -338,6 +348,7 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
+		log.Println("result query 2: ", result)
 		for result.Next() {
 			CloudOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
@@ -360,6 +371,7 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
+		log.Println("result query 3: ", result)
 		for result.Next() {
 			EdgeOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
@@ -372,25 +384,30 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println("DB error", err)
 	}
 
+	//Query for initTime
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: %d)
-										|> group(columns: ["_measurement", "offloaded"])
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud"])
 										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false" and r["completed"] == "true")
 										|> tail(n: %d)
 										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
+		log.Println("result query 4: ", result)
 		for result.Next() {
 			x := result.Record().Values()
 			val := result.Record().Value().(float64)
 
 			funct := x["_measurement"].(string)
 			off := x["offloaded"].(string)
+			offCloud := x["offloaded_cloud"].(string)
 
 			location := LOCAL
-			if off == "true" {
+			if off == "true" && offCloud == "true" {
 				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
 			}
 
 			fInfo, prs := d.m[funct]
@@ -409,26 +426,33 @@ func (d *decisionEngineFlux) queryDb() {
 		log.Println("DB error", err)
 	}
 
+	// Query for count and coldStartCount
 	query = fmt.Sprintf(`from(bucket: "%s")
 										|> range(start: %d)
   										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
-										|> group(columns: ["_measurement", "offloaded", "warm_start"])
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud", "warm_start"])
 										|> count()`, bucketName, start.Unix())
 
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
+		log.Println("result query 5: ", result)
 		for result.Next() {
 			x := result.Record().Values()
 			val := result.Record().Value().(int64)
 
+			log.Println("offloaded_cloud: ", x["offloaded_cloud"])
+
 			funct := x["_measurement"].(string)
 			off := x["offloaded"].(string)
-			warm_start := x["warm_start"].(string)
+			offCloud := x["offloaded_cloud"].(string)
+			warmStart := x["warm_start"].(string)
 
 			location := LOCAL
-			if off == "true" {
+			if off == "true" && offCloud == "true" {
 				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
 			}
 
 			fInfo, prs := d.m[funct]
@@ -436,7 +460,7 @@ func (d *decisionEngineFlux) queryDb() {
 				continue
 			}
 
-			if warm_start == "true" {
+			if warmStart == "true" {
 				fInfo.count[location] = val
 			} else {
 				fInfo.coldStartCount[location] = val
@@ -452,7 +476,7 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 
 	for _, fInfo := range d.m {
-		for location := 0; location < 2; location++ {
+		for location := 0; location < 3; location++ {
 			if fInfo.coldStartCount[location] == 0 {
 				fInfo.probCold[location] = 1.0
 			} else {
@@ -494,16 +518,25 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			//TODO set period
-			d.deleteOldData(24 * time.Hour)
+			// d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()
 
 		case r := <-requestChannel: // Result storage handler
 			// New request received - added data to influxdb - need to differentiate between edge offloading and cloud offloading
+			// completed: true if the completed request is not dropped
+			// offloaded: true if the request is offloaded to another node
+			// offloaded_cloud: true if the completed request is offloaded vertically
+			// offloaded_edge: true if the completed request is offloaded horizontally
+			// warm_start: true if there were available instances to execute the function locally
+			// fKeys: contains extra information about the function execution
+			// - duration
+			// - init_time
 			log.Println("Result storage handler - adding data to influxdb")
 			var fKeys map[string]interface{}
 			offloaded := "false"
+			offloadedCloud := "false"
 			warmStart := "false"
 			completed := "false"
 
@@ -514,11 +547,13 @@ func (d *decisionEngineFlux) handler() {
 
 			if r.ExecReport.OffloadLatencyCloud != 0 {
 				offloaded = "true"
+				offloadedCloud = "true"
 				fKeys["offload_latency_cloud"] = r.ExecReport.OffloadLatencyCloud
 			}
 
 			if r.ExecReport.OffloadLatencyEdge != 0 {
 				offloaded = "true"
+				offloadedCloud = "false"
 				fKeys["offload_latency_edge"] = r.ExecReport.OffloadLatencyEdge
 			}
 
@@ -527,11 +562,17 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			p := influxdb2.NewPoint(r.Fun.Name,
-				map[string]string{"class": r.ClassService.Name, "offloaded": offloaded, "warm_start": warmStart, "completed": completed},
+				map[string]string{
+					"class":           r.ClassService.Name,
+					"offloaded":       offloaded,
+					"offloaded_cloud": offloadedCloud,
+					"warm_start":      warmStart,
+					"completed":       completed},
 				fKeys,
 				time.Now())
 
 			writeAPI.WritePoint(p)
+			log.Println("ADDED NEW POINT INTO INFLUXDB")
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			name := arr.Fun.Name
 
@@ -548,7 +589,7 @@ func (d *decisionEngineFlux) handler() {
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
-					probCold:        [3]float64{1, 1, 1},
+					probCold:        [3]float64{0, 0, 0},
 					packetSizeCloud: packetSizeCloud,
 					packetSizeEdge:  packetSizeEdge,
 					invokingClasses: make(map[string]*classFunctionInfo)}
@@ -592,12 +633,18 @@ func (d *decisionEngineFlux) ShowData() {
 	}
 }
 
+// Completed : takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
+// 1) offloaded = LOCAL = 0 --> the request is executed locally and not offloaded
+// 2) offloaded = OFFLOADED_CLOUD = 1 --> the request is offloaded to cloud
+// 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
 
 	if offloaded == 0 {
-		log.Printf("LOCAL RESULT %s Duration %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	} else if offloaded == 1 {
+		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else {
-		log.Printf("OFFLOADING RESULT %s Duration %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	}
 
 	requestChannel <- completedRequest{
