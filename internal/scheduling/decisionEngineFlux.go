@@ -476,10 +476,13 @@ func (d *decisionEngineFlux) queryDb() {
 	}
 
 	for _, fInfo := range d.m {
+		// If none cold start happened in a specific location (local, cloud or edge), then the cold start probability is optimistically 0
 		for location := 0; location < 3; location++ {
 			if fInfo.coldStartCount[location] == 0 {
-				fInfo.probCold[location] = 1.0
+				fInfo.probCold[location] = 0.0
 			} else {
+				log.Printf("cold start count at location %d is %v", location, fInfo.coldStartCount[location])
+				log.Printf("function call count at location %d is %v", location, fInfo.count[location])
 				fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.count[location]+fInfo.coldStartCount[location])
 			}
 		}
