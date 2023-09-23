@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/metrics"
+	"github.com/grussorusso/serverledge/internal/node"
 	"io/ioutil"
 	"log"
-	"math"
 	"net/http"
 	"time"
 
@@ -33,6 +33,7 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	}
 	log.Printf("Nobody has warm container: search for available memory")
 	//second, (nobody has warm container) search for available memory
+	log.Println("DIS NODE: ", node.NodeIdentifier)
 	log.Printf("%v", nearbyServersMap)
 	for _, v := range nearbyServersMap {
 		log.Printf("nearby node available memory: %d", v.AvailableMemMB)
@@ -40,7 +41,7 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 			return v.Url
 		}
 	}
-	log.Printf("nearby node url: %s", url)
+	log.Println("No nearby nodes with enough resources to handle execution.")
 	return ""
 }
 
@@ -60,6 +61,7 @@ func pickEdgeNodeWithWarmForOffloading(r *scheduledRequest) (url string) {
 	return ""
 }
 
+/* FIXME never used - functions to get warm containers in cloud nodes and to get rtt between edge nodes
 func getWarmContainersInCloud(r *scheduledRequest) int {
 	cloudServersMap := registration.Reg.CloudServersMap
 
@@ -107,7 +109,7 @@ func getEdgeNodeOffloadingRtt(r *scheduledRequest) (string, float64) {
 		return "", -1
 	}
 	return nearbyServersMap[key].Url, min / 1000
-}
+}*/
 
 func Offload(r *function.Request, serverUrl string) error {
 	// Prepare request
@@ -141,13 +143,13 @@ func Offload(r *function.Request, serverUrl string) error {
 	// It was originally computed as "report.Arrival - sendingTime"
 	// Check if r.ExecReport.Duration and r.ExecReport.InitTime are greater than 0
 
+	log.Printf("Offloading to server url: %s", serverUrl)
+
 	if checkIfCloudOffloading(serverUrl) {
-		log.Println("is cloud offloading time!")
 		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
 		r.ExecReport.VerticallyOffloaded = true
 	} else {
-		log.Println("is edge offloading time")
 		r.ExecReport.OffloadLatencyEdge = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_EDGE
 		r.ExecReport.VerticallyOffloaded = false
@@ -166,12 +168,15 @@ func Offload(r *function.Request, serverUrl string) error {
 	return nil
 }
 
-// Checks if the offloading is vertical or horizontal
+// checkIfCloudOffloading checks if the offloading is vertical or horizontal, given the url of the target server
 func checkIfCloudOffloading(serverUrl string) bool {
-	allCloudNodes := registration.Reg.CloudServersMap
-	for key, info := range allCloudNodes {
-		log.Printf("Server with key %v was chosen to host offloading", key)
-		if serverUrl == info.Url {
+	allCloudNodes, _ := registration.Reg.GetAll(true)
+	log.Println("All cloud nodes: ", allCloudNodes)
+	for key, url := range allCloudNodes {
+		log.Println("Server url: ", serverUrl)
+		log.Println("Key: ", url)
+		if serverUrl == url {
+			log.Printf("Server with key %v was chosen to host offloading", key)
 			return true
 		} // vertical offloading
 	}

@@ -66,7 +66,7 @@ func solve(m map[string]*functionInfo) {
 		for _, cFInfo := range fInfo.invokingClasses {
 			arrivals := float32(cFInfo.arrivals)
 			log.Println("arrivals: ", arrivals)
-			log.Println("class name: ", cFInfo.className)
+			// FIXME REMOVE log.Println("class name: ", cFInfo.className)
 
 			invocationList = append(invocationList, &pb.FunctionInvocation{
 				QosClass: &cFInfo.className,
@@ -86,22 +86,22 @@ func solve(m map[string]*functionInfo) {
 		pCold := float32(fInfo.probCold[LOCAL])
 		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
 		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
-		log.Println("func memory: ", memory)
-		log.Println("func cpu: ", cpu)
-		log.Println("func name: ", name)
-		log.Println("func service time local: ", durationLocal)
-		log.Println("func service time cloud: ", durationOffloadedCloud)
-		log.Println("func service time edge: ", durationOffloadedEdge)
-		log.Println("func init time local: ", initTimeLocal)
-		log.Println("func init time cloud: ", initTimeOffloadedCloud)
-		log.Println("func init time edge: ", initTimeOffloadedEdge)
-		log.Println("pCold - local: ", pCold)
-		log.Println("pCold - cloud: ", pColdOffloadedCloud)
-		log.Println("pCold - edge: ", pColdOffloadedEdge)
-		log.Println("cloud rtt: ", CloudOffloadLatency)
-		log.Println("edge rtt: ", EdgeOffloadLatency)
-		log.Println("bandwidth cloud: ", calculateBandwidth(fInfo.packetSizeCloud, true))
-		log.Println("bandwidth edge: ", calculateBandwidth(fInfo.packetSizeEdge, false))
+		// FIXME REMOVE log.Println("func memory: ", memory)
+		// FIXME REMOVE log.Println("func cpu: ", cpu)
+		// FIXME REMOVE log.Println("func name: ", name)
+		// FIXME REMOVE log.Println("func service time local: ", durationLocal)
+		// FIXME REMOVE log.Println("func service time cloud: ", durationOffloadedCloud)
+		// FIXME REMOVE log.Println("func service time edge: ", durationOffloadedEdge)
+		// FIXME REMOVE log.Println("func init time local: ", initTimeLocal)
+		// FIXME REMOVE log.Println("func init time cloud: ", initTimeOffloadedCloud)
+		// FIXME REMOVE log.Println("func init time edge: ", initTimeOffloadedEdge)
+		// FIXME REMOVE log.Println("pCold - local: ", pCold)
+		// FIXME REMOVE log.Println("pCold - cloud: ", pColdOffloadedCloud)
+		// FIXME REMOVE log.Println("pCold - edge: ", pColdOffloadedEdge)
+		// FIXME REMOVE log.Println("cloud rtt: ", CloudOffloadLatency)
+		// FIXME REMOVE log.Println("edge rtt: ", EdgeOffloadLatency)
+		// FIXME REMOVE log.Println("bandwidth cloud: ", calculateBandwidth(fInfo.packetSizeCloud, true))
+		// FIXME REMOVE log.Println("bandwidth edge: ", calculateBandwidth(fInfo.packetSizeEdge, false))
 		bandwidthCloud := float32(calculateBandwidth(fInfo.packetSizeCloud, true))
 		bandwidthEdge := float32(calculateBandwidth(fInfo.packetSizeEdge, false))
 
@@ -132,10 +132,10 @@ func solve(m map[string]*functionInfo) {
 			mrt := float32(class.MaximumResponseTime)
 			completedPercentage := float32(class.CompletedPercentage)
 			name := cName
-			log.Println("class name: ", cName)
-			log.Println("class utility: ", utility)
-			log.Println("class mrt: ", mrt)
-			log.Println("class completed perc: ", completedPercentage)
+			// FIXME REMOVE log.Println("class name: ", cName)
+			// FIXME REMOVE log.Println("class utility: ", utility)
+			// FIXME REMOVE log.Println("class mrt: ", mrt)
+			// FIXME REMOVE log.Println("class completed perc: ", completedPercentage)
 
 			classList = append(classList, &pb.QosClass{
 				Name:                &name,

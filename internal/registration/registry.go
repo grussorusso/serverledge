@@ -69,6 +69,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 }
 
 // GetAll is used to obtain the list of  other server's addresses under a specific local Area
+// param :remotes: true to get the list of cloud server's addresses, false otherwise
 func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	var baseDir string
 	if remotes {

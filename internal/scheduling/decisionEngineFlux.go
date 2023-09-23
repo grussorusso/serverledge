@@ -68,7 +68,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	//TODO remove
 	nContainers, _ := node.WarmStatus()[name]
-	log.Printf("Probabilities for name: %s - class: %s available mem: %d - func mem: %d - containers: %d - can execute :%t are "+
+	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are "+
 		"\t pL: %f "+
 		"\t pC: %f "+
 		"\t pE: %f "+
@@ -234,7 +234,7 @@ func (d *decisionEngineFlux) queryDb() {
 		}
 	}
 
-	log.Println("bucket name: ", bucketName)
+	// FIXME REMOVE log.Println("bucket name: ", bucketName)
 
 	start := time.Now().Add(-evaluationInterval)
 	query := fmt.Sprintf(`from(bucket: "%s")
@@ -304,7 +304,7 @@ func (d *decisionEngineFlux) queryDb() {
 										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
 
 	result, err = queryAPI.Query(context.Background(), query)
-	log.Println("result query 1: ", result)
+	// FIXME REMOVE log.Println("result query 1: ", result)
 	if err == nil {
 		// Iterate over query response
 		for result.Next() {
@@ -348,7 +348,7 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
-		log.Println("result query 2: ", result)
+		// FIXME REMOVE log.Println("result query 2: ", result)
 		for result.Next() {
 			CloudOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
@@ -371,7 +371,7 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
-		log.Println("result query 3: ", result)
+		// FIXME REMOVE log.Println("result query 3: ", result)
 		for result.Next() {
 			EdgeOffloadLatency = result.Record().Values()["_value"].(float64)
 		}
@@ -394,7 +394,7 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
-		log.Println("result query 4: ", result)
+		// FIXME REMOVE log.Println("result query 4: ", result)
 		for result.Next() {
 			x := result.Record().Values()
 			val := result.Record().Value().(float64)
@@ -436,12 +436,12 @@ func (d *decisionEngineFlux) queryDb() {
 	result, err = queryAPI.Query(context.Background(), query)
 	if err == nil {
 		// Iterate over query response
-		log.Println("result query 5: ", result)
+		// FIXME REMOVE log.Println("result query 5: ", result)
 		for result.Next() {
 			x := result.Record().Values()
 			val := result.Record().Value().(int64)
 
-			log.Println("offloaded_cloud: ", x["offloaded_cloud"])
+			// FIXME REMOVE log.Println("offloaded_cloud: ", x["offloaded_cloud"])
 
 			funct := x["_measurement"].(string)
 			off := x["offloaded"].(string)
@@ -481,8 +481,8 @@ func (d *decisionEngineFlux) queryDb() {
 			if fInfo.coldStartCount[location] == 0 {
 				fInfo.probCold[location] = 0.0
 			} else {
-				log.Printf("cold start count at location %d is %v", location, fInfo.coldStartCount[location])
-				log.Printf("function call count at location %d is %v", location, fInfo.count[location])
+				//FIXME REMOVE log.Printf("cold start count at location %d is %v", location, fInfo.coldStartCount[location])
+				//FIXME REMOVE log.Printf("function call count at location %d is %v", location, fInfo.count[location])
 				fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.count[location]+fInfo.coldStartCount[location])
 			}
 		}
@@ -521,7 +521,7 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			//TODO set period
-			// d.deleteOldData(24 * time.Hour)
+			d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()

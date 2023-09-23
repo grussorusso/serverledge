@@ -150,7 +150,6 @@ func calculatePacketSize(r *scheduledRequest, isCloudCalc bool) int {
 		len("Content-Type: application/json") +
 		len("\r\n\r\n") +
 		len(invocationBody)
-	log.Println("size packet calculated")
 	return sizePacket
 }
 

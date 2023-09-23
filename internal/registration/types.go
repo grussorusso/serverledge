@@ -18,9 +18,7 @@ type Registry struct {
 	RwMtx            trylock.Mutex
 	NearbyServersMap map[string]*StatusInformation
 	serversMap       map[string]*StatusInformation
-	//TODO added but is it correct?
-	CloudServersMap map[string]*StatusInformation
-	etcdCh          chan bool
+	etcdCh           chan bool
 }
 
 type StatusInformation struct {
