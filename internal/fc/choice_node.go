@@ -17,7 +17,7 @@ type ChoiceNode struct {
 	input        map[string]interface{}
 	Alternatives []DagNode
 	Conditions   []Condition
-	firstMatch   int
+	FirstMatch   int
 }
 
 func NewChoiceNode(conds []Condition) *ChoiceNode {
@@ -25,6 +25,7 @@ func NewChoiceNode(conds []Condition) *ChoiceNode {
 		Id:           shortuuid.New(),
 		Conditions:   conds,
 		Alternatives: make([]DagNode, len(conds)),
+		FirstMatch:   -1,
 	}
 }
 
@@ -41,9 +42,9 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 			if c.Alternatives[i] != c2.Alternatives[i] {
 				return false
 			}
-			//if c.Conditions[i] != c2.Conditions[i] {
-			//	return false // TODO: how to compare function Conditions?
-			//}
+			if !c.Conditions[i].Equals(c2.Conditions[i]) {
+				return false
+			}
 		}
 		return true
 	default:
@@ -60,7 +61,7 @@ func (c *ChoiceNode) Exec() (map[string]interface{}, error) {
 			return nil, fmt.Errorf("error while testing condition: %v", err)
 		}
 		if ok {
-			c.firstMatch = i
+			c.FirstMatch = i
 			// the output map should be like the input map!
 			return c.input, nil
 		}
@@ -110,17 +111,42 @@ func (c *ChoiceNode) PrepareOutput(output map[string]interface{}) error {
 	return nil
 }
 
+// GetChoiceBranch returns all node ids of a branch under a choice node; branch number starts from 0
+func (c *ChoiceNode) GetChoiceBranch(branch int) []DagNode {
+	branchNodes := make([]DagNode, 0)
+	if len(c.Alternatives) <= branch {
+		fmt.Printf("fail to get branch %d\n", branch)
+		return branchNodes
+	}
+	node := c.Alternatives[branch]
+	return VisitDag(node, branchNodes, true)
+}
+
+func (c *ChoiceNode) GetNodesToSkip() []DagNode {
+	nodesToSkip := make([]DagNode, 0)
+	if c.FirstMatch == -1 || c.FirstMatch >= len(c.Alternatives) {
+		return nodesToSkip
+	}
+	for i := 0; i < len(c.Alternatives); i++ {
+		if i == c.FirstMatch {
+			continue
+		}
+		nodesToSkip = append(nodesToSkip, c.GetChoiceBranch(i)...)
+	}
+	return nodesToSkip
+}
+
 func (c *ChoiceNode) GetNext() []DagNode {
 	// you should have called exec before calling GetNext
-	if c.firstMatch >= len(c.Alternatives) {
+	if c.FirstMatch >= len(c.Alternatives) {
 		panic("there aren't sufficient alternatives!")
 	}
 
-	if c.firstMatch < 0 {
-		panic("first match cannot be less then 0")
+	if c.FirstMatch < 0 {
+		panic("first match cannot be less then 0. You should call Exec() before GetNext()")
 	}
 	next := make([]DagNode, 1)
-	next[0] = c.Alternatives[c.firstMatch]
+	next[0] = c.Alternatives[c.FirstMatch]
 	return next
 }
 
@@ -155,13 +181,12 @@ func (c *ChoiceNode) GetBranchId() int {
 
 func (c *ChoiceNode) ToString() string {
 	conditions := "<"
-	// FIXME: cannot represent functions
-	//for i, condFn := range c.Conditions {
-	//	conditions += strconv.FormatBool(condFn())
-	//	if i != len(c.Conditions) {
-	//		conditions += " | "
-	//	}
-	//}
+	for i, condFn := range c.Conditions {
+		conditions += condFn.ToString()
+		if i != len(c.Conditions) {
+			conditions += " | "
+		}
+	}
 	conditions += ">"
 	return fmt.Sprintf("[ChoiceNode(%d): %s] ", c.Alternatives, conditions)
 }

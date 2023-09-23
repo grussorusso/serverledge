@@ -354,6 +354,6 @@ func (rcb *RootConditionBuilder) Not(cond Condition) *ConditionBuilder {
 	return rcb.cb
 }
 
-func (cb *ConditionBuilder) Build() *Predicate {
-	return cb.p
+func (cb *ConditionBuilder) Build() Condition {
+	return cb.p.Root
 }

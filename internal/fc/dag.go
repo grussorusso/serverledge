@@ -35,6 +35,12 @@ func (dag *Dag) find(nodeId string) (DagNode, bool) {
 			return node, true
 		}
 	}
+	if nodeId == dag.Start.Id {
+		return dag.Start, true
+	}
+	if nodeId == dag.End.Id {
+		return dag.End, true
+	}
 	return nil, false
 }
 
@@ -51,19 +57,111 @@ func (dag *Dag) addNode(node DagNode) {
 	}
 }
 
-// TODO: maybe can be removed in favor of Chain
-func (dag *Dag) SetStart(node1 DagNode) error {
-	return dag.Start.AddOutput(node1)
+func isDagNodePresent(node DagNode, infos []DagNode) bool {
+	isPresent := false
+	for _, nodeInfo := range infos {
+		if nodeInfo == node {
+			isPresent = true
+			break
+		}
+	}
+	return isPresent
 }
 
-// Chain can be used to connect the output of node1 to the node2
-func (dag *Dag) Chain(node1 DagNode, node2 DagNode) error {
+func isEndNode(node DagNode) bool {
+	_, ok := node.(*EndNode)
+	return ok
+}
+
+// VisitDag visits the dag starting from the input node and return a list of visited nodes. If excludeEnd = true, the EndNode will not be in the output list
+func VisitDag(node DagNode, nodes []DagNode, excludeEnd bool) []DagNode {
+	if !isDagNodePresent(node, nodes) {
+		nodes = append(nodes, node)
+	}
+	switch n := node.(type) {
+	case *StartNode:
+		toAdd := VisitDag(n.GetNext()[0], nodes, excludeEnd)
+		for _, add := range toAdd {
+			if !isDagNodePresent(add, nodes) {
+				// only when isEndNode = true, excludeEnd = true -> we don't add the node
+				if !isEndNode(add) || !excludeEnd {
+					nodes = append(nodes, add)
+				}
+			}
+		}
+		return nodes
+	case *SimpleNode:
+		toAdd := VisitDag(n.GetNext()[0], nodes, excludeEnd)
+		for _, add := range toAdd {
+			if !isDagNodePresent(add, nodes) {
+				if !isEndNode(add) || !excludeEnd {
+					nodes = append(nodes, add)
+				}
+			}
+		}
+		return nodes
+	case *EndNode:
+		if !excludeEnd { // move end node to the end of the visit list
+			endNode := n
+			// get index of end node to remove
+			indexToRemove := -1
+			for i, dagNode := range nodes {
+				if isEndNode(dagNode) {
+					indexToRemove = i
+					break
+				}
+			}
+			// remove end node
+			nodes = append(nodes[:indexToRemove], nodes[indexToRemove+1:]...)
+			// append at the end of the visited node list
+			nodes = append(nodes, endNode)
+		}
+		return nodes
+	case *ChoiceNode:
+		for _, alternative := range n.Alternatives {
+			toAdd := VisitDag(alternative, nodes, excludeEnd)
+			for _, add := range toAdd {
+				if !isDagNodePresent(add, nodes) {
+					if !isEndNode(add) || !excludeEnd {
+						nodes = append(nodes, add)
+					}
+				}
+			}
+		}
+		return nodes
+	case *FanOutNode:
+		for _, parallelBranch := range n.GetNext() {
+			toAdd := VisitDag(parallelBranch, nodes, excludeEnd)
+			for _, add := range toAdd {
+				if !isDagNodePresent(add, nodes) {
+					if !isEndNode(add) || !excludeEnd {
+						nodes = append(nodes, add)
+					}
+				}
+			}
+		}
+		return nodes
+	case *FanInNode:
+		toAdd := VisitDag(n.GetNext()[0], nodes, excludeEnd)
+		for _, add := range toAdd {
+			if !isDagNodePresent(add, nodes) {
+				if !isEndNode(add) || !excludeEnd {
+					nodes = append(nodes, add)
+				}
+			}
+		}
+	}
+	return nodes
+}
+
+// chain can be used to connect the output of node1 to the node2
+func (dag *Dag) chain(node1 DagNode, node2 DagNode) error {
 	return node1.AddOutput(node2)
 }
 
-// ChainToEndNode (node, i) can be used as a shorthand to Chain(node, dag.end[i]) to chain a node to a specific end node
+// ChainToEndNode (node, i) can be used as a shorthand to chain(node, dag.end[i]) to chain a node to a specific end node
 func (dag *Dag) ChainToEndNode(node1 DagNode) error {
-	return dag.Chain(node1, dag.End)
+	return dag.chain(node1, dag.End)
 }
 
 func (dag *Dag) Print() string {

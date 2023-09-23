@@ -59,7 +59,7 @@ func (b *DagBuilder) AddSimpleNode(f *function.Function) *DagBuilder {
 	simpleNode := NewSimpleNode(f.Name)
 	simpleNode.setBranchId(BranchNumber)
 
-	err := b.dag.Chain(b.prevNode, simpleNode)
+	err := b.dag.chain(b.prevNode, simpleNode)
 	if err != nil {
 		b.appendError(err)
 		return b
@@ -82,7 +82,7 @@ func (b *DagBuilder) AddChoiceNode(conditions ...Condition) *ChoiceBranchBuilder
 	choiceNode := NewChoiceNode(conditions)
 	choiceNode.setBranchId(BranchNumber)
 	b.branches = len(conditions)
-	err := b.dag.Chain(b.prevNode, choiceNode)
+	err := b.dag.chain(b.prevNode, choiceNode)
 	if err != nil {
 		b.appendError(err)
 		return &ChoiceBranchBuilder{dagBuilder: b, completed: 0}
@@ -112,7 +112,7 @@ func (b *DagBuilder) AddScatterFanOutNode(fanOutDegree int) *ParallelScatterBran
 	fanOut := NewFanOutNode(fanOutDegree, Scatter)
 	fanOut.setBranchId(BranchNumber)
 
-	err := b.dag.Chain(b.prevNode, fanOut)
+	err := b.dag.chain(b.prevNode, fanOut)
 	if err != nil {
 		b.appendError(err)
 		return &ParallelScatterBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0)}
@@ -135,7 +135,7 @@ func (b *DagBuilder) AddBroadcastFanOutNode(fanOutDegree int) *ParallelBroadcast
 	fanOut := NewFanOutNode(fanOutDegree, Broadcast)
 	fanOut.setBranchId(BranchNumber)
 
-	err := b.dag.Chain(b.prevNode, fanOut)
+	err := b.dag.chain(b.prevNode, fanOut)
 	if err != nil {
 		b.appendError(err)
 		return &ParallelBroadcastBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0)}
@@ -170,7 +170,7 @@ func (c *ChoiceBranchBuilder) NextBranch(dagToChain *Dag, err1 error) *ChoiceBra
 		for i, n := range dagToChain.Nodes {
 			if i == 0 {
 				// chains the alternative to the input dag, which is already connected to a whole series of nodes
-				err := c.dagBuilder.dag.Chain(c.dagBuilder.prevNode.(*ChoiceNode), dagToChain.Start.Next)
+				err := c.dagBuilder.dag.chain(c.dagBuilder.prevNode.(*ChoiceNode), dagToChain.Start.Next)
 				//dagToChain.Start.Next.setBranchId(branchNumber)
 				if err != nil {
 					c.dagBuilder.appendError(err)
@@ -241,7 +241,7 @@ func (c *ChoiceBranchBuilder) HasNextBranch() bool {
 	return c.dagBuilder.branches > 0
 }
 
-// EndChoiceAndBuild connects all remaining branches to the end node and builds the dag
+// EndChoiceAndBuild connects all remaining branches to the end node and returns the dag
 func (c *ChoiceBranchBuilder) EndChoiceAndBuild() (*Dag, error) {
 	for c.HasNextBranch() {
 		c.EndNextBranch()
@@ -267,7 +267,7 @@ func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *Choice
 		if errDag != nil {
 			c.dagBuilder.appendError(errDag)
 		}
-		err := c.dagBuilder.dag.Chain(choiceNode, dagCopy.Start.Next)
+		err := c.dagBuilder.dag.chain(choiceNode, dagCopy.Start.Next)
 		if err != nil {
 			c.dagBuilder.appendError(errDag)
 		}
@@ -310,7 +310,7 @@ func (p *ParallelBroadcastBranchBuilder) ForEachParallelBranch(dagger func() (*D
 		if errDag != nil {
 			p.dagBuilder.appendError(errDag)
 		}
-		err := p.dagBuilder.dag.Chain(fanOutNode, dagCopy.Start.Next)
+		err := p.dagBuilder.dag.chain(fanOutNode, dagCopy.Start.Next)
 		if err != nil {
 			p.dagBuilder.appendError(err)
 		}
@@ -348,7 +348,7 @@ func (p *ParallelScatterBranchBuilder) ForEachParallelBranch(dagger func() (*Dag
 		if errDag != nil {
 			p.dagBuilder.appendError(errDag)
 		}
-		err := p.dagBuilder.dag.Chain(fanOutNode, dagCopy.Start.Next)
+		err := p.dagBuilder.dag.chain(fanOutNode, dagCopy.Start.Next)
 		if err != nil {
 			p.dagBuilder.appendError(err)
 		}
@@ -446,7 +446,7 @@ func (p *ParallelBroadcastBranchBuilder) NextFanOutBranch(dagToChain *Dag, err1 
 			n.setBranchId(BranchNumber)
 			if i == 0 {
 				// chains the alternative to the input dag, which is already connected to a whole series of nodes
-				err := p.dagBuilder.dag.Chain(p.dagBuilder.prevNode, dagToChain.Start.Next)
+				err := p.dagBuilder.dag.chain(p.dagBuilder.prevNode, dagToChain.Start.Next)
 				if err != nil {
 					p.dagBuilder.appendError(err)
 				}

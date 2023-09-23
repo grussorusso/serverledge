@@ -37,7 +37,7 @@ func AssertNotEmptySlice[A any](t *testing.T, slice []*A) {
 	}
 }
 
-func AssertEmptySlice(t *testing.T, slice []interface{}) {
+func AssertEmptySlice[T any](t *testing.T, slice []T) {
 	if slice == nil {
 		t.Logf("%s is failed. The slice is nil,", t.Name())
 		t.FailNow()
