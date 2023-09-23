@@ -192,11 +192,11 @@ func solve(m map[string]*functionInfo) {
 			cFInfo.probOffloadEdge = float64(x.GetPE())
 			cFInfo.probDrop = float64(x.GetPD())
 			cFInfo.share = float64(x.GetShare())
-			log.Println("probExecuteLocal: ", cFInfo.probExecuteLocal)
-			log.Println("probOffloadCloud: ", cFInfo.probOffloadCloud)
-			log.Println("probOffloadEdge: ", cFInfo.probOffloadEdge)
-			log.Println("probDrop: ", cFInfo.probDrop)
-			log.Println("share: ", cFInfo.share)
+			// FIXME REMOVE log.Println("probExecuteLocal: ", cFInfo.probExecuteLocal)
+			// FIXME REMOVE log.Println("probOffloadCloud: ", cFInfo.probOffloadCloud)
+			// FIXME REMOVE log.Println("probOffloadEdge: ", cFInfo.probOffloadEdge)
+			// FIXME REMOVE log.Println("probDrop: ", cFInfo.probDrop)
+			// FIXME REMOVE log.Println("share: ", cFInfo.share)
 		}
 	}
 

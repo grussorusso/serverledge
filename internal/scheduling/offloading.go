@@ -24,6 +24,13 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	if nearbyServersMap == nil {
 		return ""
 	}
+
+	log.Println("NEARBY SERVERS MAP IN PICK NODE: ", nearbyServersMap)
+	for key, info := range nearbyServersMap {
+		log.Println("key: ", key)
+		log.Println("url: ", info.Url)
+	}
+
 	//first, search for warm container
 	log.Printf("Search for a warm container")
 	for _, v := range nearbyServersMap {

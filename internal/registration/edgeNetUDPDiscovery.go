@@ -77,15 +77,20 @@ func getCurrentStatusInformation() (status []byte, err error) {
 
 }
 
+// statusInfoRequest sends a request to the local registry of a node
 func statusInfoRequest(hostname string) (info *StatusInformation, duration time.Duration) {
+	// fixme: questo è sbagliato, dovrebbe selezionare la porta di ascolto del nodo che possiede le informazioni che mi servono
 	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
 	address := fmt.Sprintf("%s:%d", hostname, port)
+	log.Println("address for info request: ", address)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		log.Printf("Unreachable server %s", address)
 		return nil, 0
 	}
+
+	log.Println("remote address: ", remoteAddr)
 
 	udpConn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {

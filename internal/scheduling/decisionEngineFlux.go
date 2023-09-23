@@ -101,7 +101,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	//log.Printf("Probabilities after evaluation for %s-%s are %f %f %f", name, class.Name, pL, pC, pD)
+	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pC:%f pE:%f pD:%f", name, class.Name, pL, pC, pE, pD)
 
 	log.Printf("prob: %f", prob)
 	if prob <= pL {
@@ -521,7 +521,7 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			//TODO set period
-			d.deleteOldData(24 * time.Hour)
+			// d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()
@@ -581,10 +581,8 @@ func (d *decisionEngineFlux) handler() {
 
 			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
 			// Packet size is useful to calculate bandwidth
-			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
-			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
-			log.Println("packet size cloud: ", packetSizeCloud)
-			log.Println("packet size edge: ", packetSizeEdge)
+			// FIXME REMOVE packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
+			// FIXME REMOVE packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
 
 			fInfo, prs := d.m[name]
 			if !prs {
@@ -593,8 +591,8 @@ func (d *decisionEngineFlux) handler() {
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{0, 0, 0},
-					packetSizeCloud: packetSizeCloud,
-					packetSizeEdge:  packetSizeEdge,
+					packetSizeCloud: 0, // FIXME REMOVE
+					packetSizeEdge:  0, // FIXME REMOVE
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo

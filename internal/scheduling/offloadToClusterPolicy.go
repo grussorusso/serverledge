@@ -42,7 +42,6 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 		if err == nil {
 			log.Printf("Using a warm container for: %v", r)
 			execLocally(r, containerID, true)
-			return
 		} else if handleColdStart(r) {
 			log.Printf("No warm containers for: %v - COLD START", r)
 			return
@@ -53,7 +52,6 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 			if url != "" {
 				log.Printf("Found node at url: %s - proceeding with horizontal offloading", url)
 				handleEdgeOffload(r, url)
-				return
 			} else {
 				log.Printf("Cant find nearby nodes - proceeding with vertical offloading")
 				handleCloudOffload(r)
@@ -82,11 +80,14 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 			return
 		}*/
 	} else if dec == EDGE_OFFLOAD_REQUEST {
+		log.Println("DEC IS EDGE_OFFLOAD_REQUEST")
 		url := pickEdgeNodeForOffloading(r)
 		if url != "" {
 			handleEdgeOffload(r, url)
+		} else {
+			log.Println("Can't execute horizontal offloading due to lack of resources available: offloading to cloud")
+			handleCloudOffload(r)
 		}
-		return
 	} else if dec == DROP_REQUEST {
 		dropRequest(r)
 	}

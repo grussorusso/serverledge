@@ -60,10 +60,15 @@ func monitoring() {
 		log.Println(err)
 		return
 	}
+	log.Println("server map after getAll: ", etcdServerMap)
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
+	log.Println("server map after delete: ", etcdServerMap)
+
 	for key, url := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
+		log.Println("key: ", key)
+		log.Println("oldInfo: ", oldInfo)
 
 		ip := url[7 : len(url)-5]
 		// use udp socket to retrieve infos about the edge-node status and rtt
@@ -74,6 +79,7 @@ func monitoring() {
 			continue
 		}
 		Reg.serversMap[key] = newInfo
+		log.Println("newInfo: ", newInfo)
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 		}
@@ -86,7 +92,9 @@ func monitoring() {
 		}
 	}
 
-	getRank(2) //todo change this value
+	getRank(3) //todo change this value
+	log.Println("serversMap: ", Reg.serversMap)
+	log.Println("nearbyServersMap: ", Reg.NearbyServersMap)
 }
 
 type dist struct {
