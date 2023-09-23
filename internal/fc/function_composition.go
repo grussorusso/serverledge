@@ -16,11 +16,11 @@ import (
 
 // FunctionComposition is a serverless Function Composition
 type FunctionComposition struct {
-	Name               string // al posto del nome potrebbe essere un id da mettere in etcd
-	Functions          map[string]*function.Function
-	Workflow           Dag
-	Progress           *Progress
-	RemoveFnOnDeletion bool
+	Name      string // al posto del nome potrebbe essere un id da mettere in etcd
+	Functions map[string]*function.Function
+	Workflow  Dag
+	// Progress           *Progress
+	RemoveFnOnDeletion bool // TODO: spostare dentro la request
 	// ExecReport ExecutionReport
 }
 
@@ -46,7 +46,6 @@ func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDelet
 		Functions:          functionMap,
 		Workflow:           dag,
 		RemoveFnOnDeletion: removeFnOnDeletion,
-		Progress:           InitProgress(&dag),
 		// ExecReport: ExecutionReport{},
 	}
 }

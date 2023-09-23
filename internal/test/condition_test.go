@@ -66,14 +66,14 @@ func TestBuilder(t *testing.T) {
 		fc.NewGreaterCondition(4, 2),
 	).Build()
 
-	utils.AssertTrue(t, built1.Equals(predicate1))
+	utils.AssertTrue(t, built1.Equals(predicate1.Root))
 
 	built2 := fc.NewPredicate().Or(
 		fc.NewConstCondition(true),
 		fc.NewSmallerCondition(4, 2),
 	).Build()
 
-	utils.AssertTrue(t, built2.Equals(predicate2))
+	utils.AssertTrue(t, built2.Equals(predicate2.Root))
 
 	built3 := fc.NewPredicate().Or(
 		fc.NewAnd(
@@ -82,12 +82,12 @@ func TestBuilder(t *testing.T) {
 		),
 		fc.NewSmallerCondition(4, 2),
 	).Build()
-	utils.AssertTrue(t, built3.Equals(predicate3))
+	utils.AssertTrue(t, built3.Equals(predicate3.Root))
 
 	built4 := fc.NewPredicate().Not(
 		fc.NewEmptyCondition([]interface{}{1, 2, 3, 4}),
 	).Build()
 
-	utils.AssertTrue(t, built4.Equals(predicate4))
+	utils.AssertTrue(t, built4.Equals(predicate4.Root))
 
 }

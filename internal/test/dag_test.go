@@ -414,3 +414,35 @@ func TestDagBuilder(t *testing.T) {
 	u.AssertEquals(t, 3, simpleNodeChainedToFanIn)
 	dag.Print()
 }
+
+func TestVisit(t *testing.T) {
+	f, err := initializeExamplePyFunction()
+	u.AssertNil(t, err)
+	complexDag, err := fc.NewDagBuilder().
+		AddSimpleNode(f).
+		AddChoiceNode(fc.NewEqCondition(1, 4), fc.NewDiffCondition(1, 4)).
+		NextBranch(fc.CreateSequenceDag(f)).
+		NextBranch(fc.NewDagBuilder().
+			AddScatterFanOutNode(3).
+			ForEachParallelBranch(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f) }).
+			AddFanInNode(fc.AddToArrayEntry).
+			Build()).
+		EndChoiceAndBuild()
+	u.AssertNil(t, err)
+
+	choice := complexDag.Start.Next.GetNext()[0]
+
+	nodeList := make([]fc.DagNode, 0)
+	visitedNodes := fc.VisitDag(complexDag.Start, nodeList, false)
+	u.AssertEquals(t, len(complexDag.Nodes)+2, len(visitedNodes))
+
+	visitedNodes = fc.VisitDag(complexDag.Start, nodeList, true)
+	u.AssertEquals(t, len(complexDag.Nodes)+1, len(visitedNodes))
+
+	visitedNodes = fc.VisitDag(choice, nodeList, false)
+	u.AssertEquals(t, 8, len(visitedNodes))
+
+	visitedNodes = fc.VisitDag(choice, nodeList, true)
+	u.AssertEquals(t, 7, len(visitedNodes))
+
+}
