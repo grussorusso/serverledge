@@ -29,7 +29,7 @@ func NewDAG() Dag {
 	return dag
 }
 
-func (dag *Dag) find(nodeId string) (DagNode, bool) {
+func (dag *Dag) Find(nodeId string) (DagNode, bool) {
 	for _, node := range dag.Nodes {
 		if node.GetId() == nodeId {
 			return node, true
@@ -306,7 +306,7 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 			switch fan := node.(type) {
 			case *FanOutNode:
 				parallel = true
-				associatedFanIn, _ := dag.find(fan.AssociatedFanIn)
+				associatedFanIn, _ := dag.Find(fan.AssociatedFanIn)
 				nextCurrentNodes = append(nextCurrentNodes, associatedFanIn) // FIXME: problem when there are more than 1 node in each branch
 			case *FanInNode:
 				parallel = false

@@ -14,8 +14,9 @@ var partialDataCache = make(map[ReqId_DagNodeId]*PartialData)
 // TODO: add progress to FunctionComposition Request (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
-	ReqId    string // requestId, used to distinguish different dag's progresses
-	DagNodes []*NodeInfo
+	ReqId     string // requestId, used to distinguish different dag's progresses
+	DagNodes  []*NodeInfo
+	NextGroup int
 	// NextNodeId string // id of next dagNode to execute // FIXME: Maybe useless
 }
 
@@ -133,6 +134,7 @@ func (p *Progress) NextNodes() []string {
 			nodeIds = append(nodeIds, node.Id)
 		}
 	}
+	p.NextGroup = minPendingGroup
 	return nodeIds
 }
 
@@ -237,8 +239,9 @@ func InitProgressRecursive(reqId string, dag *Dag) *Progress {
 	nodeInfos = moveEndNodeAtTheEnd(nodeInfos)
 	nodeInfos = reorder(nodeInfos)
 	return &Progress{
-		ReqId:    reqId,
-		DagNodes: nodeInfos,
+		ReqId:     reqId,
+		DagNodes:  nodeInfos,
+		NextGroup: 0,
 	}
 }
 
