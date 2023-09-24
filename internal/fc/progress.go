@@ -6,18 +6,26 @@ import (
 )
 
 type ReqId string
-type ReqId_DagNodeId string
 
-var progressCache = make(map[ReqId]*Progress)
-var partialDataCache = make(map[ReqId_DagNodeId]*PartialData)
+// local cache TODO: usare una vera cache!!!
+var progressCache = newProgressCache()
 
 // TODO: add progress to FunctionComposition Request (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
-	ReqId     string // requestId, used to distinguish different dag's progresses
+	ReqId     ReqId // requestId, used to distinguish different dag's progresses
 	DagNodes  []*NodeInfo
 	NextGroup int
-	// NextNodeId string // id of next dagNode to execute // FIXME: Maybe useless
+}
+
+type ProgressCache struct {
+	progresses map[ReqId]*Progress
+}
+
+func newProgressCache() ProgressCache {
+	return ProgressCache{
+		progresses: make(map[ReqId]*Progress),
+	}
 }
 
 type NodeInfo struct {
@@ -43,7 +51,7 @@ type DagNodeStatus int
 const (
 	Pending = iota
 	Executed
-	Skipped // TODO: if a node is skipped, when invoking the next node, we automatically skip it without executing, until we reach the end (that should not be skipped)
+	Skipped // if a node is skipped, all its children nodes should also be skipped
 	Failed
 )
 
@@ -118,13 +126,16 @@ func (p *Progress) IsCompleted() bool {
 }
 
 // NextNodes retrieves the next nodes to execute, that have the minimum group with state pending
-func (p *Progress) NextNodes() []string {
+func (p *Progress) NextNodes() ([]string, error) {
 	minPendingGroup := -1
 	// find the min group with node pending
 	for _, node := range p.DagNodes {
 		if node.Status == Pending {
 			minPendingGroup = node.Group
 			break
+		}
+		if node.Status == Failed {
+			return []string{}, fmt.Errorf("the execution is failed ")
 		}
 	}
 	// get all node Ids within that group
@@ -135,9 +146,10 @@ func (p *Progress) NextNodes() []string {
 		}
 	}
 	p.NextGroup = minPendingGroup
-	return nodeIds
+	return nodeIds, nil
 }
 
+// CompleteNode sets the progress status of the node with the id input to 'Completed'
 func (p *Progress) CompleteNode(id string) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {
@@ -197,14 +209,6 @@ func (p *Progress) GetGroup(nodeId string) int {
 	return -1
 }
 
-// PartialData is saved separately from progressData to avoid cluttering the Progress struct and each Serverledge node's cache
-type PartialData struct {
-	ReqId    string // request referring to this partial data
-	ForNode  string // dagNode that should receive this partial data
-	FromNode string // TODO: maybe useless
-	Data     map[string]interface{}
-}
-
 // moveEndNodeAtTheEnd moves the end node at the end of the list and sets its group accordingly
 func moveEndNodeAtTheEnd(nodeInfos []*NodeInfo) []*NodeInfo {
 	// move the endNode at the end of the list
@@ -239,7 +243,7 @@ func InitProgressRecursive(reqId string, dag *Dag) *Progress {
 	nodeInfos = moveEndNodeAtTheEnd(nodeInfos)
 	nodeInfos = reorder(nodeInfos)
 	return &Progress{
-		ReqId:     reqId,
+		ReqId:     ReqId(reqId),
 		DagNodes:  nodeInfos,
 		NextGroup: 0,
 	}
@@ -368,61 +372,6 @@ func extractNodeInfo(node DagNode, group int, infos []*NodeInfo) []*NodeInfo {
 	return infos
 }
 
-// InitProgress initialize the node list assigning a group to each node, so that we can know which nodes should run in parallel
-//func InitProgress(reqId string, dag *Dag) *Progress {
-//	group := 0
-//	// the list to return
-//	nodeInfos := make([]*NodeInfo, 0)
-//	// auxiliary list to assign the same group each to node it contains
-//	currentNodeGroup := make([]DagNode, 0)
-//	currentNodeGroup = append(currentNodeGroup, dag.Start)
-//	info := newNodeInfo(dag.Start, group)
-//	nodeInfos = append(nodeInfos, info)
-//	// while there are nodes
-//	for i := 0; i < len(dag.Nodes)+2; i++ {
-//		group++
-//		// lets get the first node in the group, for example StartNode
-//		node := currentNodeGroup[0]
-//		// we delete the node, because its group is already set
-//		currentNodeGroup = slices.Delete(currentNodeGroup, 0, 1)
-//		// we retrieve the next nodes
-//		var nextNodes []DagNode
-//		switch n := node.(type) {
-//		case *ChoiceNode:
-//			nextNodes = n.Alternatives
-//		case *EndNode:
-//			continue // only if
-//		default:
-//			nextNodes = n.GetNext()
-//		}
-//		// and add them to the group list, because they are all in the same group
-//		currentNodeGroup = append(currentNodeGroup, nextNodes...)
-//
-//		// we create the NodeInfo structs and set the same group to each of them
-//		for _, groupNode := range currentNodeGroup {
-//			info := newNodeInfo(groupNode, group)
-//			alreadyPresent := false
-//			for _, nodeInfo := range nodeInfos {
-//				if info.Id == nodeInfo.Id {
-//					alreadyPresent = true
-//					break
-//				}
-//			}
-//			if !alreadyPresent {
-//				nodeInfos = append(nodeInfos, info)
-//			}
-//		}
-//		// reset the auxiliary list
-//		currentNodeGroup = make([]DagNode, 0)
-//		currentNodeGroup = append(currentNodeGroup, nextNodes...)
-//	}
-//
-//	return &Progress{
-//		// ReqId:    reqId,
-//		DagNodes: nodeInfos,
-//	}
-//}
-
 func (p *Progress) Print() {
 	str := fmt.Sprintf("Progress for composition request %s - G = node group, B = node branch\n", p.ReqId)
 	str += fmt.Sprintln("G. |B| Type   (        NodeID        ) - Status")
@@ -439,30 +388,20 @@ func (p *Progress) Print() {
 //}
 
 // SaveProgress should be used by a completed node after its execution
-func SaveProgress(p *Progress) error {
-	// TODO: save progress in ETCD
+func (cache *ProgressCache) SaveProgress(p *Progress) error {
+	// TODO: Save always in cache and in ETCD
+	cache.progresses[p.ReqId] = p
 	return nil
-
 }
 
 // RetrieveProgress should be used by the next node to execute
-func RetrieveProgress(reqId string) *Progress {
+func (cache *ProgressCache) RetrieveProgress(reqId string) (*Progress, bool) {
+	// TODO: Get from cache if exists, otherwise from ETCD
 	// TODO: retrieve progress from ETCD
-	return nil
+	progress, ok := cache.progresses[ReqId(reqId)]
+	return progress, ok
 }
 
-func (pd *PartialData) Retrieve() (map[string]interface{}, error) {
-	// TODO: if data is colocated in this Serverledge node, we should get data from here
-	//  otherwise, retrieve data from ETCD
-	return pd.Data, nil
+func (cache *ProgressCache) DeleteProgress(reqId string) {
+	delete(cache.progresses, ReqId(reqId))
 }
-
-func (pd *PartialData) Save() {
-	// TODO: save data on ETCD
-}
-
-func (pd *PartialData) Purge() {
-	// TODO: delete from etcd: all partial data connected to the same request should be deleted, only after the dag is complete.
-}
-
-// TODO: We should have a local cache for this data and progress!!!

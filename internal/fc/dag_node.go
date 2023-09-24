@@ -32,7 +32,7 @@ type Display interface {
 
 type Executable interface {
 	// Exec defines the execution of the Dag. TODO: The output are saved in the struct, or returned?
-	Exec() (map[string]interface{}, error)
+	Exec(progress *Progress) (map[string]interface{}, error)
 }
 
 type HasInput interface {

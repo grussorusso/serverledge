@@ -42,7 +42,7 @@ func (e *EndNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (e *EndNode) Exec() (map[string]interface{}, error) {
+func (e *EndNode) Exec(*Progress) (map[string]interface{}, error) {
 	return e.result, nil
 }
 
