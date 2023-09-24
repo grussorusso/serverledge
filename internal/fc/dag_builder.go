@@ -393,7 +393,7 @@ func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBui
 	p.dagBuilder.dag.addNode(fanInNode)
 	p.dagBuilder.prevNode = fanInNode
 	// finding fanOut node, then assigning corresponding fanIn
-	fanOut, ok := p.dagBuilder.dag.find(p.fanOutId)
+	fanOut, ok := p.dagBuilder.dag.Find(p.fanOutId)
 	if ok {
 		fanOut.(*FanOutNode).AssociatedFanIn = fanInNode.Id
 	} else {
@@ -419,7 +419,7 @@ func (p *ParallelBroadcastBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagB
 	p.dagBuilder.dag.addNode(fanInNode)
 	p.dagBuilder.prevNode = fanInNode
 	// finding fanOut node, then assigning corresponding fanIn
-	fanOut, ok := p.dagBuilder.dag.find(p.fanOutId)
+	fanOut, ok := p.dagBuilder.dag.Find(p.fanOutId)
 	if ok {
 		fanOut.(*FanOutNode).AssociatedFanIn = fanInNode.Id
 	} else {

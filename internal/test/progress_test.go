@@ -49,21 +49,17 @@ func parallelProgress(t *testing.T) (*fc.Progress, *fc.Dag) {
 	return fc.InitProgressRecursive("abc", dag), dag
 }
 
-func complexProgress(t *testing.T) (*fc.Progress, *fc.Dag) {
+func complexProgress(t *testing.T, condition fc.Condition) (*fc.Progress, *fc.Dag) {
 	py, err := initializeExamplePyFunction()
 	u.AssertNil(t, err)
 
-	condition := fc.NewPredicate().And(
-		fc.NewEqCondition(1, 3),
-		fc.NewGreaterCondition(1, 3),
-	).Build()
 	notCondition := fc.NewPredicate().Not(condition).Build()
 
 	dag, err := fc.NewDagBuilder().
 		AddSimpleNode(py).
 		AddChoiceNode(
-			condition,
 			notCondition,
+			condition,
 		).
 		NextBranch(fc.CreateSequenceDag(py)).
 		NextBranch(fc.NewDagBuilder().
@@ -249,5 +245,175 @@ func TestParallelProgress(t *testing.T) {
 	err = progress.CompleteNode(nextNode[0])
 	u.AssertNil(t, err)
 
+	// 3 Simple Nodes in parallel
+	nextNode = progress.NextNodes() // Simple1, Simple2
+	for _, simpleNodeId := range nextNode {
+		simpleNode, ok := dag.Find(simpleNodeId)
+		u.AssertTrue(t, ok)
+		u.AssertEquals(t, simpleNodeId, simpleNode.GetId())
+		u.AssertEquals(t, 2, progress.GetGroup(simpleNodeId))
+		err = progress.CompleteNode(simpleNodeId)
+		u.AssertNil(t, err)
+	}
+	simpleNode1 := fanOut.GetNext()[0]
+	simpleNode2 := fanOut.GetNext()[1]
+	simpleNode3 := fanOut.GetNext()[2]
+
+	// 2 Simple Nodes in parallel // here should get two nodes
+	nextNode = progress.NextNodes()
+	simpleNodeCentral2 := simpleNode2.GetNext()[0]
+	u.AssertEquals(t, nextNode[0], simpleNodeCentral2.GetId())
+	u.AssertEquals(t, 3, progress.GetGroup(nextNode[0]))
+	err = progress.CompleteNode(nextNode[0])
+	u.AssertNil(t, err)
+	simpleNodeCentral3 := simpleNode3.GetNext()[0]
+	u.AssertEquals(t, nextNode[1], simpleNodeCentral3.GetId())
+	u.AssertEquals(t, 3, progress.GetGroup(nextNode[1]))
+	err = progress.CompleteNode(nextNode[1])
+	u.AssertNil(t, err)
+
+	// 1 Simple node (parallel) right, bottom
+	nextNode = progress.NextNodes()
+	simpleNodeBottom3 := simpleNodeCentral3.GetNext()[0]
+	u.AssertEquals(t, nextNode[0], simpleNodeBottom3.GetId())
+	u.AssertEquals(t, 4, progress.GetGroup(nextNode[0]))
+	err = progress.CompleteNode(nextNode[0])
+	u.AssertNil(t, err)
+
+	// Fan in
+	nextNode = progress.NextNodes()
+	fanIn := simpleNode1.GetNext()[0]
+	u.AssertEquals(t, nextNode[0], fanIn.GetId())
+	u.AssertEquals(t, 5, progress.GetGroup(nextNode[0]))
+	err = progress.CompleteNode(nextNode[0])
+	u.AssertNil(t, err)
+
+	// End node
+	nextNode = progress.NextNodes()
+	u.AssertEquals(t, nextNode[0], dag.End.GetId())
+	u.AssertEquals(t, 6, progress.GetGroup(nextNode[0]))
+	err = progress.CompleteNode(nextNode[0]) // completes end
+	u.AssertNil(t, err)
+
+	// End of dag
+	nothing := progress.NextNodes()
+	u.AssertEmptySlice(t, nothing)
+
 	progress.Print()
+}
+
+func TestComplexProgress(t *testing.T) {
+	condition := fc.NewPredicate().And(
+		fc.NewEqCondition(1, 3),
+		fc.NewGreaterCondition(1, 3),
+	).Build()
+	progress, dag := complexProgress(t, condition)
+
+	// Start node
+	nextNode := progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// SimpleNode
+	nextNode = progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// Choice
+	nextNode = progress.NextNodes()
+	choice := checkAndComplete(t, progress, dag, nextNode[0]).(*fc.ChoiceNode)
+
+	// Simple Node, FanOut
+	nextNode = progress.NextNodes() // Simple1, Simple2
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// suppose the fanout node at the right and all its children are skipped
+	_, _ = choice.Exec()
+	err := progress.CompleteNode(nextNode[choice.FirstMatch])
+	u.AssertNil(t, err)
+	nodeToSkip := choice.GetNodesToSkip()
+	err = progress.SkipAll(nodeToSkip)
+	u.AssertNil(t, err)
+	progress.Print()
+
+	// End node
+	nextNode = progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// End of dag
+	nothing := progress.NextNodes()
+	u.AssertEmptySlice(t, nothing)
+
+	progress.Print()
+}
+
+func TestComplexProgress2(t *testing.T) {
+	condition := fc.NewPredicate().And(
+		fc.NewEqCondition(1, 1),
+		fc.NewGreaterCondition(4, 3),
+	).Build()
+	progress, dag := complexProgress(t, condition)
+
+	// Start node
+	nextNode := progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// Simple Node
+	nextNode = progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// Choice
+	nextNode = progress.NextNodes()
+	choice := checkAndComplete(t, progress, dag, nextNode[0]).(*fc.ChoiceNode)
+
+	// Simple Node, FanOut
+	nextNode = progress.NextNodes() // Simple1, Simple2
+	simpleNodeLeft := choice.Alternatives[0]
+	fanOut := choice.Alternatives[1]
+	u.AssertEquals(t, nextNode[0], simpleNodeLeft.GetId())
+	u.AssertEquals(t, nextNode[1], fanOut.GetId())
+	u.AssertEquals(t, 3, progress.GetGroup(nextNode[0]))
+	u.AssertEquals(t, 3, progress.GetGroup(nextNode[1]))
+
+	// suppose the fanout node at the right and all its children are skipped
+	_, _ = choice.Exec()
+	err := progress.CompleteNode(nextNode[choice.FirstMatch])
+	u.AssertNil(t, err)
+	nodeToSkip := choice.GetNodesToSkip()
+	err = progress.SkipAll(nodeToSkip)
+	u.AssertNil(t, err)
+
+	// 3 Simple Nodes in parallel
+	nextNode = progress.NextNodes() // Simple1, Simple2
+	for _, simpleNodeId := range nextNode {
+		checkAndComplete(t, progress, dag, simpleNodeId)
+	}
+
+	// 3 other Simple Nodes
+	nextNode = progress.NextNodes()
+	for _, simpleNodeId := range nextNode {
+		checkAndComplete(t, progress, dag, simpleNodeId)
+	}
+
+	// Fan in
+	nextNode = progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// End node
+	nextNode = progress.NextNodes()
+	checkAndComplete(t, progress, dag, nextNode[0])
+
+	// End of dag
+	nothing := progress.NextNodes()
+	u.AssertEmptySlice(t, nothing)
+
+	progress.Print()
+}
+
+func checkAndComplete(t *testing.T, progress *fc.Progress, dag *fc.Dag, nodeId string) fc.DagNode {
+	node, ok := dag.Find(nodeId)
+	u.AssertTrue(t, ok)
+	u.AssertEquals(t, nodeId, node.GetId())
+	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nodeId))
+	err := progress.CompleteNode(nodeId)
+	u.AssertNil(t, err)
+	return node
 }
