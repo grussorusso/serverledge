@@ -8,6 +8,7 @@ import (
 	pb "github.com/grussorusso/serverledge/internal/scheduling/protobuf"
 	"google.golang.org/grpc"
 	"log"
+	"math"
 )
 
 // Calculates the aggregated total memory of nearby nodes
@@ -21,18 +22,26 @@ func calculateAggregatedMem() float32 {
 	return aggrMem
 }
 
-// Calculate bandwidth to cloud or to edge node
-func calculateBandwidth(packetSize int, isCloudCalc bool) float64 {
-	if isCloudCalc {
-		if CloudOffloadLatency != 0 {
-			return float64(packetSize) / CloudOffloadLatency
-		}
+// calculateUsableMemoryCoefficient calculates the coefficient that explains if the local node has memory available to
+// execute the function. It's calculated using the loss percentage of the local node.
+func calculateUsableMemoryCoefficient() float64 {
+	localRequests := node.Resources.RequestsCount
+	blockedRequests := node.Resources.DropRequestsCount
+	loss := 0.0
+	coefficient := 1.1
+
+	if localRequests > 0 {
+		loss = float64(float32(blockedRequests) / float32(localRequests))
 	} else {
-		if EdgeOffloadLatency != 0 {
-			return float64(packetSize) / EdgeOffloadLatency
-		}
+		loss = 0
 	}
-	return 0
+
+	if loss > 0.0 {
+		coefficient -= coefficient * loss / 2.0
+	} else {
+		coefficient = math.Min(coefficient*1.1, 1.0)
+	}
+	return coefficient
 }
 
 func solve(m map[string]*functionInfo) {
@@ -147,21 +156,25 @@ func solve(m map[string]*functionInfo) {
 	}
 
 	aggregatedEdgeMemory := calculateAggregatedMem()
-	// log.Println("aggregatedEdgeMemory: ", aggregatedEdgeMemory)
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
 	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
 	localCpu := float32(node.Resources.MaxCPUs)
 	localMem := float32(node.Resources.MaxMemMB)
+	localUsableMem := float32(calculateUsableMemoryCoefficient())
+	log.Println("node blocked requests: ", node.Resources.DropRequestsCount)
+	log.Println("node all requests: ", node.Resources.RequestsCount)
+	log.Println("Usable memory coeff: ", localUsableMem)
 	response, err := client.Solve(context.Background(), &pb.Request{
-		OffloadLatencyCloud: &offloadLatencyCloud,
-		OffloadLatencyEdge:  &offloadLatencyEdge,
-		Functions:           functionList,
-		Classes:             classList,
-		CostCloud:           &costCloud,
-		MemoryLocal:         &localMem,
-		CpuLocal:            &localCpu,
-		MemoryAggregate:     &aggregatedEdgeMemory,
+		OffloadLatencyCloud:     &offloadLatencyCloud,
+		OffloadLatencyEdge:      &offloadLatencyEdge,
+		Functions:               functionList,
+		Classes:                 classList,
+		CostCloud:               &costCloud,
+		MemoryLocal:             &localMem,
+		CpuLocal:                &localCpu,
+		MemoryAggregate:         &aggregatedEdgeMemory,
+		UsableMemoryCoefficient: &localUsableMem,
 	})
 
 	if err != nil {

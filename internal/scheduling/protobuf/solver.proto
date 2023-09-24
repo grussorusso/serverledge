@@ -12,14 +12,15 @@ service Solver {
 
 // argument
 message Request {
-  required float offload_latency_cloud = 1;   // offload latency cloud
-  required float offload_latency_edge = 2;    // offload latency edge
-  repeated Function functions = 3;            // functions
-  repeated QosClass classes = 4;              // classes
-  required float cost_cloud = 5;              // cost of the request if executed on cloud
-  required float memory_local = 10;           // memory available on local node
-  required float cpu_local = 11;              // cpu available on local node
-  required float memory_aggregate = 12;       // total memory available on all edge nodes
+  required float offload_latency_cloud = 1;       // offload latency cloud
+  required float offload_latency_edge = 2;        // offload latency edge
+  repeated Function functions = 3;                // functions
+  repeated QosClass classes = 4;                  // classes
+  required float cost_cloud = 5;                  // cost of the request if executed on cloud
+  required float memory_local = 10;               // memory available on local node
+  required float cpu_local = 11;                  // cpu available on local node
+  required float memory_aggregate = 12;           // total memory available on all edge nodes
+  required float usable_memory_coefficient = 13;  // local usable memory coefficient
 }
 
 message FunctionInvocation {

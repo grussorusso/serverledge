@@ -4,7 +4,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.12.4
-// source: internal/scheduling/protobuf/solver.proto
+// source: solver.proto
 
 // package name for the buffer will be used later
 
@@ -109,5 +109,5 @@ var Solver_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/scheduling/protobuf/solver.proto",
+	Metadata: "solver.proto",
 }

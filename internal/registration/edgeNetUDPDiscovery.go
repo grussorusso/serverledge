@@ -69,7 +69,7 @@ func getCurrentStatusInformation() (status []byte, err error) {
 		AvailableWarmContainers: node.WarmStatus(),
 		AvailableMemMB:          node.Resources.AvailableMemMB,
 		AvailableCPUs:           node.Resources.AvailableCPUs,
-		DropCount:               node.Resources.DropCount,
+		DropCount:               node.Resources.DropRequestsCount,
 		Coordinates:             *Reg.Client.GetCoordinate(),
 	}
 

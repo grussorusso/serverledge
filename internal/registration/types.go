@@ -27,5 +27,6 @@ type StatusInformation struct {
 	AvailableMemMB          int64
 	AvailableCPUs           float64
 	DropCount               int64
+	RequestCount            int64
 	Coordinates             vivaldi.Coordinate
 }

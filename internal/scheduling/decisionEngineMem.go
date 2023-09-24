@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"math/rand"
 	"time"
@@ -147,17 +148,20 @@ func (d *decisionEngineMem) handler() {
 			}
 
 		case r := <-requestChannel: // Result storage handler
-			// New request received - data is updated in local memory - need to differentiate between edge offloading and cloud offloading
+			// New request completed - data is updated in local memory - need to differentiate between edge offloading and cloud offloading
+			// Also need to increment the number of blocked requests in the node if this is the case
+
+			// If the request was dropped, then update the respective value in the node structure
+			if r.dropped {
+				node.Resources.DropRequestsCount += 1
+			}
+
 			d.updateData(r)
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
-			name := arr.Fun.Name
+			// A new request is arrived: update the counter of incoming request in the node structure
+			node.Resources.RequestsCount += 1
 
-			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
-			// Packet size is useful to calculate bandwidth
-			packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
-			packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
-			log.Println("packet size cloud: ", packetSizeCloud)
-			log.Println("packet size edge: ", packetSizeEdge)
+			name := arr.Fun.Name
 
 			fInfo, prs := d.m[name]
 			if !prs {
@@ -225,10 +229,20 @@ func (d *decisionEngineMem) ShowData() {
 }
 
 func (d *decisionEngineMem) Completed(r *scheduledRequest, offloaded int) {
+	if offloaded == 0 {
+		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	} else if offloaded == 1 {
+		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	} else {
+		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	}
+
 	requestChannel <- completedRequest{
 		scheduledRequest: r,
 		location:         offloaded,
+		dropped:          false,
 	}
+
 }
 
 func (d *decisionEngineMem) Delete(function string, class string) {

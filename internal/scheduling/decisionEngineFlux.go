@@ -115,10 +115,10 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		return EDGE_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
-		// fixme: why dropped is false here?
+		// fixme: why dropped was false here?
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
-			dropped:          false,
+			dropped:          true,
 		}
 
 		return DROP_REQUEST
@@ -527,7 +527,7 @@ func (d *decisionEngineFlux) handler() {
 			d.updateProbabilities()
 
 		case r := <-requestChannel: // Result storage handler
-			// New request received - added data to influxdb - need to differentiate between edge offloading and cloud offloading
+			// New request completed or dropped - added data to influxdb - need to differentiate between edge offloading and cloud offloading
 			// completed: true if the completed request is not dropped
 			// offloaded: true if the request is offloaded to another node
 			// offloaded_cloud: true if the completed request is offloaded vertically
@@ -537,13 +537,19 @@ func (d *decisionEngineFlux) handler() {
 			// - duration
 			// - init_time
 			log.Println("Result storage handler - adding data to influxdb")
+
 			var fKeys map[string]interface{}
 			offloaded := "false"
 			offloadedCloud := "false"
 			warmStart := "false"
 			completed := "false"
 
-			if !r.dropped {
+			// If the request was dropped, then update the respective value in the node structure
+			if r.dropped {
+				node.Resources.DropRequestsCount += 1
+				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				completed = "false"
+			} else {
 				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
 				completed = "true"
 			}
@@ -576,9 +582,12 @@ func (d *decisionEngineFlux) handler() {
 
 			writeAPI.WritePoint(p)
 			log.Println("ADDED NEW POINT INTO INFLUXDB")
-		case arr := <-arrivalChannel: // Arrival handler - structures initialization
-			name := arr.Fun.Name
 
+		case arr := <-arrivalChannel: // Arrival handler - structures initialization
+			// A new request is arrived: update the counter of incoming request in the node structure
+			node.Resources.RequestsCount += 1
+
+			name := arr.Fun.Name
 			fInfo, prs := d.m[name]
 			if !prs {
 				fInfo = &functionInfo{
@@ -629,7 +638,8 @@ func (d *decisionEngineFlux) ShowData() {
 	}
 }
 
-// Completed : takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
+// Completed : this method is executed only in case the request is not dropped and
+// takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
 // 1) offloaded = LOCAL = 0 --> the request is executed locally and not offloaded
 // 2) offloaded = OFFLOADED_CLOUD = 1 --> the request is offloaded to cloud
 // 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node

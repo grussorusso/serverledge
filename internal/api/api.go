@@ -222,7 +222,8 @@ func GetServerStatus(c echo.Context) error {
 		AvailableWarmContainers: node.WarmStatus(),
 		AvailableMemMB:          node.Resources.AvailableMemMB,
 		AvailableCPUs:           node.Resources.AvailableCPUs,
-		DropCount:               node.Resources.DropCount,
+		DropCount:               node.Resources.DropRequestsCount,
+		RequestCount:            node.Resources.RequestsCount,
 		Coordinates:             *registration.Reg.Client.GetCoordinate(),
 	}
 
