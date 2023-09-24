@@ -102,8 +102,8 @@ func solve(m map[string]*functionInfo) {
 		// FIXME REMOVE log.Println("edge rtt: ", EdgeOffloadLatency)
 		// FIXME REMOVE log.Println("bandwidth cloud: ", calculateBandwidth(fInfo.packetSizeCloud, true))
 		// FIXME REMOVE log.Println("bandwidth edge: ", calculateBandwidth(fInfo.packetSizeEdge, false))
-		bandwidthCloud := float32(calculateBandwidth(fInfo.packetSizeCloud, true))
-		bandwidthEdge := float32(calculateBandwidth(fInfo.packetSizeEdge, false))
+		bandwidthCloud := float32(config.GetFloat(config.BANDWIDTH_CLOUD, 1.0))
+		bandwidthEdge := float32(config.GetFloat(config.BANDWIDTH_EDGE, 1.0))
 
 		x := &pb.Function{
 			Name:                   &name,

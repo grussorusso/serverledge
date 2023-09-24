@@ -579,11 +579,6 @@ func (d *decisionEngineFlux) handler() {
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			name := arr.Fun.Name
 
-			// Calculate packet size for cloud host or edge host and save the info in FunctionInfo
-			// Packet size is useful to calculate bandwidth
-			// FIXME REMOVE packetSizeCloud := calculatePacketSize(arr.scheduledRequest, true)
-			// FIXME REMOVE packetSizeEdge := calculatePacketSize(arr.scheduledRequest, false)
-
 			fInfo, prs := d.m[name]
 			if !prs {
 				fInfo = &functionInfo{
@@ -591,8 +586,8 @@ func (d *decisionEngineFlux) handler() {
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{0, 0, 0},
-					packetSizeCloud: 0, // FIXME REMOVE
-					packetSizeEdge:  0, // FIXME REMOVE
+					bandwidthCloud:  0,
+					bandwidthEdge:   0,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo

@@ -166,8 +166,8 @@ func (d *decisionEngineMem) handler() {
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{1, 1, 1},
-					packetSizeCloud: packetSizeCloud,
-					packetSizeEdge:  packetSizeEdge,
+					bandwidthCloud:  0,
+					bandwidthEdge:   0,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo

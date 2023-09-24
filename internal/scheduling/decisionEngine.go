@@ -52,8 +52,8 @@ type functionInfo struct {
 	memory           int64      //Memory requested by the function
 	cpu              float64    //CPU requested by the function
 	probCold         [3]float64 //Probability of a cold start when requesting the function
-	packetSizeCloud  int        //Size of the function packet to send to possible host (cloud)
-	packetSizeEdge   int        //Size of the function packet to send to possible host (edge)
+	bandwidthCloud   int        //Bandwidth on cloud links
+	bandwidthEdge    int        //Bandwidth on edge links
 
 	//Map containing information about function requests for every class
 	invokingClasses map[string]*classFunctionInfo
