@@ -53,7 +53,7 @@ func (s *SimpleNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *SimpleNode) Exec() (map[string]interface{}, error) {
+func (s *SimpleNode) Exec(*Progress) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")

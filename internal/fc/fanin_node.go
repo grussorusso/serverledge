@@ -109,7 +109,7 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec waits all output from previous nodes or return an error after a timeout expires
-func (f *FanInNode) Exec() (map[string]interface{}, error) {
+func (f *FanInNode) Exec(*Progress) (map[string]interface{}, error) {
 	if !f.IsReached {
 		f.IsReached = true
 	} else {

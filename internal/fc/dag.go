@@ -1,7 +1,6 @@
 package fc
 
 import (
-	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
@@ -9,7 +8,7 @@ import (
 )
 
 // used to send output from parallel nodes to fan in node or to the next node
-var outputChannel = make(chan map[string]interface{})
+// var outputChannel = make(chan map[string]interface{})
 
 // Dag is a Workflow to drive the execution of the function composition
 type Dag struct {
@@ -213,8 +212,8 @@ func (dag *Dag) Print() string {
 
 // TODO: assicurarsi che si esegua in parallelo
 // TODO: aggiungere lo stato di avanzamento: ad esempio su ETCD, compresi i parametri di input/output
-func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, error) {
-	errChan := make(chan error)
+func (dag *Dag) Execute() error {
+	/*errChan := make(chan error)
 	if &dag.Start == nil && &dag.End == nil && dag.Width == 0 {
 		return nil, errors.New("you must instantiate the dag correctly with all fields")
 	}
@@ -336,7 +335,106 @@ func (dag *Dag) Execute(input map[string]interface{}) (map[string]interface{}, e
 		currentNodes = nextCurrentNodes
 	}
 
-	return previousOutput, nil
+	return previousOutput, nil*/
+
+	//TODO: capire da dove prendere la request id
+	requestId := "abc"
+	progress, _ := progressCache.RetrieveProgress(requestId)
+	nextNodes, err := progress.NextNodes()
+	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
+	if len(nextNodes) > 1 {
+		// preparing dag nodes and channels for parallel execution
+		parallelDagNodes := make([]DagNode, 0)
+		outputChannels := make([]chan map[string]interface{}, 0)
+		errorChannels := make([]chan error, 0)
+		partialDatas := make([]*PartialData, 0)
+		for _, nodeId := range nextNodes {
+			node, ok := dag.Find(nodeId)
+			if ok {
+				parallelDagNodes = append(parallelDagNodes, node)
+				outputChannels = append(outputChannels, make(chan map[string]interface{}))
+				errorChannels = append(errorChannels, make(chan error))
+			}
+		}
+		// executing all nodes in parallel
+		for i, node := range parallelDagNodes {
+			go func(i int, node DagNode) {
+				output, err := node.Exec(progress)
+				if err != nil {
+					outputChannels[i] <- nil
+					errorChannels[i] <- err
+					return
+				}
+				outputChannels[i] <- output
+				errorChannels[i] <- nil
+			}(i, node)
+			pd := NewPartialData(requestId, node.GetNext()[0].GetId(), node.GetId())
+			partialDatas = append(partialDatas, pd)
+		}
+		// checking errors
+		parallelErrors := make([]error, 0)
+		for _, errChan := range errorChannels {
+			err := <-errChan
+			if err != nil {
+				parallelErrors = append(parallelErrors, err)
+			}
+		}
+		// retrieving outputs (goroutines should end now)
+		parallelOutputs := make([]map[string]interface{}, 0)
+		for _, outChan := range outputChannels {
+			out := <-outChan
+			if out != nil {
+				parallelOutputs = append(parallelOutputs, out)
+			}
+		}
+		// returning errors
+		if len(parallelErrors) > 0 {
+			return fmt.Errorf("errors in parallel execution: %v", parallelErrors)
+		}
+		// saving partial data
+		for i, output := range parallelOutputs {
+			pd := partialDatas[i]
+			pd.Data = output
+			partialDataCache.Save(pd)
+			err := progress.CompleteNode(parallelDagNodes[i].GetId())
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// retrieving input
+		nodeId := nextNodes[0]
+		node, nodeFound := dag.Find(nodeId)
+		pd := NewPartialData(requestId, node.GetNext()[0].GetId(), nodeId)
+		input, err := partialDataCache.Retrieve(requestId, nodeId)
+		if err != nil {
+			return err
+		}
+		err = node.ReceiveInput(input)
+		if err != nil {
+			return err
+		}
+		// executing node
+		if nodeFound {
+			output, err := node.Exec(progress)
+			if err != nil {
+				return err
+			}
+			pd.Data = output
+		}
+		// saving partial data and updating progress
+		partialDataCache.Save(pd)
+		err = progress.CompleteNode(nodeId)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = progressCache.SaveProgress(progress)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetUniqueDagFunctions returns a list with the function used in the Dag

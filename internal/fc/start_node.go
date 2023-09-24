@@ -44,7 +44,7 @@ func (s *StartNode) AddOutput(dagNode DagNode) error {
 	return nil
 }
 
-func (s *StartNode) Exec() (map[string]interface{}, error) {
+func (s *StartNode) Exec(*Progress) (map[string]interface{}, error) {
 	panic("you can't exec a start node")
 }
 

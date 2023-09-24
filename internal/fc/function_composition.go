@@ -161,9 +161,9 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 func (fc *FunctionComposition) Invoke(input map[string]interface{}) (ExecutionReport, error) {
 	// fc.Progress.Retrieve()
 
-	output, err := fc.Workflow.Execute(input)
+	err := fc.Workflow.Execute()
 	// fc.ExecReport.Result = output
-	return ExecutionReport{Result: output}, err
+	return ExecutionReport{Result: nil}, err // TODO: RETURN SOMETHING!!!
 }
 
 // Delete removes the FunctionComposition from cache and from etcd, so it cannot be invoked anymore

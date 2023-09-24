@@ -53,7 +53,7 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec for choice node evaluates the condition
-func (c *ChoiceNode) Exec() (map[string]interface{}, error) {
+func (c *ChoiceNode) Exec(*Progress) (map[string]interface{}, error) {
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
 		ok, err := condition.Test()
