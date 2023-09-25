@@ -14,7 +14,7 @@ var progressCache = newProgressCache()
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
 	ReqId     ReqId // requestId, used to distinguish different dag's progresses
-	DagNodes  []*NodeInfo
+	DagNodes  []*DagNodeInfo
 	NextGroup int
 }
 
@@ -28,7 +28,7 @@ func newProgressCache() ProgressCache {
 	}
 }
 
-type NodeInfo struct {
+type DagNodeInfo struct {
 	Id     string
 	Type   DagNodeType
 	Status DagNodeStatus
@@ -36,8 +36,8 @@ type NodeInfo struct {
 	Branch int // copied from dagNode
 }
 
-func newNodeInfo(dNode DagNode, group int) *NodeInfo {
-	return &NodeInfo{
+func newNodeInfo(dNode DagNode, group int) *DagNodeInfo {
+	return &DagNodeInfo{
 		Id:     dNode.GetId(),
 		Type:   parseType(dNode),
 		Status: Pending,
@@ -191,7 +191,7 @@ func (p *Progress) FailNode(id string) error {
 	return fmt.Errorf("no node to fail with id %s exists in the dag for request %s", id, p.ReqId)
 }
 
-func (p *Progress) GetInfo(nodeId string) *NodeInfo {
+func (p *Progress) GetInfo(nodeId string) *DagNodeInfo {
 	for _, node := range p.DagNodes {
 		if node.Id == nodeId {
 			return node
@@ -210,9 +210,9 @@ func (p *Progress) GetGroup(nodeId string) int {
 }
 
 // moveEndNodeAtTheEnd moves the end node at the end of the list and sets its group accordingly
-func moveEndNodeAtTheEnd(nodeInfos []*NodeInfo) []*NodeInfo {
+func moveEndNodeAtTheEnd(nodeInfos []*DagNodeInfo) []*DagNodeInfo {
 	// move the endNode at the end of the list
-	var endNodeInfo *NodeInfo
+	var endNodeInfo *DagNodeInfo
 	// get index of end node to remove
 	indexToRemove := -1
 	maxGroup := 0
@@ -239,7 +239,7 @@ func moveEndNodeAtTheEnd(nodeInfos []*NodeInfo) []*NodeInfo {
 
 // InitProgressRecursive initialize the node list assigning a group to each node, so that we can know which nodes should run in parallel or is a choice branch
 func InitProgressRecursive(reqId string, dag *Dag) *Progress {
-	nodeInfos := extractNodeInfo(dag.Start, 0, make([]*NodeInfo, 0))
+	nodeInfos := extractNodeInfo(dag.Start, 0, make([]*DagNodeInfo, 0))
 	nodeInfos = moveEndNodeAtTheEnd(nodeInfos)
 	nodeInfos = reorder(nodeInfos)
 	return &Progress{
@@ -250,13 +250,13 @@ func InitProgressRecursive(reqId string, dag *Dag) *Progress {
 }
 
 // popMinGroupAndBranchNode removes the node with minimum group and, in case of multiple nodes in the same group, minimum branch
-func popMinGroupAndBranchNode(infos *[]*NodeInfo) *NodeInfo {
+func popMinGroupAndBranchNode(infos *[]*DagNodeInfo) *DagNodeInfo {
 	// finding min group nodes
 	minGroup := math.MaxInt
-	var minGroupNodeInfo []*NodeInfo
+	var minGroupNodeInfo []*DagNodeInfo
 	for _, info := range *infos {
 		if info.Group < minGroup {
-			minGroupNodeInfo = make([]*NodeInfo, 0)
+			minGroupNodeInfo = make([]*DagNodeInfo, 0)
 			minGroup = info.Group
 			minGroupNodeInfo = append(minGroupNodeInfo, info)
 		}
@@ -265,7 +265,7 @@ func popMinGroupAndBranchNode(infos *[]*NodeInfo) *NodeInfo {
 		}
 	}
 	minBranch := math.MaxInt // when there are ties
-	var minGroupAndBranchNode *NodeInfo
+	var minGroupAndBranchNode *DagNodeInfo
 
 	// finding min branch node from those of the minimum group
 	for _, info := range minGroupNodeInfo {
@@ -287,8 +287,8 @@ func popMinGroupAndBranchNode(infos *[]*NodeInfo) *NodeInfo {
 	return minGroupAndBranchNode
 }
 
-func reorder(infos []*NodeInfo) []*NodeInfo {
-	reordered := make([]*NodeInfo, 0)
+func reorder(infos []*DagNodeInfo) []*DagNodeInfo {
+	reordered := make([]*DagNodeInfo, 0)
 	fmt.Println(len(reordered))
 	for len(infos) > 0 {
 		next := popMinGroupAndBranchNode(&infos)
@@ -297,7 +297,7 @@ func reorder(infos []*NodeInfo) []*NodeInfo {
 	return reordered
 }
 
-func isNodeInfoPresent(node string, infos []*NodeInfo) bool {
+func isNodeInfoPresent(node string, infos []*DagNodeInfo) bool {
 	isPresent := false
 	for _, nodeInfo := range infos {
 		if nodeInfo.Id == node {
@@ -309,7 +309,7 @@ func isNodeInfoPresent(node string, infos []*NodeInfo) bool {
 }
 
 // extractNodeInfo retrieves all needed information from nodes and sets node groups. It duplicates end nodes.
-func extractNodeInfo(node DagNode, group int, infos []*NodeInfo) []*NodeInfo {
+func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeInfo {
 	info := newNodeInfo(node, group)
 	if !isNodeInfoPresent(node.GetId(), infos) {
 		infos = append(infos, info)

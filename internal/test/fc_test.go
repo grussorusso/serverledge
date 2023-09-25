@@ -13,6 +13,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	u "github.com/grussorusso/serverledge/utils"
 	"github.com/labstack/echo/v4"
+	"github.com/lithammer/shortuuid"
 	"google.golang.org/grpc/codes"
 	"log"
 	"os"
@@ -26,7 +27,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = false
+const INTEGRATION_TEST = true
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -238,8 +239,8 @@ func TestInvokeFC(t *testing.T) {
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
-	params[f.Signature.GetInputs()[0].Name] = 0 // FIXME: for javascript, the executor expects a string. But when you use "0", it seems to return null
-	resultMap, err2 := fcomp.Invoke(params)
+	params[f.Signature.GetInputs()[0].Name] = 0
+	resultMap, err2 := fcomp.Invoke(params, shortuuid.New())
 	u.AssertNil(t, err2)
 
 	// check result
@@ -297,7 +298,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = input
-	resultMap, err2 := fcomp.Invoke(params)
+	resultMap, err2 := fcomp.Invoke(params, shortuuid.New())
 	u.AssertNil(t, err2)
 	// checking the result, should be input + 1
 	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
@@ -348,7 +349,7 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 2
-	resultMap, err2 := fcomp.Invoke(params)
+	resultMap, err2 := fcomp.Invoke(params, shortuuid.New())
 	if err2 != nil {
 		log.Printf("%v\n", err2)
 		t.FailNow()
@@ -407,7 +408,7 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 1
-	resultMap, err2 := fcomp.Invoke(params)
+	resultMap, err2 := fcomp.Invoke(params, shortuuid.New())
 	u.AssertNil(t, err2)
 
 	// check multiple result

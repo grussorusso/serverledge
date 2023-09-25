@@ -17,12 +17,12 @@ type PartialData struct {
 	Data     map[string]interface{}
 }
 
-func NewPartialData(reqId string, forNode string, fromNode string) *PartialData {
+func NewPartialData(reqId string, forNode string, fromNode string, data map[string]interface{}) *PartialData {
 	return &PartialData{
 		ReqId:    ReqId(reqId),
 		ForNode:  DagNodeId(forNode),
 		FromNode: DagNodeId(fromNode),
-		Data:     nil,
+		Data:     data,
 	}
 }
 
@@ -37,8 +37,8 @@ func newPartialDataCache() PartialDataCache {
 	}
 }
 
-func (cache *PartialDataCache) InitNewRequest(req ReqId) {
-	partialDataCache.partialDatas[req] = make(map[DagNodeId]*PartialData)
+func (cache *PartialDataCache) InitNewRequest(req string) {
+	partialDataCache.partialDatas[ReqId(req)] = make(map[DagNodeId]*PartialData)
 }
 
 func (cache *PartialDataCache) Save(pd *PartialData) {
