@@ -210,9 +210,157 @@ func (dag *Dag) Print() string {
 	return result
 }
 
+func (dag *Dag) executeStart(progress *Progress, node *StartNode) (bool, error) {
+	err := progress.CompleteNode(node.GetId())
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (dag *Dag) executeSimple(requestId string, progress *Progress, node *SimpleNode) (bool, error) {
+	// retrieving input
+	var pd *PartialData
+	nodeId := node.GetId()
+
+	input, err := partialDataCache.Retrieve(requestId, nodeId)
+	if err != nil {
+		return false, err
+	}
+	err = node.ReceiveInput(input)
+	if err != nil {
+		return false, err
+	}
+	// executing node
+	output, err := node.Exec(progress)
+	if err != nil {
+		return false, err
+	}
+	// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
+	<-types.NodeDoneChan
+
+	pd = NewPartialData(requestId, node.GetNext()[0].GetId(), nodeId, output)
+	errSend := node.PrepareOutput(output)
+	if errSend != nil {
+		return false, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
+	}
+
+	// saving partial data and updating progress
+	partialDataCache.Save(pd)
+	err = progress.CompleteNode(nodeId)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (dag *Dag) executeChoice(requestId string, progress *Progress, choice *ChoiceNode) (bool, error) {
+	// retrieving input
+	var pd *PartialData
+	nodeId := choice.GetId()
+
+	input, err := partialDataCache.Retrieve(requestId, nodeId)
+	if err != nil {
+		return false, err
+	}
+	err = choice.ReceiveInput(input)
+	if err != nil {
+		return false, err
+	}
+	// executing node
+	output, err := choice.Exec(progress)
+	if err != nil {
+		return false, err
+	}
+	pd = NewPartialData(requestId, choice.GetNext()[0].GetId(), nodeId, output)
+	errSend := choice.PrepareOutput(output)
+	if errSend != nil {
+		return false, fmt.Errorf("the node %s cannot send the output: %v", choice.ToString(), errSend)
+	}
+
+	// for choice node, we skip all branch that will not be executed
+	nodesToSkip := choice.GetNodesToSkip()
+	errSkip := progress.SkipAll(nodesToSkip)
+	if errSkip != nil {
+		return false, errSkip
+	}
+
+	// saving partial data and updating progress
+	partialDataCache.Save(pd)
+	err = progress.CompleteNode(nodeId)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (dag *Dag) executeParallel(requestId string, progress *Progress, nextNodes []string) error {
+	// preparing dag nodes and channels for parallel execution
+	parallelDagNodes := make([]DagNode, 0)
+	outputChannels := make([]chan map[string]interface{}, 0)
+	errorChannels := make([]chan error, 0)
+	partialDatas := make([]*PartialData, 0)
+	for _, nodeId := range nextNodes {
+		node, ok := dag.Find(nodeId)
+		if ok {
+			parallelDagNodes = append(parallelDagNodes, node)
+			outputChannels = append(outputChannels, make(chan map[string]interface{}))
+			errorChannels = append(errorChannels, make(chan error))
+		}
+	}
+	// executing all nodes in parallel
+	for i, node := range parallelDagNodes {
+		go func(i int, node DagNode) {
+			output, err := node.Exec(progress)
+			if err != nil {
+				outputChannels[i] <- nil
+				errorChannels[i] <- err
+				return
+			}
+			outputChannels[i] <- output
+			errorChannels[i] <- nil
+		}(i, node)
+	}
+	// checking errors
+	parallelErrors := make([]error, 0)
+	for _, errChan := range errorChannels {
+		err := <-errChan
+		if err != nil {
+			parallelErrors = append(parallelErrors, err)
+		}
+	}
+	// retrieving outputs (goroutines should end now)
+	parallelOutputs := make([]map[string]interface{}, 0)
+	for _, outChan := range outputChannels {
+		out := <-outChan
+		if out != nil {
+			parallelOutputs = append(parallelOutputs, out)
+		}
+	}
+	// returning errors
+	if len(parallelErrors) > 0 {
+		return fmt.Errorf("errors in parallel execution: %v", parallelErrors)
+	}
+	// saving partial data
+	for i, output := range parallelOutputs {
+		node := parallelDagNodes[i]
+		pd := NewPartialData(requestId, node.GetNext()[0].GetId(), node.GetId(), nil)
+		partialDatas = append(partialDatas, pd)
+		pd.Data = output
+		partialDataCache.Save(pd)
+		err := progress.CompleteNode(parallelDagNodes[i].GetId())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // TODO: assicurarsi che si esegua in parallelo
 // TODO: aggiungere lo stato di avanzamento: ad esempio su ETCD, compresi i parametri di input/output
-func (dag *Dag) Execute() error {
+func (dag *Dag) Execute(requestId string) (bool, error) {
 	/*errChan := make(chan error)
 	if &dag.Start == nil && &dag.End == nil && dag.Width == 0 {
 		return nil, errors.New("you must instantiate the dag correctly with all fields")
@@ -337,104 +485,43 @@ func (dag *Dag) Execute() error {
 
 	return previousOutput, nil*/
 
-	//TODO: capire da dove prendere la request id
-	requestId := "abc"
 	progress, _ := progressCache.RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
+	shouldContinue := true
 	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
 	if len(nextNodes) > 1 {
-		// preparing dag nodes and channels for parallel execution
-		parallelDagNodes := make([]DagNode, 0)
-		outputChannels := make([]chan map[string]interface{}, 0)
-		errorChannels := make([]chan error, 0)
-		partialDatas := make([]*PartialData, 0)
-		for _, nodeId := range nextNodes {
-			node, ok := dag.Find(nodeId)
-			if ok {
-				parallelDagNodes = append(parallelDagNodes, node)
-				outputChannels = append(outputChannels, make(chan map[string]interface{}))
-				errorChannels = append(errorChannels, make(chan error))
-			}
-		}
-		// executing all nodes in parallel
-		for i, node := range parallelDagNodes {
-			go func(i int, node DagNode) {
-				output, err := node.Exec(progress)
-				if err != nil {
-					outputChannels[i] <- nil
-					errorChannels[i] <- err
-					return
-				}
-				outputChannels[i] <- output
-				errorChannels[i] <- nil
-			}(i, node)
-			pd := NewPartialData(requestId, node.GetNext()[0].GetId(), node.GetId())
-			partialDatas = append(partialDatas, pd)
-		}
-		// checking errors
-		parallelErrors := make([]error, 0)
-		for _, errChan := range errorChannels {
-			err := <-errChan
-			if err != nil {
-				parallelErrors = append(parallelErrors, err)
-			}
-		}
-		// retrieving outputs (goroutines should end now)
-		parallelOutputs := make([]map[string]interface{}, 0)
-		for _, outChan := range outputChannels {
-			out := <-outChan
-			if out != nil {
-				parallelOutputs = append(parallelOutputs, out)
-			}
-		}
-		// returning errors
-		if len(parallelErrors) > 0 {
-			return fmt.Errorf("errors in parallel execution: %v", parallelErrors)
-		}
-		// saving partial data
-		for i, output := range parallelOutputs {
-			pd := partialDatas[i]
-			pd.Data = output
-			partialDataCache.Save(pd)
-			err := progress.CompleteNode(parallelDagNodes[i].GetId())
-			if err != nil {
-				return err
-			}
+		err := dag.executeParallel(requestId, progress, nextNodes)
+		if err != nil {
+			return true, err
 		}
 	} else {
-		// retrieving input
-		nodeId := nextNodes[0]
-		node, nodeFound := dag.Find(nodeId)
-		pd := NewPartialData(requestId, node.GetNext()[0].GetId(), nodeId)
-		input, err := partialDataCache.Retrieve(requestId, nodeId)
-		if err != nil {
-			return err
+		n, ok := dag.Find(nextNodes[0])
+		if !ok {
+			return true, fmt.Errorf("failed to find node %s", n.GetId())
 		}
-		err = node.ReceiveInput(input)
-		if err != nil {
-			return err
+
+		switch node := n.(type) {
+		case *SimpleNode:
+			shouldContinue, err = dag.executeSimple(requestId, progress, node)
+		case *ChoiceNode:
+			shouldContinue, err = dag.executeChoice(requestId, progress, node)
+		case *FanInNode:
+		case *StartNode:
+			shouldContinue, err = dag.executeStart(progress, node)
+		case *FanOutNode:
+		case *EndNode:
+			shouldContinue = false
 		}
-		// executing node
-		if nodeFound {
-			output, err := node.Exec(progress)
-			if err != nil {
-				return err
-			}
-			pd.Data = output
-		}
-		// saving partial data and updating progress
-		partialDataCache.Save(pd)
-		err = progress.CompleteNode(nodeId)
 		if err != nil {
-			return err
+			return true, err
 		}
 	}
 
 	err = progressCache.SaveProgress(progress)
 	if err != nil {
-		return err
+		return true, err
 	}
-	return nil
+	return shouldContinue, nil
 }
 
 // GetUniqueDagFunctions returns a list with the function used in the Dag

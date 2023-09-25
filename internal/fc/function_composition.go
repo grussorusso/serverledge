@@ -158,12 +158,34 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 }
 
 // Invoke schedules each function of the composition and invokes them
-func (fc *FunctionComposition) Invoke(input map[string]interface{}) (ExecutionReport, error) {
-	// fc.Progress.Retrieve()
-
-	err := fc.Workflow.Execute()
-	// fc.ExecReport.Result = output
-	return ExecutionReport{Result: nil}, err // TODO: RETURN SOMETHING!!!
+func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId string) (ExecutionReport, error) {
+	// initialize struct progress from dag
+	progress := InitProgressRecursive(requestId, &fc.Workflow)
+	// initialize partial data cache
+	partialDataCache.InitNewRequest(requestId)
+	// initialize partial data with input, directly from the Start.Next node
+	pd := NewPartialData(requestId, fc.Workflow.Start.Next.GetId(), "nil", input)
+	pd.Data = input
+	// saving partial data and progress to cache
+	partialDataCache.Save(pd)
+	err := progressCache.SaveProgress(progress)
+	if err != nil {
+		return ExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
+	}
+	shouldContinue := true
+	for shouldContinue {
+		// executing dag
+		shouldContinue, err = fc.Workflow.Execute(requestId)
+		if err != nil {
+			return ExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
+		}
+	}
+	// retrieving output of  execution
+	result, err := partialDataCache.Retrieve(requestId, fc.Workflow.End.GetId())
+	if err != nil {
+		return ExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
+	}
+	return ExecutionReport{Result: result}, nil
 }
 
 // Delete removes the FunctionComposition from cache and from etcd, so it cannot be invoked anymore
