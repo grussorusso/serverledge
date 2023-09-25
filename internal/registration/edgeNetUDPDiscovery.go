@@ -16,9 +16,11 @@ import (
 // UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
 // this listener should be called asynchronously in the main function
 func UDPStatusServer() {
+	// Should listen for every possible client
 	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
 	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
 	address := fmt.Sprintf("%s:%d", hostname, port)
+	log.Println("LISTENING ADDRESS: ", address)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
 
 	if err != nil {
@@ -78,10 +80,9 @@ func getCurrentStatusInformation() (status []byte, err error) {
 }
 
 // statusInfoRequest sends a request to the local registry of a node
-func statusInfoRequest(hostname string) (info *StatusInformation, duration time.Duration) {
-	// fixme: questo è sbagliato, dovrebbe selezionare la porta di ascolto del nodo che possiede le informazioni che mi servono
-	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
-	address := fmt.Sprintf("%s:%d", hostname, port)
+func statusInfoRequest(hostname string, port string) (info *StatusInformation, duration time.Duration) {
+	// Construct the address of the local registry of the target node
+	address := fmt.Sprintf("%s:%s", hostname, port)
 	log.Println("address for info request: ", address)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)

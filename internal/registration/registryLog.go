@@ -1,6 +1,7 @@
 package registration
 
 import (
+	"encoding/json"
 	"log"
 	"reflect"
 	"sort"
@@ -65,14 +66,24 @@ func monitoring() {
 	delete(etcdServerMap, Reg.Key) // not consider myself
 	log.Println("server map after delete: ", etcdServerMap)
 
-	for key, url := range etcdServerMap {
+	for key, values := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
+		var nodeInfo NodeInformation
 		log.Println("key: ", key)
 		log.Println("oldInfo: ", oldInfo)
 
-		ip := url[7 : len(url)-5]
+		// Get registry address of the target node registry server
+		err = json.Unmarshal([]byte(values), &nodeInfo)
+		if err != nil {
+			log.Println("Cannot unmarshal target node info recovered from etcd.")
+		}
+		url := nodeInfo.RegistryAddress
+		log.Println("url: ", url)
+
+		hostname := url[7 : len(url)-5]
+		port := url[len(url)-4:]
 		// use udp socket to retrieve infos about the edge-node status and rtt
-		newInfo, rtt := statusInfoRequest(ip)
+		newInfo, rtt := statusInfoRequest(hostname, port)
 		if newInfo == nil {
 			//unreachable server
 			delete(Reg.serversMap, key)
@@ -130,8 +141,9 @@ func nearbyMonitoring() {
 	for key, info := range Reg.NearbyServersMap {
 		oldInfo, ok := Reg.serversMap[key]
 
-		ip := info.Url[7 : len(info.Url)-5]
-		newInfo, rtt := statusInfoRequest(ip)
+		hostname := info.Url[7 : len(info.Url)-5]
+		port := info.Url[len(info.Url)-4:]
+		newInfo, rtt := statusInfoRequest(hostname, port)
 		if newInfo == nil {
 			//unreachable server
 			delete(Reg.serversMap, key)

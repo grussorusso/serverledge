@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/LK4D4/trylock v0.0.0-20191027065348-ff7e133a5c54
 	github.com/docker/docker v20.10.12+incompatible
+	github.com/golang/protobuf v1.5.3
 	github.com/hexablock/vivaldi v0.0.0-20180727225019-07adad3f2b5f
 	github.com/influxdata/influxdb-client-go/v2 v2.12.0
 	github.com/labstack/echo/v4 v4.6.1
@@ -16,7 +17,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.1
 	golang.org/x/net v0.12.0
 	google.golang.org/grpc v1.57.0
-	google.golang.org/protobuf v1.31.0
 )
 
 require (
@@ -33,7 +33,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -74,6 +73,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230726155614-23370e0ffb3e // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230706204954-ccb25ca9f130 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230731193218-e0aa005b6bdf // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 
 )

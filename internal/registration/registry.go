@@ -1,6 +1,7 @@
 package registration
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -42,8 +43,19 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	}
 
 	log.Printf("Registration key: %s\n", r.Key)
-	// save couple (id, hostport) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
+	port := config.GetString(config.LISTEN_UDP_PORT, "9876") //TODO metti la porta da configurazione
+	registryAddress := hostport[0:len(hostport)-5] + ":" + port
+	payload := map[string]string{
+		"nodeAddress":     hostport,
+		"registryAddress": registryAddress,
+	}
+	value, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Cannot marshal etcd payload in node registration process")
+	}
+
+	// save couple (id, {nodeAddress, registryAddress}) to the correct Area-dir on etcd
+	_, err = etcdClient.Put(ctx, r.Key, string(value), clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return "", IdRegistrationErr

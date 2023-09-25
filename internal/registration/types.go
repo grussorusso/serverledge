@@ -30,3 +30,8 @@ type StatusInformation struct {
 	RequestCount            int64
 	Coordinates             vivaldi.Coordinate
 }
+
+type NodeInformation struct {
+	NodeAddress     string
+	RegistryAddress string
+}
