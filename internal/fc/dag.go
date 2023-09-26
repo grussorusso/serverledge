@@ -241,7 +241,7 @@ func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, node *SimpleN
 	<-types.NodeDoneChan
 
 	pd = NewPartialData(requestId, node.GetNext()[0], nodeId, output)
-	errSend := node.PrepareOutput(nil, output)
+	errSend := node.PrepareOutput(dag, output)
 	if errSend != nil {
 		return false, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
 	}
@@ -275,7 +275,7 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 		return false, err
 	}
 	pd = NewPartialData(requestId, choice.GetNext()[0], nodeId, output)
-	errSend := choice.PrepareOutput(nil, output)
+	errSend := choice.PrepareOutput(dag, output)
 	if errSend != nil {
 		return false, fmt.Errorf("the node %s cannot send the output: %v", choice.ToString(), errSend)
 	}
