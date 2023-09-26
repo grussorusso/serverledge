@@ -25,9 +25,9 @@ const (
 	EDGE_OFFLOAD_REQUEST  = 3
 )
 
-var startingLocalProb = 0.3        //0.0
-var startingCloudOffloadProb = 0.3 //1.0
-var startingEdgeOffloadProb = 0.3
+var startingLocalProb = 0.5         //Optimistically start with a higher probability of executing function locally
+var startingCloudOffloadProb = 0.25 //
+var startingEdgeOffloadProb = 0.25  // It's equally probable that we have a vertical offload and a horizontal offload
 
 var evaluationInterval time.Duration
 

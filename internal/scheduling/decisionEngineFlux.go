@@ -83,15 +83,10 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		pE = 0
 	} else if !canExecute(r.Fun) {
 		// Node can't execute function locally
-		if pD == 0 && pC == 0 {
+		if pD == 0 && pC == 0 && pE == 0 {
 			pD = 0
-			pC = 1
-			pE = 0
-			pL = 0
-		} else if pD == 0 && pE == 0 {
-			pD = 0
-			pC = 0
-			pE = 1
+			pC = 0.5
+			pE = 0.5
 			pL = 0
 		} else {
 			pD = pD / (pD + pC + pE)

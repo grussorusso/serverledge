@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/metrics"
-	"github.com/grussorusso/serverledge/internal/node"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -25,12 +24,6 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 		return ""
 	}
 
-	log.Println("NEARBY SERVERS MAP IN PICK NODE: ", nearbyServersMap)
-	for key, info := range nearbyServersMap {
-		log.Println("key: ", key)
-		log.Println("url: ", info.Url)
-	}
-
 	//first, search for warm container
 	log.Printf("Search for a warm container")
 	for _, v := range nearbyServersMap {
@@ -40,8 +33,6 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	}
 	log.Printf("Nobody has warm container: search for available memory")
 	//second, (nobody has warm container) search for available memory
-	log.Println("DIS NODE: ", node.NodeIdentifier)
-	log.Printf("%v", nearbyServersMap)
 	for _, v := range nearbyServersMap {
 		log.Printf("nearby node available memory: %d", v.AvailableMemMB)
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
@@ -150,8 +141,6 @@ func Offload(r *function.Request, serverUrl string) error {
 	// It was originally computed as "report.Arrival - sendingTime"
 	// Check if r.ExecReport.Duration and r.ExecReport.InitTime are greater than 0
 
-	log.Printf("Offloading to server url: %s", serverUrl)
-
 	if checkIfCloudOffloading(serverUrl) {
 		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
@@ -178,13 +167,10 @@ func Offload(r *function.Request, serverUrl string) error {
 // checkIfCloudOffloading checks if the offloading is vertical or horizontal, given the url of the target server
 func checkIfCloudOffloading(serverUrl string) bool {
 	allCloudNodes, _ := registration.Reg.GetAll(true)
-	log.Println("All cloud nodes: ", allCloudNodes)
 	for key, value := range allCloudNodes {
 
 		nodeInfo := registration.GetNodeInformation(value)
 		url := nodeInfo.NodeAddress
-		log.Println("Server url: ", serverUrl)
-		log.Println("Key: ", url)
 		if serverUrl == url {
 			log.Printf("Server with key %v was chosen to host offloading", key)
 			return true

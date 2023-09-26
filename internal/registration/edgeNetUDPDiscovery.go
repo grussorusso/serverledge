@@ -82,7 +82,6 @@ func getCurrentStatusInformation() (status []byte, err error) {
 func statusInfoRequest(hostname string, port string) (info *StatusInformation, duration time.Duration) {
 	// Construct the address of the local registry of the target node
 	address := fmt.Sprintf("%s:%s", hostname, port)
-	log.Println("address for info request: ", address)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
