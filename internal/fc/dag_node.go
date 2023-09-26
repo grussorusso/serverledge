@@ -19,6 +19,10 @@ type DagNode interface {
 	HasBranch
 }
 
+// HasBranch is a counter that represent the branch of a node in the dag.
+// For a sequence dag, the branch is always 0.
+// For a dag with a single choice node, the choice node has branch 0, the N alternatives have branch 1,2,...,N
+// For a parallel dag with one fanOut and fanIn, the fanOut has branch 0, fanOut branches have branch 1,2,...,N and FanIn has branch N+1
 type HasBranch interface {
 	setBranchId(number int)
 	GetBranchId() int
@@ -26,7 +30,7 @@ type HasBranch interface {
 
 type Display interface {
 	ToString() string
-	GetId() string
+	GetId() DagNodeId
 	Name() string
 }
 
@@ -42,7 +46,7 @@ type HasInput interface {
 
 type HasOutput interface {
 	// AddOutput  adds a result node, if compatible. For some DagNodes can be called multiple times
-	AddOutput(dagNode DagNode) error
+	AddOutput(dag *Dag, dagNode DagNodeId) error
 }
 
 type ReceivesInput interface {
@@ -52,9 +56,9 @@ type ReceivesInput interface {
 
 type ReceivesOutput interface {
 	// PrepareOutput maps the outputMap of the current node to the inputMap of the next nodes
-	PrepareOutput(output map[string]interface{}) error
+	PrepareOutput(dag *Dag, output map[string]interface{}) error
 }
 
 type HasNext interface {
-	GetNext() []DagNode
+	GetNext() []DagNodeId
 }

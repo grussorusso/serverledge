@@ -12,19 +12,19 @@ import (
 
 // ChoiceNode receives one input and produces one result to one of two alternative nodes, based on condition
 type ChoiceNode struct {
-	Id           string
+	Id           DagNodeId
 	BranchId     int
 	input        map[string]interface{}
-	Alternatives []DagNode
+	Alternatives []DagNodeId
 	Conditions   []Condition
 	FirstMatch   int
 }
 
 func NewChoiceNode(conds []Condition) *ChoiceNode {
 	return &ChoiceNode{
-		Id:           shortuuid.New(),
+		Id:           DagNodeId(shortuuid.New()),
 		Conditions:   conds,
-		Alternatives: make([]DagNode, len(conds)),
+		Alternatives: make([]DagNodeId, len(conds)),
 		FirstMatch:   -1,
 	}
 }
@@ -83,7 +83,7 @@ func (c *ChoiceNode) AddCondition(condition Condition) {
 	c.Conditions = append(c.Conditions, condition)
 }
 
-func (c *ChoiceNode) AddOutput(dagNode DagNode) error {
+func (c *ChoiceNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 
 	if len(c.Alternatives) > len(c.Conditions) {
 		return errors.New(fmt.Sprintf("there are %d alternatives but %d Conditions", len(c.Alternatives), len(c.Conditions)))
@@ -100,29 +100,33 @@ func (c *ChoiceNode) ReceiveInput(input map[string]interface{}) error {
 	return nil
 }
 
-func (c *ChoiceNode) PrepareOutput(output map[string]interface{}) error {
+func (c *ChoiceNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
 	// we should map the output to the input of the node that first matches the condition and not to every alternative
 	for _, n := range c.GetNext() {
-		switch n.(type) {
+		dagNode, ok := dag.Find(n)
+		if !ok {
+			return fmt.Errorf("node not found while preparing output")
+		}
+		switch nod := dagNode.(type) {
 		case *SimpleNode:
-			return n.(*SimpleNode).MapOutput(output)
+			return nod.MapOutput(output)
 		}
 	}
 	return nil
 }
 
 // GetChoiceBranch returns all node ids of a branch under a choice node; branch number starts from 0
-func (c *ChoiceNode) GetChoiceBranch(branch int) []DagNode {
+func (c *ChoiceNode) GetChoiceBranch(dag *Dag, branch int) []DagNode {
 	branchNodes := make([]DagNode, 0)
 	if len(c.Alternatives) <= branch {
 		fmt.Printf("fail to get branch %d\n", branch)
 		return branchNodes
 	}
 	node := c.Alternatives[branch]
-	return VisitDag(node, branchNodes, true)
+	return VisitDag(dag, node, branchNodes, true)
 }
 
-func (c *ChoiceNode) GetNodesToSkip() []DagNode {
+func (c *ChoiceNode) GetNodesToSkip(dag *Dag) []DagNode {
 	nodesToSkip := make([]DagNode, 0)
 	if c.FirstMatch == -1 || c.FirstMatch >= len(c.Alternatives) {
 		return nodesToSkip
@@ -131,12 +135,12 @@ func (c *ChoiceNode) GetNodesToSkip() []DagNode {
 		if i == c.FirstMatch {
 			continue
 		}
-		nodesToSkip = append(nodesToSkip, c.GetChoiceBranch(i)...)
+		nodesToSkip = append(nodesToSkip, c.GetChoiceBranch(dag, i)...)
 	}
 	return nodesToSkip
 }
 
-func (c *ChoiceNode) GetNext() []DagNode {
+func (c *ChoiceNode) GetNext() []DagNodeId {
 	// you should have called exec before calling GetNext
 	if c.FirstMatch >= len(c.Alternatives) {
 		panic("there aren't sufficient alternatives!")
@@ -145,7 +149,7 @@ func (c *ChoiceNode) GetNext() []DagNode {
 	if c.FirstMatch < 0 {
 		panic("first match cannot be less then 0. You should call Exec() before GetNext()")
 	}
-	next := make([]DagNode, 1)
+	next := make([]DagNodeId, 1)
 	next[0] = c.Alternatives[c.FirstMatch]
 	return next
 }
@@ -188,9 +192,9 @@ func (c *ChoiceNode) ToString() string {
 		}
 	}
 	conditions += ">"
-	return fmt.Sprintf("[ChoiceNode(%d): %s] ", c.Alternatives, conditions)
+	return fmt.Sprintf("[ChoiceNode(%d): %s] ", len(c.Alternatives), conditions)
 }
 
-func (c *ChoiceNode) GetId() string {
+func (c *ChoiceNode) GetId() DagNodeId {
 	return c.Id
 }

@@ -12,13 +12,13 @@ import (
 
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
-	Id              string
+	Id              DagNodeId
 	BranchId        int
 	input           map[string]interface{}
-	OutputTo        []DagNode
+	OutputTo        []DagNodeId
 	FanOutDegree    int
 	Type            FanOutType
-	AssociatedFanIn string
+	AssociatedFanIn DagNodeId
 }
 type FanOutType int
 
@@ -38,17 +38,18 @@ const (
 
 func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
 	return &FanOutNode{
-		Id:           shortuuid.New(),
-		OutputTo:     make([]DagNode, 0),
+		Id:           DagNodeId(shortuuid.New()),
+		OutputTo:     make([]DagNodeId, 0),
 		FanOutDegree: fanOutDegree,
 		Type:         fanOutType,
 	}
 }
 
-func (f *FanOutNode) getBranchNumbers() []int {
+func (f *FanOutNode) getBranchNumbers(dag *Dag) []int {
 	branchNumbers := make([]int, f.FanOutDegree)
 	for i, o := range f.OutputTo {
-		branchNumbers[i] = o.GetBranchId()
+		nod, _ := dag.Find(o)
+		branchNumbers[i] = nod.GetBranchId()
 	}
 	return branchNumbers
 }
@@ -97,7 +98,7 @@ func (f *FanOutNode) AddInput(dagNode DagNode) error {
 	return nil
 }
 
-func (f *FanOutNode) AddOutput(dagNode DagNode) error {
+func (f *FanOutNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	if len(f.OutputTo) == f.FanOutDegree {
 		return errors.New("cannot add more output. Create a FanOutNode with a higher fanout degree")
 	}
@@ -111,10 +112,14 @@ func (f *FanOutNode) ReceiveInput(input map[string]interface{}) error {
 }
 
 // PrepareOutput sends output to the next node in each parallel branch
-func (f *FanOutNode) PrepareOutput(output map[string]interface{}) error {
-	for i, node := range f.GetNext() {
+func (f *FanOutNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
+	for i, nodeId := range f.GetNext() {
+		outputNode, ok := dag.Find(nodeId)
+		if !ok {
+			return fmt.Errorf("FanoutNode.PrepareOutput: cannot find node")
+		}
 		if f.Type == Broadcast {
-			err := node.ReceiveInput(output)
+			err := outputNode.ReceiveInput(output)
 			if err != nil {
 				return err
 			}
@@ -123,7 +128,7 @@ func (f *FanOutNode) PrepareOutput(output map[string]interface{}) error {
 			if !ok {
 				return fmt.Errorf("FanOutNode.PrepareOutput: failed to convert output interface{} to map[string]interface{}")
 			}
-			err := node.ReceiveInput(mapForBranch)
+			err := outputNode.ReceiveInput(mapForBranch)
 			if err != nil {
 				return err
 			}
@@ -135,21 +140,21 @@ func (f *FanOutNode) PrepareOutput(output map[string]interface{}) error {
 	return nil
 }
 
-func (f *FanOutNode) GetNext() []DagNode {
+func (f *FanOutNode) GetNext() []DagNodeId {
 	// we have multiple outputs
 	if f.FanOutDegree <= 1 {
 		log.Printf("You should have used a SimpleNode or EndNode for fanOutDegree less than 2")
-		return []DagNode{}
+		return []DagNodeId{}
 	}
 
 	if f.OutputTo == nil {
 		log.Printf("You forgot to initialize OutputTo for FanOutNode")
-		return []DagNode{}
+		return []DagNodeId{}
 	}
 
 	if f.FanOutDegree != len(f.OutputTo) {
 		log.Printf("The fanOutDegree and number of outputs does not match")
-		return []DagNode{}
+		return []DagNodeId{}
 	}
 
 	return f.OutputTo
@@ -172,7 +177,7 @@ func (f *FanOutNode) Name() string {
 func (f *FanOutNode) ToString() string {
 	outputs := ""
 	for i, outputTo := range f.OutputTo {
-		outputs += outputTo.Name()
+		outputs += string(outputTo)
 		if i != len(f.OutputTo)-1 {
 			outputs += ", "
 		}
@@ -189,6 +194,6 @@ func (f *FanOutNode) GetBranchId() int {
 	return f.BranchId
 }
 
-func (f *FanOutNode) GetId() string {
+func (f *FanOutNode) GetId() DagNodeId {
 	return f.Id
 }

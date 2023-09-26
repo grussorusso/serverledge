@@ -8,15 +8,16 @@ import (
 	"reflect"
 )
 
+// TODO: si può mettere il dag privato all'interno di ogni nodo? Senza che si fa il marshaling, ma dopo si setta in seguito?
 // StartNode is a DagNode from which the execution of the Dag starts. Invokes the first DagNode
 type StartNode struct {
-	Id   string
-	Next DagNode
+	Id   DagNodeId
+	Next DagNodeId
 }
 
 func NewStartNode() *StartNode {
 	return &StartNode{
-		Id: shortuuid.New(),
+		Id: DagNodeId(shortuuid.New()),
 	}
 }
 
@@ -33,13 +34,16 @@ func (s *StartNode) AddInput(dagNode DagNode) error {
 	panic("not supported")
 }
 
-func (s *StartNode) AddOutput(dagNode DagNode) error {
-
-	switch dagNode.(type) {
+func (s *StartNode) AddOutput(dag *Dag, nodeId DagNodeId) error {
+	node, found := dag.Find(nodeId)
+	if !found {
+		return fmt.Errorf("node %s not found", nodeId)
+	}
+	switch node.(type) {
 	case *StartNode:
-		return errors.New(fmt.Sprintf("you cannot add an result of type %s to a %s", reflect.TypeOf(dagNode), reflect.TypeOf(s)))
+		return errors.New(fmt.Sprintf("you cannot add an result of type %s to a %s", reflect.TypeOf(node), reflect.TypeOf(s)))
 	default:
-		s.Next = dagNode
+		s.Next = nodeId
 	}
 	return nil
 }
@@ -54,15 +58,19 @@ func (s *StartNode) ReceiveInput(input map[string]interface{}) error {
 }
 
 // PrepareOutput for StartNode just send to the next node what it receives
-func (s *StartNode) PrepareOutput(output map[string]interface{}) error {
-	err := s.Next.ReceiveInput(output)
+func (s *StartNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
+	nextNode, ok := dag.Find(s.Next)
+	if !ok {
+		return fmt.Errorf("node %s not found", s.Next)
+	}
+	err := nextNode.ReceiveInput(output)
 	return err
 }
 
-func (s *StartNode) GetNext() []DagNode {
+func (s *StartNode) GetNext() []DagNodeId {
 	// we only have one output
-	arr := make([]DagNode, 1)
-	if s.Next != nil {
+	arr := make([]DagNodeId, 1)
+	if s.Next != "" {
 		arr[0] = s.Next
 		return arr
 	}
@@ -78,7 +86,7 @@ func (s *StartNode) Name() string {
 }
 
 func (s *StartNode) ToString() string {
-	return fmt.Sprintf("[%s]-next->%s", s.Name(), s.Next.Name())
+	return fmt.Sprintf("[%s]-next->%s", s.Name(), s.Next)
 }
 
 func (s *StartNode) setBranchId(number int) {
@@ -87,6 +95,6 @@ func (s *StartNode) GetBranchId() int {
 	return 0
 }
 
-func (s *StartNode) GetId() string {
+func (s *StartNode) GetId() DagNodeId {
 	return s.Id
 }
