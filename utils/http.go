@@ -42,3 +42,12 @@ func PrintJsonResponse(resp io.ReadCloser) {
 		return
 	}
 }
+
+func GetJsonResponse(resp io.ReadCloser) string {
+	defer resp.Close()
+	body, _ := io.ReadAll(resp)
+
+	var out bytes.Buffer
+	json.Indent(&out, body, "", "\t")
+	return out.String()
+}
