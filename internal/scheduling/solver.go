@@ -93,22 +93,6 @@ func solve(m map[string]*functionInfo) {
 		pCold := float32(fInfo.probCold[LOCAL])
 		pColdOffloadedCloud := float32(fInfo.probCold[OFFLOADED_CLOUD])
 		pColdOffloadedEdge := float32(fInfo.probCold[OFFLOADED_EDGE])
-		// FIXME REMOVE log.Println("func memory: ", memory)
-		// FIXME REMOVE log.Println("func cpu: ", cpu)
-		// FIXME REMOVE log.Println("func name: ", name)
-		// FIXME REMOVE log.Println("func service time local: ", durationLocal)
-		// FIXME REMOVE log.Println("func service time cloud: ", durationOffloadedCloud)
-		// FIXME REMOVE log.Println("func service time edge: ", durationOffloadedEdge)
-		// FIXME REMOVE log.Println("func init time local: ", initTimeLocal)
-		// FIXME REMOVE log.Println("func init time cloud: ", initTimeOffloadedCloud)
-		// FIXME REMOVE log.Println("func init time edge: ", initTimeOffloadedEdge)
-		// FIXME REMOVE log.Println("pCold - local: ", pCold)
-		// FIXME REMOVE log.Println("pCold - cloud: ", pColdOffloadedCloud)
-		// FIXME REMOVE log.Println("pCold - edge: ", pColdOffloadedEdge)
-		// FIXME REMOVE log.Println("cloud rtt: ", CloudOffloadLatency)
-		// FIXME REMOVE log.Println("edge rtt: ", EdgeOffloadLatency)
-		// FIXME REMOVE log.Println("bandwidth cloud: ", calculateBandwidth(fInfo.packetSizeCloud, true))
-		// FIXME REMOVE log.Println("bandwidth edge: ", calculateBandwidth(fInfo.packetSizeEdge, false))
 		bandwidthCloud := float32(config.GetFloat(config.BANDWIDTH_CLOUD, 1.0))
 		bandwidthEdge := float32(config.GetFloat(config.BANDWIDTH_EDGE, 1.0))
 
@@ -139,10 +123,6 @@ func solve(m map[string]*functionInfo) {
 			mrt := float32(class.MaximumResponseTime)
 			completedPercentage := float32(class.CompletedPercentage)
 			name := cName
-			// FIXME REMOVE log.Println("class name: ", cName)
-			// FIXME REMOVE log.Println("class utility: ", utility)
-			// FIXME REMOVE log.Println("class mrt: ", mrt)
-			// FIXME REMOVE log.Println("class completed perc: ", completedPercentage)
 
 			classList = append(classList, &pb.QosClass{
 				Name:                &name,
@@ -157,6 +137,7 @@ func solve(m map[string]*functionInfo) {
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
 	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
+	localBudget := float32(config.GetFloat(config.BUDGET, 0.01))
 	localCpu := float32(node.Resources.MaxCPUs)
 	localMem := float32(node.Resources.MaxMemMB)
 	localUsableMem := float32(calculateUsableMemoryCoefficient())
@@ -166,6 +147,7 @@ func solve(m map[string]*functionInfo) {
 		Functions:               functionList,
 		Classes:                 classList,
 		CostCloud:               &costCloud,
+		LocalBudget:             &localBudget,
 		MemoryLocal:             &localMem,
 		CpuLocal:                &localCpu,
 		MemoryAggregate:         &aggregatedEdgeMemory,

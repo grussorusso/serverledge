@@ -70,6 +70,7 @@ const SCHEDULING_POLICY = "scheduler.policy"
 const SCHEDULING_POLICY_VERSION = "scheduler.version"
 
 const CLOUD_COST = "scheduler.cloud.cost"
+const BUDGET = "scheduler.local.budget"
 
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"

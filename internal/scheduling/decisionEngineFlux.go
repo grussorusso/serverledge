@@ -516,7 +516,7 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			//TODO set period
-			// d.deleteOldData(24 * time.Hour)
+			d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()
