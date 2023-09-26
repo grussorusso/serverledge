@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// TestContainerPool executes repeatedly different functions to verify the container pool
 func TestContainerPool(t *testing.T) {
 	if !INTEGRATION_TEST {
 		t.Skip()
@@ -22,7 +23,7 @@ func TestContainerPool(t *testing.T) {
 			Build())
 		utils.AssertNil(t, err)
 
-		createTest(t, fn)
+		createTest(t, fn, "localhost", 1323)
 	}
 
 	channel := make(chan error)
@@ -34,7 +35,7 @@ func TestContainerPool(t *testing.T) {
 			fnName := name
 			go func() {
 				time.Sleep(50 * time.Millisecond)
-				err := invokeTest(fnName, x)
+				err := invokeTest(fnName, x, "localhost", 1323)
 				channel <- err
 			}()
 		}
@@ -47,22 +48,22 @@ func TestContainerPool(t *testing.T) {
 	}
 
 	for _, name := range funcs {
-		deleteTest(t, name)
+		deleteTest(t, name, "localhost", 1323)
 	}
 
 }
 
-func createTest(t *testing.T, fn *function.Function) {
-	marshal, err := json.Marshal(fn)
+func createTest(t *testing.T, fn *function.Function, host string, port int) {
+	marshaledFunc, err := json.Marshal(fn)
 	utils.AssertNil(t, err)
-
-	postJson, err := utils.PostJson("http://localhost:1323/create", marshal)
+	url := fmt.Sprintf("http://%s:%d/create", host, port)
+	postJson, err := utils.PostJson(url, marshaledFunc)
 	utils.AssertNil(t, err)
 
 	utils.PrintJsonResponse(postJson.Body)
 }
 
-func invokeTest(fn string, params map[string]interface{}) error {
+func invokeTest(fn string, params map[string]interface{}, host string, port int) error {
 	request := client.InvocationRequest{
 		Params: params,
 		// QoSClass:        qosClass,
@@ -74,7 +75,7 @@ func invokeTest(fn string, params map[string]interface{}) error {
 	if err1 != nil {
 		return err1
 	}
-	url := fmt.Sprintf("http://localhost:1323/invoke/%s", fn)
+	url := fmt.Sprintf("http://%s:%d/invoke/%s", host, port, fn)
 	_, err2 := utils.PostJson(url, invocationBody)
 	if err2 != nil {
 		return err2
@@ -83,12 +84,12 @@ func invokeTest(fn string, params map[string]interface{}) error {
 	return nil
 }
 
-func deleteTest(t *testing.T, fn string) {
+func deleteTest(t *testing.T, fn string, host string, port int) {
 	request := function.Function{Name: fn}
 	requestBody, err := json.Marshal(request)
 	utils.AssertNil(t, err)
 
-	url := fmt.Sprintf("http://localhost:1323/delete")
+	url := fmt.Sprintf("http://%s:%d/delete", host, port)
 	resp, err := utils.PostJson(url, requestBody)
 	utils.AssertNil(t, err)
 
