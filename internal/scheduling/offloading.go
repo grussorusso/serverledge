@@ -179,7 +179,10 @@ func Offload(r *function.Request, serverUrl string) error {
 func checkIfCloudOffloading(serverUrl string) bool {
 	allCloudNodes, _ := registration.Reg.GetAll(true)
 	log.Println("All cloud nodes: ", allCloudNodes)
-	for key, url := range allCloudNodes {
+	for key, value := range allCloudNodes {
+
+		nodeInfo := registration.GetNodeInformation(value)
+		url := nodeInfo.NodeAddress
 		log.Println("Server url: ", serverUrl)
 		log.Println("Key: ", url)
 		if serverUrl == url {

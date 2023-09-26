@@ -80,7 +80,6 @@ func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
 			return
 		}*/
 	} else if dec == EDGE_OFFLOAD_REQUEST {
-		log.Println("DEC IS EDGE_OFFLOAD_REQUEST")
 		url := pickEdgeNodeForOffloading(r)
 		if url != "" {
 			handleEdgeOffload(r, url)

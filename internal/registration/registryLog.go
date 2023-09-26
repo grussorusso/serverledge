@@ -1,7 +1,6 @@
 package registration
 
 import (
-	"encoding/json"
 	"log"
 	"reflect"
 	"sort"
@@ -61,25 +60,14 @@ func monitoring() {
 		log.Println(err)
 		return
 	}
-	log.Println("server map after getAll: ", etcdServerMap)
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
-	log.Println("server map after delete: ", etcdServerMap)
 
 	for key, values := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
-		var nodeInfo NodeInformation
-		log.Println("key: ", key)
-		log.Println("oldInfo: ", oldInfo)
 
-		// Get registry address of the target node registry server
-		err = json.Unmarshal([]byte(values), &nodeInfo)
-		if err != nil {
-			log.Println("Cannot unmarshal target node info recovered from etcd.")
-		}
+		nodeInfo := GetNodeInformation(values)
 		url := nodeInfo.RegistryAddress
-		log.Println("url: ", url)
-
 		hostname := url[7 : len(url)-5]
 		port := url[len(url)-4:]
 		// use udp socket to retrieve infos about the edge-node status and rtt
@@ -90,7 +78,6 @@ func monitoring() {
 			continue
 		}
 		Reg.serversMap[key] = newInfo
-		log.Println("newInfo: ", newInfo)
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 		}
@@ -103,9 +90,7 @@ func monitoring() {
 		}
 	}
 
-	getRank(3) //todo change this value
-	log.Println("serversMap: ", Reg.serversMap)
-	log.Println("nearbyServersMap: ", Reg.NearbyServersMap)
+	getRank(2) //todo change this value
 }
 
 type dist struct {

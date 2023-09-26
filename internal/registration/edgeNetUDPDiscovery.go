@@ -20,7 +20,6 @@ func UDPStatusServer() {
 	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
 	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
 	address := fmt.Sprintf("%s:%d", hostname, port)
-	log.Println("LISTENING ADDRESS: ", address)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
 
 	if err != nil {
@@ -90,8 +89,6 @@ func statusInfoRequest(hostname string, port string) (info *StatusInformation, d
 		log.Printf("Unreachable server %s", address)
 		return nil, 0
 	}
-
-	log.Println("remote address: ", remoteAddr)
 
 	udpConn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {

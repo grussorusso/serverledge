@@ -1,7 +1,9 @@
 package registration
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 
 	"github.com/LK4D4/trylock"
 	"github.com/hexablock/vivaldi"
@@ -34,4 +36,17 @@ type StatusInformation struct {
 type NodeInformation struct {
 	NodeAddress     string
 	RegistryAddress string
+}
+
+// GetNodeInformation writes the information present into the etcd entry of a node into a struct NodeInformation
+func GetNodeInformation(etcdValue string) *NodeInformation {
+	var nodeInfo NodeInformation
+
+	// Get registry address of the target node registry server
+	err := json.Unmarshal([]byte(etcdValue), &nodeInfo)
+	if err != nil {
+		log.Println("Cannot unmarshal target node info recovered from etcd.")
+		return nil
+	}
+	return &nodeInfo
 }

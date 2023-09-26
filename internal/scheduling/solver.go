@@ -162,9 +162,6 @@ func solve(m map[string]*functionInfo) {
 	localCpu := float32(node.Resources.MaxCPUs)
 	localMem := float32(node.Resources.MaxMemMB)
 	localUsableMem := float32(calculateUsableMemoryCoefficient())
-	log.Println("node blocked requests: ", node.Resources.DropRequestsCount)
-	log.Println("node all requests: ", node.Resources.RequestsCount)
-	log.Println("Usable memory coeff: ", localUsableMem)
 	response, err := client.Solve(context.Background(), &pb.Request{
 		OffloadLatencyCloud:     &offloadLatencyCloud,
 		OffloadLatencyEdge:      &offloadLatencyEdge,
@@ -183,12 +180,13 @@ func solve(m map[string]*functionInfo) {
 
 	log.Println("Evaluation took: ", response.GetTimeTaken())
 	res := response.GetFResponse()
+	log.Println("response: ", res)
 
 	for _, r := range res {
 		fInfo, prs := m[r.GetName()]
 
 		if !prs {
-			log.Println("Error in assigning probabilities")
+			log.Printf("Function %s never invoked on this node: cannot assign probabilities", r.GetName())
 			continue
 		}
 
@@ -196,7 +194,7 @@ func solve(m map[string]*functionInfo) {
 		for _, x := range r.GetClassResponses() {
 			cFInfo, prs := invokingClasses[x.GetName()]
 			if !prs {
-				log.Println("Error in assigning probabilities")
+				log.Printf("No functions with class %s was ever invoked on this node: cannot assign probabilities", x.GetName())
 				continue
 			}
 
@@ -205,11 +203,6 @@ func solve(m map[string]*functionInfo) {
 			cFInfo.probOffloadEdge = float64(x.GetPE())
 			cFInfo.probDrop = float64(x.GetPD())
 			cFInfo.share = float64(x.GetShare())
-			// FIXME REMOVE log.Println("probExecuteLocal: ", cFInfo.probExecuteLocal)
-			// FIXME REMOVE log.Println("probOffloadCloud: ", cFInfo.probOffloadCloud)
-			// FIXME REMOVE log.Println("probOffloadEdge: ", cFInfo.probOffloadEdge)
-			// FIXME REMOVE log.Println("probDrop: ", cFInfo.probDrop)
-			// FIXME REMOVE log.Println("share: ", cFInfo.share)
 		}
 	}
 
