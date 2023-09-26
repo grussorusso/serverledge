@@ -219,8 +219,33 @@ func GetServerStatus(c echo.Context) error {
 
 func CreateFunctionComposition(e echo.Context) error {
 	var comp fc.FunctionComposition
-	// TODO: here we shoulo parse from YAML (AFCL)/JSON (Step Functions)
-	err := json.NewDecoder(e.Request().Body).Decode(&comp)
+	// TODO: here we receive the function composition struct already parsed from JSON/YAML
+	var body []byte
+	// we need the loop because the size of the data can be greater than 4096 bytes
+	//for {
+	//	reader, err :=
+	//	if err != nil {
+	//		return err
+	//	}
+	//	part, err := reader.NextPart()
+	//	if err == io.EOF {
+	//		break
+	//	}
+	//	if err != nil {
+	//		return err
+	//	}
+	//	body, err = io.ReadAll(part)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	// p is []byte with the contents of the part
+	//}
+	body, errReadBody := io.ReadAll(e.Request().Body)
+	if errReadBody != nil {
+		return errReadBody
+	}
+
+	err := json.Unmarshal(body, &comp)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
 		return err
@@ -229,7 +254,7 @@ func CreateFunctionComposition(e echo.Context) error {
 	_, ok := fc.GetFC(comp.Name) // TODO: we would need a system-wide lock here...
 	if ok {
 		log.Printf("Dropping request for already existing composition '%s'", comp.Name)
-		return e.JSON(http.StatusConflict, "")
+		return e.JSON(http.StatusConflict, "composition already exists")
 	}
 
 	log.Printf("New request: creation of composition %s", comp.Name)

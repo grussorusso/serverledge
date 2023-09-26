@@ -1,11 +1,26 @@
 package utils
 
 import (
+	"golang.org/x/exp/slices"
 	"testing"
 )
 
 func AssertEquals(t *testing.T, expected interface{}, result interface{}) {
 	if expected != result {
+		t.Logf("%s is failed. Got '%v', expected '%v'", t.Name(), result, expected)
+		t.FailNow()
+	}
+}
+
+func AssertEqualsMsg(t *testing.T, expected interface{}, result interface{}, msg string) {
+	if expected != result {
+		t.Logf("%s is failed; %s - Got '%v', expected '%v'", t.Name(), msg, result, expected)
+		t.FailNow()
+	}
+}
+
+func AssertSliceEquals[T comparable](t *testing.T, expected []T, result []T) {
+	if equal := slices.Equal(expected, result); !equal {
 		t.Logf("%s is failed. Got '%v', expected '%v'", t.Name(), result, expected)
 		t.FailNow()
 	}
@@ -18,9 +33,23 @@ func AssertNil(t *testing.T, result interface{}) {
 	}
 }
 
+func AssertNilMsg(t *testing.T, result interface{}, msg string) {
+	if nil != result {
+		t.Logf("%s is failed; %s - Got '%v', expected nil", t.Name(), result, msg)
+		t.FailNow()
+	}
+}
+
 func AssertNonNil(t *testing.T, result interface{}) {
 	if nil == result {
 		t.Logf("%s is failed. Got '%v', expected non-nil", t.Name(), result)
+		t.FailNow()
+	}
+}
+
+func AssertNonNilMsg(t *testing.T, result interface{}, msg string) {
+	if nil == result {
+		t.Logf("%s is failed; %s - Got '%v', expected non-nil", t.Name(), result, msg)
 		t.FailNow()
 	}
 }
@@ -55,9 +84,23 @@ func AssertTrue(t *testing.T, isTrue bool) {
 	}
 }
 
+func AssertTrueMsg(t *testing.T, isTrue bool, msg string) {
+	if !isTrue {
+		t.Logf("%s is false - %s", t.Name(), msg)
+		t.FailNow()
+	}
+}
+
 func AssertFalse(t *testing.T, isTrue bool) {
 	if isTrue {
-		t.Logf("%s is failed. Got false", t.Name())
+		t.Logf("%s is failed. Got true", t.Name())
+		t.FailNow()
+	}
+}
+
+func AssertFalseMsg(t *testing.T, isTrue bool, msg string) {
+	if isTrue {
+		t.Logf("%s is true - %s", t.Name(), msg)
 		t.FailNow()
 	}
 }
