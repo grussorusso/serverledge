@@ -17,14 +17,14 @@ const (
 
 // EndNode is a DagNode that represents the end of the Dag.
 type EndNode struct {
-	Id     string
-	result map[string]interface{} // TODO: maybe useless
-	Reason Reason                 // TODO: maybe useless
+	Id     DagNodeId
+	Result map[string]interface{} // TODO: maybe useless
+	// Reason Reason                 // TODO: maybe useless
 }
 
 func NewEndNode() *EndNode {
 	return &EndNode{
-		Id: shortuuid.New(),
+		Id: DagNodeId(shortuuid.New()),
 	}
 }
 
@@ -43,7 +43,7 @@ func (e *EndNode) Equals(cmp types.Comparable) bool {
 }
 
 func (e *EndNode) Exec(*Progress) (map[string]interface{}, error) {
-	return e.result, nil
+	return e.Result, nil
 }
 
 func (e *EndNode) AddInput(dagNode DagNode) error {
@@ -55,7 +55,7 @@ func (e *EndNode) AddInput(dagNode DagNode) error {
 	}
 }
 
-func (e *EndNode) AddOutput(dagNode DagNode) error {
+func (e *EndNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -64,19 +64,19 @@ func (e *EndNode) ReceiveInput(input map[string]interface{}) error {
 	//if e.result != nil {
 	//	return errors.New("input already received")
 	//}
-	e.result = input
+	e.Result = input
 	return nil
 }
 
 // PrepareOutput doesn't need to do nothing for EndNode
-func (e *EndNode) PrepareOutput(output map[string]interface{}) error {
+func (e *EndNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
 	// TODO: dovrebbe inviare il risultato o forse va bene che non fa nulla
 	return nil
 }
 
-func (e *EndNode) GetNext() []DagNode {
+func (e *EndNode) GetNext() []DagNodeId {
 	// we return an empty array, because this is the EndNode
-	return make([]DagNode, 0)
+	return make([]DagNodeId, 0)
 }
 
 func (e *EndNode) Width() int {
@@ -96,6 +96,6 @@ func (e *EndNode) GetBranchId() int {
 	return 0
 }
 
-func (e *EndNode) GetId() string {
+func (e *EndNode) GetId() DagNodeId {
 	return e.Id
 }

@@ -29,7 +29,7 @@ func newProgressCache() ProgressCache {
 }
 
 type DagNodeInfo struct {
-	Id     string
+	Id     DagNodeId
 	Type   DagNodeType
 	Status DagNodeStatus
 	Group  int // The group helps represent the order of execution of nodes. Nodes with the same group should run concurrently
@@ -126,7 +126,7 @@ func (p *Progress) IsCompleted() bool {
 }
 
 // NextNodes retrieves the next nodes to execute, that have the minimum group with state pending
-func (p *Progress) NextNodes() ([]string, error) {
+func (p *Progress) NextNodes() ([]DagNodeId, error) {
 	minPendingGroup := -1
 	// find the min group with node pending
 	for _, node := range p.DagNodes {
@@ -135,11 +135,11 @@ func (p *Progress) NextNodes() ([]string, error) {
 			break
 		}
 		if node.Status == Failed {
-			return []string{}, fmt.Errorf("the execution is failed ")
+			return []DagNodeId{}, fmt.Errorf("the execution is failed ")
 		}
 	}
 	// get all node Ids within that group
-	nodeIds := make([]string, 0)
+	nodeIds := make([]DagNodeId, 0)
 	for _, node := range p.DagNodes {
 		if node.Group == minPendingGroup && node.Status == Pending {
 			nodeIds = append(nodeIds, node.Id)
@@ -150,7 +150,7 @@ func (p *Progress) NextNodes() ([]string, error) {
 }
 
 // CompleteNode sets the progress status of the node with the id input to 'Completed'
-func (p *Progress) CompleteNode(id string) error {
+func (p *Progress) CompleteNode(id DagNodeId) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {
 			node.Status = Executed
@@ -160,7 +160,7 @@ func (p *Progress) CompleteNode(id string) error {
 	return fmt.Errorf("no node to complete with id %s exists in the dag for request %s", id, p.ReqId)
 }
 
-func (p *Progress) SkipNode(id string) error {
+func (p *Progress) SkipNode(id DagNodeId) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {
 			node.Status = Skipped
@@ -181,7 +181,7 @@ func (p *Progress) SkipAll(nodes []DagNode) error {
 	return nil
 }
 
-func (p *Progress) FailNode(id string) error {
+func (p *Progress) FailNode(id DagNodeId) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {
 			node.Status = Failed
@@ -191,7 +191,7 @@ func (p *Progress) FailNode(id string) error {
 	return fmt.Errorf("no node to fail with id %s exists in the dag for request %s", id, p.ReqId)
 }
 
-func (p *Progress) GetInfo(nodeId string) *DagNodeInfo {
+func (p *Progress) GetInfo(nodeId DagNodeId) *DagNodeInfo {
 	for _, node := range p.DagNodes {
 		if node.Id == nodeId {
 			return node
@@ -200,7 +200,7 @@ func (p *Progress) GetInfo(nodeId string) *DagNodeInfo {
 	return nil
 }
 
-func (p *Progress) GetGroup(nodeId string) int {
+func (p *Progress) GetGroup(nodeId DagNodeId) int {
 	for _, node := range p.DagNodes {
 		if node.Id == nodeId {
 			return node.Group
@@ -238,8 +238,8 @@ func moveEndNodeAtTheEnd(nodeInfos []*DagNodeInfo) []*DagNodeInfo {
 }
 
 // InitProgressRecursive initialize the node list assigning a group to each node, so that we can know which nodes should run in parallel or is a choice branch
-func InitProgressRecursive(reqId string, dag *Dag) *Progress {
-	nodeInfos := extractNodeInfo(dag.Start, 0, make([]*DagNodeInfo, 0))
+func InitProgressRecursive(reqId ReqId, dag *Dag) *Progress {
+	nodeInfos := extractNodeInfo(dag, dag.Start, 0, make([]*DagNodeInfo, 0))
 	nodeInfos = moveEndNodeAtTheEnd(nodeInfos)
 	nodeInfos = reorder(nodeInfos)
 	return &Progress{
@@ -297,7 +297,7 @@ func reorder(infos []*DagNodeInfo) []*DagNodeInfo {
 	return reordered
 }
 
-func isNodeInfoPresent(node string, infos []*DagNodeInfo) bool {
+func isNodeInfoPresent(node DagNodeId, infos []*DagNodeInfo) bool {
 	isPresent := false
 	for _, nodeInfo := range infos {
 		if nodeInfo.Id == node {
@@ -309,7 +309,7 @@ func isNodeInfoPresent(node string, infos []*DagNodeInfo) bool {
 }
 
 // extractNodeInfo retrieves all needed information from nodes and sets node groups. It duplicates end nodes.
-func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeInfo {
+func extractNodeInfo(dag *Dag, node DagNode, group int, infos []*DagNodeInfo) []*DagNodeInfo {
 	info := newNodeInfo(node, group)
 	if !isNodeInfoPresent(node.GetId(), infos) {
 		infos = append(infos, info)
@@ -324,7 +324,8 @@ func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeIn
 	group++
 	switch n := node.(type) {
 	case *StartNode:
-		toAdd := extractNodeInfo(n.GetNext()[0], group, infos)
+		startNode, _ := dag.Find(n.GetNext()[0])
+		toAdd := extractNodeInfo(dag, startNode, group, infos)
 		for _, add := range toAdd {
 			if !isNodeInfoPresent(add.Id, infos) {
 				infos = append(infos, add)
@@ -332,7 +333,8 @@ func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeIn
 		}
 		return infos
 	case *SimpleNode:
-		toAdd := extractNodeInfo(n.GetNext()[0], group, infos)
+		simpleNode, _ := dag.Find(n.GetNext()[0])
+		toAdd := extractNodeInfo(dag, simpleNode, group, infos)
 		for _, add := range toAdd {
 			if !isNodeInfoPresent(add.Id, infos) {
 				infos = append(infos, add)
@@ -342,8 +344,9 @@ func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeIn
 	case *EndNode:
 		return infos
 	case *ChoiceNode:
-		for _, alternative := range n.Alternatives {
-			toAdd := extractNodeInfo(alternative, group, infos)
+		for _, alternativeId := range n.Alternatives {
+			alternative, _ := dag.Find(alternativeId)
+			toAdd := extractNodeInfo(dag, alternative, group, infos)
 			for _, add := range toAdd {
 				if !isNodeInfoPresent(add.Id, infos) {
 					infos = append(infos, add)
@@ -352,8 +355,9 @@ func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeIn
 		}
 		return infos
 	case *FanOutNode:
-		for _, parallelBranch := range n.GetNext() {
-			toAdd := extractNodeInfo(parallelBranch, group, infos)
+		for _, parallelBranchId := range n.GetNext() {
+			parallelBranch, _ := dag.Find(parallelBranchId)
+			toAdd := extractNodeInfo(dag, parallelBranch, group, infos)
 			for _, add := range toAdd {
 				if !isNodeInfoPresent(add.Id, infos) {
 					infos = append(infos, add)
@@ -362,7 +366,8 @@ func extractNodeInfo(node DagNode, group int, infos []*DagNodeInfo) []*DagNodeIn
 		}
 		return infos
 	case *FanInNode:
-		toAdd := extractNodeInfo(n.GetNext()[0], group, infos)
+		fanInNode, _ := dag.Find(n.GetNext()[0])
+		toAdd := extractNodeInfo(dag, fanInNode, group, infos)
 		for _, add := range toAdd {
 			if !isNodeInfoPresent(add.Id, infos) {
 				infos = append(infos, add)
@@ -395,13 +400,13 @@ func (cache *ProgressCache) SaveProgress(p *Progress) error {
 }
 
 // RetrieveProgress should be used by the next node to execute
-func (cache *ProgressCache) RetrieveProgress(reqId string) (*Progress, bool) {
+func (cache *ProgressCache) RetrieveProgress(reqId ReqId) (*Progress, bool) {
 	// TODO: Get from cache if exists, otherwise from ETCD
 	// TODO: retrieve progress from ETCD
 	progress, ok := cache.progresses[ReqId(reqId)]
 	return progress, ok
 }
 
-func (cache *ProgressCache) DeleteProgress(reqId string) {
+func (cache *ProgressCache) DeleteProgress(reqId ReqId) {
 	delete(cache.progresses, ReqId(reqId))
 }

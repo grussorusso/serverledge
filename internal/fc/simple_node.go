@@ -20,10 +20,10 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id         string
+	Id         DagNodeId
 	BranchId   int
 	input      map[string]interface{}
-	OutputTo   DagNode
+	OutputTo   DagNodeId
 	Func       string
 	IsParallel bool
 	// Request   *function.Request
@@ -32,7 +32,7 @@ type SimpleNode struct {
 
 func NewSimpleNode(f string) *SimpleNode {
 	return &SimpleNode{
-		Id:         shortuuid.New(),
+		Id:         DagNodeId(shortuuid.New()),
 		Func:       f,
 		IsParallel: false,
 		// Request: nil,
@@ -125,7 +125,7 @@ func (s *SimpleNode) AddInput(dagNode DagNode) error {
 }
 
 // AddOutput connects the output of the SimpleNode to another DagNode
-func (s *SimpleNode) AddOutput(dagNode DagNode) error {
+func (s *SimpleNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	s.OutputTo = dagNode
 	return nil
 }
@@ -149,7 +149,7 @@ func (s *SimpleNode) ReceiveInput(input map[string]interface{}) error {
 	return nil
 }
 
-func (s *SimpleNode) PrepareOutput(output map[string]interface{}) error {
+func (s *SimpleNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
 	funct, exists := function.GetFunction(s.Func) // we are getting the function from cache if not already downloaded
 	if !exists {
 		return fmt.Errorf("funtion %s doesn't exists", s.Func)
@@ -162,7 +162,8 @@ func (s *SimpleNode) PrepareOutput(output map[string]interface{}) error {
 	for _, n := range s.GetNext() {
 		// TODO: this mapping should only be done with SimpleNode(s)? Yes, but this method must be implemented for all nodes
 		// we have only one output node
-		switch nodeType := n.(type) {
+		dagNode, _ := dag.Find(n)
+		switch nodeType := dagNode.(type) {
 		case *SimpleNode:
 			return nodeType.MapOutput(output) // needed to convert type of data from one node to the next so that its signature type-checks
 			//case *FanInNode:
@@ -209,10 +210,10 @@ func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 	return nil
 }
 
-func (s *SimpleNode) GetNext() []DagNode {
+func (s *SimpleNode) GetNext() []DagNodeId {
 	// we only have one output
-	arr := make([]DagNode, 1)
-	if s.OutputTo != nil {
+	arr := make([]DagNodeId, 1)
+	if s.OutputTo != "" {
 		arr[0] = s.OutputTo
 		return arr
 	}
@@ -227,7 +228,7 @@ func (s *SimpleNode) Name() string {
 }
 
 func (s *SimpleNode) ToString() string {
-	return fmt.Sprintf("[SimpleNode (%s) func %s(%v)]->%s", s.Id, s.Func, s.input, s.OutputTo.Name())
+	return fmt.Sprintf("[SimpleNode (%s) func %s(%v)]->%s", s.Id, s.Func, s.input, s.OutputTo)
 }
 
 func (s *SimpleNode) setBranchId(number int) {
@@ -237,6 +238,6 @@ func (s *SimpleNode) GetBranchId() int {
 	return s.BranchId
 }
 
-func (s *SimpleNode) GetId() string {
+func (s *SimpleNode) GetId() DagNodeId {
 	return s.Id
 }

@@ -158,13 +158,13 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 }
 
 // Invoke schedules each function of the composition and invokes them
-func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId string) (ExecutionReport, error) {
+func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId ReqId) (ExecutionReport, error) {
 	// initialize struct progress from dag
 	progress := InitProgressRecursive(requestId, &fc.Workflow)
 	// initialize partial data cache
 	partialDataCache.InitNewRequest(requestId)
 	// initialize partial data with input, directly from the Start.Next node
-	pd := NewPartialData(requestId, fc.Workflow.Start.Next.GetId(), "nil", input)
+	pd := NewPartialData(requestId, fc.Workflow.Start.Next, "nil", input)
 	pd.Data = input
 	// saving partial data and progress to cache
 	partialDataCache.Save(pd)

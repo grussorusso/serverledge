@@ -108,7 +108,7 @@ func TestProgressChoice1(t *testing.T) {
 	choice := checkAndCompleteNext(t, progress, dag).(*fc.ChoiceNode)
 
 	// Simple node (left) // suppose the left condition is true
-	checkAndCompleteChoice(t, progress, dag, choice)
+	checkAndCompleteChoice(t, progress, choice, dag)
 
 	// End
 	checkAndCompleteNext(t, progress, dag)
@@ -134,7 +134,7 @@ func TestProgressChoice2(t *testing.T) {
 	choice := checkAndCompleteNext(t, progress, dag).(*fc.ChoiceNode)
 
 	// Simple Node left is skipped, right is executed
-	checkAndCompleteChoice(t, progress, dag, choice)
+	checkAndCompleteChoice(t, progress, choice, dag)
 
 	// Simple Node right 2
 	checkAndCompleteNext(t, progress, dag)
@@ -215,7 +215,7 @@ func TestComplexProgress(t *testing.T) {
 	choice := checkAndCompleteNext(t, progress, dag).(*fc.ChoiceNode)
 
 	// Simple Node, FanOut
-	checkAndCompleteChoice(t, progress, dag, choice)
+	checkAndCompleteChoice(t, progress, choice, dag)
 
 	// End node
 	checkAndCompleteNext(t, progress, dag)
@@ -243,7 +243,7 @@ func TestComplexProgress2(t *testing.T) {
 	choice := checkAndCompleteNext(t, progress, dag).(*fc.ChoiceNode)
 
 	// Simple Node, FanOut // suppose the fanout node at the right and all its children are skipped
-	checkAndCompleteChoice(t, progress, dag, choice)
+	checkAndCompleteChoice(t, progress, choice, dag)
 
 	// 3 Simple Nodes in parallel
 	checkAndCompleteMultiple(t, progress, dag)
@@ -276,20 +276,20 @@ func checkAndCompleteNext(t *testing.T, progress *fc.Progress, dag *fc.Dag) fc.D
 	return node
 }
 
-func checkAndCompleteChoice(t *testing.T, progress *fc.Progress, dag *fc.Dag, choice *fc.ChoiceNode) {
+func checkAndCompleteChoice(t *testing.T, progress *fc.Progress, choice *fc.ChoiceNode, dag *fc.Dag) {
 	nextNode, err := progress.NextNodes() // Simple1, Simple2
 	u.AssertNil(t, err)
 	simpleNodeLeft := choice.Alternatives[0]
 	fanOut := choice.Alternatives[1]
-	u.AssertEquals(t, nextNode[0], simpleNodeLeft.GetId())
-	u.AssertEquals(t, nextNode[1], fanOut.GetId())
+	u.AssertEquals(t, nextNode[0], simpleNodeLeft)
+	u.AssertEquals(t, nextNode[1], fanOut)
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[0]))
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[1]))
 
 	_, _ = choice.Exec(nil)
 	err = progress.CompleteNode(nextNode[choice.FirstMatch])
 	u.AssertNil(t, err)
-	nodeToSkip := choice.GetNodesToSkip()
+	nodeToSkip := choice.GetNodesToSkip(dag)
 	err = progress.SkipAll(nodeToSkip)
 	u.AssertNil(t, err)
 }

@@ -24,7 +24,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = true
+const INTEGRATION_TEST = false
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 

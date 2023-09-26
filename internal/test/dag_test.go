@@ -24,7 +24,7 @@ func TestEmptyDag(t *testing.T) {
 	u.AssertNonNil(t, dag.End)
 	u.AssertEquals(t, dag.Width, 1)
 	u.AssertNonNil(t, dag.Nodes)
-	u.AssertEquals(t, dag.Start.Next, dag.End)
+	u.AssertEquals(t, dag.Start.Next, dag.End.GetId())
 }
 
 // TestSimpleDag creates a simple Dag with one StartNode, two SimpleNode and one EndNode, executes it and gets the result.
@@ -47,23 +47,32 @@ func TestSimpleDag(t *testing.T) {
 	u.AssertNonNil(t, dag.End)
 	u.AssertEquals(t, dag.Width, 1)
 	u.AssertNonNil(t, dag.Nodes)
-	u.AssertEquals(t, len(dag.Nodes), length)
-	for _, n := range dag.Nodes {
-		u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
-	}
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	u.AssertEquals(t, len(dag.Nodes)-2, length)
 
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
-
-	for i, node := range dag.Nodes {
-		if i == len(dag.Nodes)-1 {
-			u.AssertEquals(t, node.(*fc.SimpleNode).OutputTo, dag.End)
-		} else {
-			u.AssertEquals(t, node.(*fc.SimpleNode).OutputTo, dag.Nodes[1])
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	_, found := dag.Find(dag.Start.Next)
+	u.AssertTrue(t, found)
+	end := false
+	var prevNode fc.DagNode = dag.Start
+	var currentNode fc.DagNode
+	for !end {
+		switch prevNode.(type) {
+		case *fc.StartNode:
+			nextNodeId := prevNode.GetNext()[0]
+			currentNode, _ = dag.Find(nextNodeId)
+			u.AssertEquals(t, prevNode.(*fc.StartNode).Next, currentNode.GetId())
+		case *fc.EndNode:
+			end = true
+		default: // currentNode = simple node
+			nextNodeId := prevNode.GetNext()[0]
+			currentNode, _ = dag.Find(nextNodeId)
+			u.AssertEquals(t, prevNode.(*fc.SimpleNode).OutputTo, currentNode.GetId())
+			u.AssertEquals(t, prevNode.(*fc.SimpleNode).BranchId, 0)
+			u.AssertTrue(t, prevNode.(*fc.SimpleNode).Func == f.Name)
 		}
-		u.AssertEquals(t, node.(*fc.SimpleNode).BranchId, 0)
+		prevNode = currentNode
 	}
-
+	u.AssertEquals(t, prevNode.(*fc.EndNode), dag.End)
 }
 
 func TestChoiceDag(t *testing.T) {
@@ -91,21 +100,29 @@ func TestChoiceDag(t *testing.T) {
 	u.AssertNonNil(t, dag.Nodes)
 	// u.AssertEquals(t, width+1, len(dag.Nodes))
 
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
-
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
-	for i, n := range dag.Nodes {
-		if i == 0 {
-			choice := n.(*fc.ChoiceNode)
+	//dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	choiceDag, found := dag.Find(dag.Start.Next)
+	choice := choiceDag.(*fc.ChoiceNode)
+	u.AssertTrue(t, found)
+	for _, n := range dag.Nodes {
+		switch n.(type) {
+		case *fc.ChoiceNode:
 			u.AssertEquals(t, len(choice.Conditions), len(choice.Alternatives))
 			for _, s := range choice.Alternatives {
-				u.AssertTrue(t, dagNodes.Contains(s))
-				u.AssertEquals(t, s.(*fc.SimpleNode).OutputTo, dag.End)
+				simple, foundS := dag.Find(s)
+				u.AssertTrue(t, foundS)
+				u.AssertEquals(t, simple.(*fc.SimpleNode).OutputTo, dag.End.GetId())
 			}
-		} else {
+			u.AssertEqualsMsg(t, 0, n.GetBranchId(), "wrong branchId for choice node")
+		case *fc.SimpleNode:
 			u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
+			for i, alternative := range choice.Alternatives {
+				// the branch of the simple nodes should be 1,2 or 3 because branch of choice is 0
+				if alternative == n.GetId() {
+					u.AssertEqualsMsg(t, i+1, n.GetBranchId(), "wrong branchId for simple node")
+				}
+			}
 		}
-		u.AssertEquals(t, n.GetBranchId(), i)
 	}
 }
 
@@ -129,7 +146,9 @@ func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
 		NextBranch(fc.CreateSequenceDag(fArr...)).
 		EndChoiceAndBuild()
 
-	width := len(dag.Start.Next.(*fc.ChoiceNode).Alternatives)
+	choiceDag, foundStartNext := dag.Find(dag.Start.Next)
+	choice := choiceDag.(*fc.ChoiceNode)
+	width := len(choice.Alternatives)
 
 	u.AssertNil(t, err)
 	fmt.Println("==== Choice  Dag ====")
@@ -141,26 +160,31 @@ func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
 	u.AssertNonNil(t, dag.Nodes)
 	// u.AssertEquals(t, width+1, len(dag.Nodes))
 
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
-
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
-	for i, n := range dag.Nodes {
-		if i == 0 {
-			choice := n.(*fc.ChoiceNode)
-			u.AssertEquals(t, n.GetBranchId(), 0)
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	u.AssertTrue(t, foundStartNext)
+	for _, n := range dag.Nodes {
+		switch node := n.(type) {
+		case *fc.ChoiceNode:
+			u.AssertEquals(t, node.GetBranchId(), 0)
 			u.AssertEquals(t, len(choice.Conditions), len(choice.Alternatives))
 			for _, s := range choice.Alternatives {
-				u.AssertTrue(t, dagNodes.Contains(s))
+				simple, foundS := dag.Find(s)
+				u.AssertTrue(t, foundS)
 				if length == 1 {
-					u.AssertEquals(t, s.(*fc.SimpleNode).OutputTo, dag.End)
+					u.AssertEquals(t, simple.(*fc.SimpleNode).OutputTo, dag.End.GetId())
 				}
 			}
-		} else {
-			u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
-			u.AssertTrue(t, n.GetBranchId() > 0)
-			fmt.Println("branchId: ", n.GetBranchId())
+		case *fc.SimpleNode:
+			u.AssertTrue(t, node.Func == f.Name)
+			for i, alternative := range choice.Alternatives {
+				// the branch of the simple nodes should be 1,2 or 3 because branch of choice is 0
+				if alternative == n.GetId() {
+					u.AssertEqualsMsg(t, i+1, n.GetBranchId(), "wrong branchId for simple node")
+				}
+			}
+			u.AssertTrue(t, node.GetBranchId() > 0)
+			fmt.Println("branchId: ", node.GetBranchId())
 		}
-
 	}
 }
 
@@ -169,7 +193,7 @@ func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
 func TestBroadcastDag(t *testing.T) {
 	fc.BranchNumber = 0
 
-	m := make(map[string]interface{}) // TODO: stai testando questo
+	m := make(map[string]interface{})
 	m["input"] = 1
 	width := 3
 	length := 3
@@ -184,11 +208,11 @@ func TestBroadcastDag(t *testing.T) {
 	u.AssertNonNil(t, dag.End)
 	u.AssertEquals(t, width, dag.Width)
 	u.AssertNonNil(t, dag.Nodes)
-	u.AssertEquals(t, length*width+2, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width * length (simpleNodes)
+	u.AssertEquals(t, length*width+4, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width * length (simpleNodes) + 1 start + 1 end
 
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
-
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	_, foundStartNext := dag.Find(dag.Start.Next)
+	u.AssertTrue(t, foundStartNext)
 
 	for _, n := range dag.Nodes {
 		switch n.(type) {
@@ -197,20 +221,21 @@ func TestBroadcastDag(t *testing.T) {
 			u.AssertEquals(t, len(fanOut.OutputTo), fanOut.FanOutDegree)
 			u.AssertEquals(t, width, fanOut.FanOutDegree)
 			for i, s := range fanOut.OutputTo {
-				u.AssertTrue(t, dagNodes.Contains(s))
-				u.AssertEquals(t, s.GetBranchId(), i+1)
+				simple, found := dag.Find(s)
+				u.AssertTrue(t, found)
+				u.AssertEquals(t, simple.GetBranchId(), i+1)
 			}
 			u.AssertEquals(t, n.GetBranchId(), 0)
 		case *fc.FanInNode:
 			fanIn := n.(*fc.FanInNode)
 			u.AssertEquals(t, width, fanIn.FanInDegree)
-			u.AssertEquals(t, dag.End, fanIn.OutputTo)
+			u.AssertEquals(t, dag.End.GetId(), fanIn.OutputTo)
 			u.AssertEquals(t, n.GetBranchId(), 4)
 		case *fc.SimpleNode:
 			u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
 			u.AssertTrue(t, n.GetBranchId() > 0 && n.GetBranchId() < 4)
 		default:
-			t.FailNow()
+			continue
 		}
 	}
 }
@@ -229,11 +254,12 @@ func TestScatterDag(t *testing.T) {
 	u.AssertNonNil(t, dag.End)
 	u.AssertEquals(t, dag.Width, width) // width is fixed at dag definition-time
 	u.AssertNonNil(t, dag.Nodes)
-	u.AssertEquals(t, width+2, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width (simpleNodes)
+	u.AssertEquals(t, width+4, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width (simpleNodes) + 1 start + 1 end
 
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
-	_, ok := dag.Start.Next.(*fc.FanOutNode)
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	startNext, startNextFound := dag.Find(dag.Start.Next)
+	u.AssertTrue(t, startNextFound)
+	_, ok := startNext.(*fc.FanOutNode)
 	u.AssertTrue(t, ok)
 	simpleNodeChainedToFanIn := 0
 	for _, n := range dag.Nodes {
@@ -243,23 +269,25 @@ func TestScatterDag(t *testing.T) {
 			u.AssertEquals(t, len(fanOut.OutputTo), fanOut.FanOutDegree)
 			u.AssertEquals(t, width, fanOut.FanOutDegree)
 			for j, s := range fanOut.OutputTo {
-				u.AssertTrue(t, dagNodes.Contains(s))
-				u.AssertEquals(t, s.GetBranchId(), j+1)
+				simple, foundSimple := dag.Find(s)
+				u.AssertTrue(t, foundSimple)
+				u.AssertEquals(t, simple.GetBranchId(), j+1)
 			}
 			u.AssertEquals(t, node.GetBranchId(), 0)
 		case *fc.FanInNode:
 			fanIn := node
 			u.AssertEquals(t, width, fanIn.FanInDegree)
-			u.AssertEquals(t, dag.End, fanIn.OutputTo)
+			u.AssertEquals(t, dag.End.GetId(), fanIn.OutputTo)
 			u.AssertEquals(t, fanIn.GetBranchId(), fanIn.FanInDegree+1)
 		case *fc.SimpleNode:
 			u.AssertTrue(t, n.(*fc.SimpleNode).Func == f.Name)
-			_, chainedToFanIn := node.OutputTo.(*fc.FanInNode)
+			outputTo, _ := dag.Find(node.OutputTo)
+			_, chainedToFanIn := outputTo.(*fc.FanInNode)
 			u.AssertTrue(t, chainedToFanIn)
 			u.AssertTrue(t, n.GetBranchId() > 0 && n.GetBranchId() < 4)
 			simpleNodeChainedToFanIn++
 		default:
-			t.FailNow() // there aren't other node in this dag
+			continue
 		}
 	}
 	u.AssertEquals(t, width, simpleNodeChainedToFanIn)
@@ -280,18 +308,18 @@ func TestCreateBroadcastMultiFunctionDag(t *testing.T) {
 	)
 	u.AssertNil(t, errDag)
 	dag.Print()
-
-	fanOutDegree := dag.Start.Next.(*fc.FanOutNode).FanOutDegree
+	startNext, startNextFound := dag.Find(dag.Start.Next)
+	fanOutDegree := startNext.(*fc.FanOutNode).FanOutDegree
 
 	u.AssertNonNil(t, dag.Start)
 	u.AssertNonNil(t, dag.End)
 	u.AssertEquals(t, 2, dag.Width)
 	u.AssertNonNil(t, dag.Nodes)
-	u.AssertEquals(t, length1+length2+2, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width (simpleNodes)
+	u.AssertEquals(t, length1+length2+4, len(dag.Nodes)) // 1 (fanOut) + 1 (fanIn) + width (simpleNodes) + 1 start + 1 end
 
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
-	u.AssertTrue(t, dagNodes.Contains(dag.Start.Next))
-	_, ok := dag.Start.Next.(*fc.FanOutNode)
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	u.AssertTrue(t, startNextFound)
+	_, ok := startNext.(*fc.FanOutNode)
 	u.AssertTrue(t, ok)
 
 	simpleNodeChainedToFanIn := 0
@@ -301,22 +329,29 @@ func TestCreateBroadcastMultiFunctionDag(t *testing.T) {
 			fanOut := node
 			u.AssertEquals(t, len(fanOut.OutputTo), fanOut.FanOutDegree)
 			// test that there are simple nodes chained to fan out
-			for j, s := range fanOut.OutputTo {
-				u.AssertTrue(t, dagNodes.Contains(s))
-				u.AssertEquals(t, s.GetBranchId(), j+1)
+			for _, s := range fanOut.OutputTo {
+				simple, foundSimple := dag.Find(s)
+				u.AssertTrue(t, foundSimple)
+				for i, branch := range fanOut.OutputTo {
+					// the branch of the simple nodes should be 1,2 or 3 because branch of choice is 0
+					if branch == simple.GetId() {
+						u.AssertEqualsMsg(t, i+1, simple.GetBranchId(), "wrong branchId for simple node")
+					}
+				}
 			}
-			u.AssertEquals(t, fanOut.GetBranchId(), 0)
+			u.AssertEqualsMsg(t, 0, fanOut.GetBranchId(), "wrong branchId for fanOut")
 		case *fc.FanInNode:
 			fanIn := node
 			u.AssertEquals(t, dag.Width, fanIn.FanInDegree)
-			u.AssertEquals(t, dag.End, fanIn.OutputTo)
+			u.AssertEquals(t, dag.End.GetId(), fanIn.OutputTo)
 			u.AssertEquals(t, fanIn.GetBranchId(), fanIn.FanInDegree+1)
 		default:
 			continue
 		case *fc.SimpleNode:
 			u.AssertTrue(t, node.Func == f.Name)
 			u.AssertTrue(t, node.GetBranchId() > 0 && node.GetBranchId() < fanOutDegree+1)
-			if _, ok := node.OutputTo.(*fc.FanInNode); ok {
+			outputTo, _ := dag.Find(node.OutputTo)
+			if _, ok := outputTo.(*fc.FanInNode); ok {
 				simpleNodeChainedToFanIn++
 			}
 		}
@@ -358,7 +393,7 @@ func TestDagBuilder(t *testing.T) {
 		EndChoiceAndBuild()
 
 	u.AssertNil(t, err)
-	dagNodes := fc.NewNodeSetFrom(dag.Nodes)
+	// dagNodes := fc.NewNodeSetFrom(dag.Nodes)
 	simpleNodeChainedToFanIn := 0
 	for _, n := range dag.Nodes {
 		switch node := n.(type) {
@@ -368,21 +403,23 @@ func TestDagBuilder(t *testing.T) {
 			u.AssertEquals(t, width, fanOut.FanOutDegree)
 			u.AssertEquals(t, 2, fanOut.GetBranchId())
 			for _, s := range fanOut.OutputTo {
-				u.AssertTrue(t, dagNodes.Contains(s))
+				_, found := dag.Find(s)
+				u.AssertTrue(t, found)
 			}
 		case *fc.FanInNode:
 			fanIn := node
 			u.AssertEquals(t, width, fanIn.FanInDegree)
-			u.AssertEquals(t, dag.End, fanIn.OutputTo)
+			u.AssertEquals(t, dag.End.GetId(), fanIn.OutputTo)
 			u.AssertEquals(t, 6, fanIn.GetBranchId())
 		case *fc.SimpleNode:
 			u.AssertTrue(t, node.Func == f.Name)
-			if _, ok := node.GetNext()[0].(*fc.FanInNode); ok {
+			nextNode, _ := dag.Find(node.GetNext()[0])
+			if _, ok := nextNode.(*fc.FanInNode); ok {
 				simpleNodeChainedToFanIn++
 				u.AssertTrue(t, node.GetBranchId() > 2 && node.GetBranchId() < 6) // the parallel branches of fan out node
-			} else if _, ok2 := node.GetNext()[0].(*fc.ChoiceNode); ok2 {
+			} else if _, ok2 := nextNode.(*fc.ChoiceNode); ok2 {
 				u.AssertEquals(t, node.GetBranchId(), 0) // the first simple node
-			} else if _, ok3 := node.GetNext()[0].(*fc.EndNode); ok3 {
+			} else if _, ok3 := nextNode.(*fc.EndNode); ok3 {
 				u.AssertEquals(t, node.GetBranchId(), 1) // the first branch of choice node
 			} else {
 				u.AssertTrue(t, node.GetBranchId() > 2 && node.GetBranchId() < 6) // the parallel branches of fan out node
@@ -392,23 +429,27 @@ func TestDagBuilder(t *testing.T) {
 			u.AssertEquals(t, len(choice.Conditions), len(choice.Alternatives))
 
 			// specific for this test
-			firstAlternative := choice.Alternatives[0].(*fc.SimpleNode)
-			secondAlternative := choice.Alternatives[1].(*fc.FanOutNode)
+			alt0, foundAlt0 := dag.Find(choice.Alternatives[0])
+			alt1, foundAlt1 := dag.Find(choice.Alternatives[1])
+			firstAlternative := alt0.(*fc.SimpleNode)
+			secondAlternative := alt1.(*fc.FanOutNode)
 
-			u.AssertTrue(t, dagNodes.Contains(firstAlternative))
-			u.AssertTrue(t, dagNodes.Contains(secondAlternative))
-			u.AssertEquals(t, firstAlternative.OutputTo, dag.End)
+			u.AssertTrue(t, foundAlt0)
+			u.AssertTrue(t, foundAlt1)
+			u.AssertEquals(t, firstAlternative.OutputTo, dag.End.GetId())
 			u.AssertEquals(t, choice.GetBranchId(), 0)
 			// checking fan out - simples - fan in
 			for i := range secondAlternative.OutputTo {
-				simple, ok := secondAlternative.OutputTo[i].(*fc.SimpleNode)
+				secondAltOutput, _ := dag.Find(secondAlternative.OutputTo[i])
+				simple, ok := secondAltOutput.(*fc.SimpleNode)
 				u.AssertTrue(t, ok)
-				_, okFanIn := simple.OutputTo.(*fc.FanInNode)
+				simpleNext, _ := dag.Find(simple.OutputTo)
+				_, okFanIn := simpleNext.(*fc.FanInNode)
 				u.AssertTrue(t, okFanIn)
 			}
 
 		default:
-			t.FailNow()
+			continue
 		}
 	}
 	u.AssertEquals(t, 3, simpleNodeChainedToFanIn)
@@ -430,19 +471,21 @@ func TestVisit(t *testing.T) {
 		EndChoiceAndBuild()
 	u.AssertNil(t, err)
 
-	choice := complexDag.Start.Next.GetNext()[0]
+	startNext, _ := complexDag.Find(complexDag.Start.Next)
+
+	choice := startNext.GetNext()[0]
 
 	nodeList := make([]fc.DagNode, 0)
-	visitedNodes := fc.VisitDag(complexDag.Start, nodeList, false)
-	u.AssertEquals(t, len(complexDag.Nodes)+2, len(visitedNodes))
+	visitedNodes := fc.VisitDag(complexDag, complexDag.Start.Id, nodeList, false)
+	u.AssertEquals(t, len(complexDag.Nodes), len(visitedNodes))
 
-	visitedNodes = fc.VisitDag(complexDag.Start, nodeList, true)
-	u.AssertEquals(t, len(complexDag.Nodes)+1, len(visitedNodes))
+	visitedNodes = fc.VisitDag(complexDag, complexDag.Start.Id, nodeList, true)
+	u.AssertEquals(t, len(complexDag.Nodes)-1, len(visitedNodes))
 
-	visitedNodes = fc.VisitDag(choice, nodeList, false)
+	visitedNodes = fc.VisitDag(complexDag, choice, nodeList, false)
 	u.AssertEquals(t, 8, len(visitedNodes))
 
-	visitedNodes = fc.VisitDag(choice, nodeList, true)
+	visitedNodes = fc.VisitDag(complexDag, choice, nodeList, true)
 	u.AssertEquals(t, 7, len(visitedNodes))
 
 }

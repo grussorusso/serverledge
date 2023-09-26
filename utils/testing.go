@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func AssertEquals(t *testing.T, expected interface{}, result interface{}) {
+func AssertEquals[T comparable](t *testing.T, expected T, result T) {
 	if expected != result {
 		t.Logf("%s is failed. Got '%v', expected '%v'", t.Name(), result, expected)
 		t.FailNow()
 	}
 }
 
-func AssertEqualsMsg(t *testing.T, expected interface{}, result interface{}, msg string) {
+func AssertEqualsMsg[T comparable](t *testing.T, expected T, result T, msg string) {
 	if expected != result {
 		t.Logf("%s is failed; %s - Got '%v', expected '%v'", t.Name(), msg, result, expected)
 		t.FailNow()

@@ -17,11 +17,11 @@ type PartialData struct {
 	Data     map[string]interface{}
 }
 
-func NewPartialData(reqId string, forNode string, fromNode string, data map[string]interface{}) *PartialData {
+func NewPartialData(reqId ReqId, forNode DagNodeId, fromNode DagNodeId, data map[string]interface{}) *PartialData {
 	return &PartialData{
-		ReqId:    ReqId(reqId),
-		ForNode:  DagNodeId(forNode),
-		FromNode: DagNodeId(fromNode),
+		ReqId:    reqId,
+		ForNode:  forNode,
+		FromNode: fromNode,
 		Data:     data,
 	}
 }
@@ -37,7 +37,7 @@ func newPartialDataCache() PartialDataCache {
 	}
 }
 
-func (cache *PartialDataCache) InitNewRequest(req string) {
+func (cache *PartialDataCache) InitNewRequest(req ReqId) {
 	partialDataCache.partialDatas[ReqId(req)] = make(map[DagNodeId]*PartialData)
 }
 
@@ -46,12 +46,12 @@ func (cache *PartialDataCache) Save(pd *PartialData) {
 	partialDataCache.partialDatas[pd.ReqId][pd.ForNode] = pd
 }
 
-func (cache *PartialDataCache) Retrieve(reqId string, nodeId string) (map[string]interface{}, error) {
+func (cache *PartialDataCache) Retrieve(reqId ReqId, nodeId DagNodeId) (map[string]interface{}, error) {
 	// TODO: if data is colocated in this Serverledge node, we should get data from here
 	//  otherwise, retrieve data from ETCD
-	requestPartialDatas, okReq := partialDataCache.partialDatas[ReqId(reqId)]
+	requestPartialDatas, okReq := partialDataCache.partialDatas[reqId]
 	if okReq {
-		data, okDagNode := requestPartialDatas[DagNodeId(nodeId)]
+		data, okDagNode := requestPartialDatas[nodeId]
 		if okDagNode {
 			return data.Data, nil
 		} else {

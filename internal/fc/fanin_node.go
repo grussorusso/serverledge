@@ -17,9 +17,9 @@ const (
 
 // FanInNode receives and merges multiple input and produces a single result
 type FanInNode struct {
-	Id          string
+	Id          DagNodeId
 	BranchId    int
-	OutputTo    DagNode
+	OutputTo    DagNodeId
 	FanInDegree int
 	timeout     time.Duration
 	Mode        MergeMode
@@ -30,19 +30,19 @@ type FanInNode struct {
 // FanInChannels is needed because we cannot marshal channels, so we need a different struct, that will be created each time a FanIn is used.
 type FanInChannels struct {
 	// Channels: used by simple nodes to send data to a fan in node
-	Channels map[int]chan map[string]interface{} // we need this double map because fan in should know which node to wait.
+	Channels map[int]chan map[DagNodeId]interface{} // we need this double map because fan in should know which node to wait.
 	// OutputChannel: used by fan in node to send merged output
 	OutputChannel chan map[string]interface{}
 }
 
 // usedChannel is used by fanIn nodes
-var usedChannels = make(map[string]FanInChannels)
+var usedChannels = make(map[DagNodeId]FanInChannels)
 
-func createChannels(fanInId string, fanInDegree int, branchNumbers []int) {
+func createChannels(fanInId DagNodeId, fanInDegree int, branchNumbers []int) {
 	// initializing the channel with branch numbers
-	channels := make(map[int]chan map[string]interface{})
+	channels := make(map[int]chan map[DagNodeId]interface{})
 	for i := 0; i < fanInDegree; i++ {
-		channels[branchNumbers[i]] = make(chan map[string]interface{})
+		channels[branchNumbers[i]] = make(chan map[DagNodeId]interface{})
 	}
 	usedChannels[fanInId] = FanInChannels{
 		Channels:      channels,
@@ -50,19 +50,19 @@ func createChannels(fanInId string, fanInDegree int, branchNumbers []int) {
 	}
 }
 
-func getChannelForParallelBranch(fanInId string, branchId int) chan map[string]interface{} {
+func getChannelForParallelBranch(fanInId DagNodeId, branchId int) chan map[DagNodeId]interface{} {
 	return usedChannels[fanInId].Channels[branchId]
 }
 
-func getChannelsForFanIn(fanInId string) map[int]chan map[string]interface{} {
+func getChannelsForFanIn(fanInId DagNodeId) map[int]chan map[DagNodeId]interface{} {
 	return usedChannels[fanInId].Channels
 }
 
-func getOutputChannelForFanIn(fanInId string) chan map[string]interface{} {
+func getOutputChannelForFanIn(fanInId DagNodeId) chan map[string]interface{} {
 	return usedChannels[fanInId].OutputChannel
 }
 
-func clearChannelForFanIn(fanInId string) {
+func clearChannelForFanIn(fanInId DagNodeId) {
 	delete(usedChannels, fanInId)
 }
 
@@ -86,8 +86,8 @@ func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nil
 		timeout = &DefaultTimeout
 	}
 	fanIn := FanInNode{
-		Id:          shortuuid.New(),
-		OutputTo:    nil,
+		Id:          DagNodeId(shortuuid.New()),
+		OutputTo:    "",
 		FanInDegree: fanInDegree,
 		timeout:     *timeout,
 		Mode:        mergeMode,
@@ -119,7 +119,7 @@ func (f *FanInNode) Exec(*Progress) (map[string]interface{}, error) {
 	okChan := make(chan bool)
 	// getting outputs
 	go func() {
-		outputs := make(map[int]map[string]interface{})
+		outputs := make(map[int]map[DagNodeId]interface{})
 		channels := getChannelsForFanIn(f.Id)
 		for br, ch := range channels {
 			outputs[br] = <-ch // TODO: no one send to this channel!!!
@@ -169,7 +169,7 @@ func (f *FanInNode) AddInput(dagNode DagNode) error {
 	return nil
 }
 
-func (f *FanInNode) AddOutput(dagNode DagNode) error {
+func (f *FanInNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	//if f.OutputTo != nil {
 	//	return errors.New("result already present in node")
 	//}
@@ -184,15 +184,15 @@ func (f *FanInNode) ReceiveInput(input map[string]interface{}) error {
 	return nil
 }
 
-func (f *FanInNode) PrepareOutput(output map[string]interface{}) error {
+func (f *FanInNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
 	return nil // we should not do nothing, the output should be already ok
 }
 
-func (f *FanInNode) GetNext() []DagNode {
+func (f *FanInNode) GetNext() []DagNodeId {
 	// we only have one output
 	// TODO: we should wait for function to complete!
-	arr := make([]DagNode, 1)
-	if f.OutputTo == nil {
+	arr := make([]DagNodeId, 1)
+	if f.OutputTo == "" {
 		panic("you forgot to initialize OutputTo for FanInNode")
 	}
 	arr[0] = f.OutputTo
@@ -218,6 +218,6 @@ func (f *FanInNode) GetBranchId() int {
 	return f.BranchId
 }
 
-func (f *FanInNode) GetId() string {
+func (f *FanInNode) GetId() DagNodeId {
 	return f.Id
 }
