@@ -61,7 +61,7 @@ func TestContainerPool(t *testing.T) {
 
 // TestCreateComposition tests the compose REST API that creates a new function composition
 func TestCreateComposition(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	fcName := "sequence"
 	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).

@@ -47,7 +47,7 @@ func (set *NodeSet) removeIfExists(node DagNode) bool {
 	return false
 }
 
-// GetNodes returns an ordered list with sll Nodes in the set
+// GetNodes returns an ordered list with all Nodes in the set
 func (set *NodeSet) GetNodes() []DagNode {
 	return set.ordered
 }

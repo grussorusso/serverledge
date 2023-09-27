@@ -46,6 +46,10 @@ func newNodeInfo(dNode DagNode, group int) *DagNodeInfo {
 	}
 }
 
+func (ni *DagNodeInfo) Equals(ni2 *DagNodeInfo) bool {
+	return ni.Id == ni2.Id && ni.Type == ni2.Type && ni.Status == ni2.Status && ni.Group == ni2.Group && ni.Branch == ni2.Branch
+}
+
 type DagNodeStatus int
 
 const (
@@ -385,6 +389,33 @@ func (p *Progress) Print() {
 		str += fmt.Sprintf("%d. |%d| %-6s (%-22s) - %s\n", info.Group, info.Branch, printType(info.Type), info.Id, printStatus(info.Status))
 	}
 	fmt.Printf("%s", str)
+}
+
+func (p *Progress) String() string {
+	dagNodes := "["
+	for i, node := range p.DagNodes {
+		dagNodes += string(node.Id)
+		if i != len(p.DagNodes)-1 {
+			dagNodes += ", "
+		}
+	}
+	dagNodes += "]"
+
+	return fmt.Sprintf(`Progress{
+		ReqId:     %s,
+		DagNodes:  %s,
+		NextGroup: %d,
+	}`, p.ReqId, dagNodes, p.NextGroup)
+}
+
+func (p *Progress) Equals(p2 *Progress) bool {
+	for i := range p.DagNodes {
+		if !p.DagNodes[i].Equals(p2.DagNodes[i]) {
+			return false
+		}
+	}
+
+	return p.ReqId == p2.ReqId && p.NextGroup == p2.NextGroup
 }
 
 // Update should be used by a completed node after its execution
