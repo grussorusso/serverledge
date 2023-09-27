@@ -1,6 +1,8 @@
 package test
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	u "github.com/grussorusso/serverledge/utils"
 	"testing"
@@ -71,6 +73,28 @@ func complexProgress(t *testing.T, condition fc.Condition) (*fc.Progress, *fc.Da
 	u.AssertNil(t, err)
 
 	return fc.InitProgressRecursive("abc", dag), dag
+}
+
+func TestProgressMarshaling(t *testing.T) {
+	condition := fc.NewPredicate().And(
+		fc.NewEqCondition(1, 3),
+		fc.NewGreaterCondition(1, 3),
+	).Build()
+
+	progress1, _ := simpleProgress(t)
+	progress2, _ := choiceProgress(t, condition)
+	progress3, _ := parallelProgress(t)
+	progress4, _ := complexProgress(t, condition)
+	progresses := []*fc.Progress{progress1, progress2, progress3, progress4}
+
+	for i, progress := range progresses {
+		marshal, errMarshal := json.Marshal(progress)
+		u.AssertNilMsg(t, errMarshal, "error during marshaling "+string(rune(i)))
+		var retrieved fc.Progress
+		errUnmarshal := json.Unmarshal(marshal, &retrieved)
+		u.AssertNilMsg(t, errUnmarshal, "failed composition unmarshal "+string(rune(i)))
+		u.AssertTrueMsg(t, retrieved.Equals(progress), fmt.Sprintf("retrieved progress is not equal to initial progress. Retrieved:\n%s,\nExpected:\n%s ", retrieved.String(), progress.String()))
+	}
 }
 
 // TestProgressSequence tests a sequence dag with 2 simple node

@@ -17,6 +17,33 @@ type PartialData struct {
 	Data     map[string]interface{}
 }
 
+func (pd PartialData) Equals(pd2 PartialData) bool {
+
+	if len(pd.Data) != len(pd2.Data) {
+		return false
+	}
+
+	for s := range pd.Data {
+		// we convert the type to string to avoid checking all possible types!!!
+		value1 := fmt.Sprintf("%v", pd.Data[s])
+		value2 := fmt.Sprintf("%v", pd2.Data[s])
+		if value1 != value2 {
+			return false
+		}
+	}
+
+	return pd.ReqId == pd2.ReqId && pd.FromNode == pd2.FromNode && pd.ForNode == pd2.ForNode
+}
+
+func (pd PartialData) String() string {
+	return fmt.Sprintf(`PartialData{
+		ReqId:    %s,
+		ForNode:  %s,
+		FromNode: %s,
+		Data:     %v,
+	}`, pd.ReqId, pd.ForNode, pd.FromNode, pd.Data)
+}
+
 func NewPartialData(reqId ReqId, forNode DagNodeId, fromNode DagNodeId, data map[string]interface{}) *PartialData {
 	return &PartialData{
 		ReqId:    reqId,

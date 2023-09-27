@@ -191,17 +191,10 @@ func (c *ChoiceBranchBuilder) NextBranch(dagToChain *Dag, err1 error) *ChoiceBra
 			case *FanOutNode:
 				c.dagBuilder.dag.addNode(n)
 				n.setBranchId(n.GetBranchId() + baseBranchNumber)
-				//errFanout := fmt.Errorf("you're trying to chain a fanout node to an end node. This will interrupt the execution immediately after the fanout is reached")
-				//c.dagBuilder.appendError(errFanout)
 				continue
 			default:
 				c.dagBuilder.dag.addNode(n)
 				n.setBranchId(n.GetBranchId() + baseBranchNumber)
-				//if n.GetBranchId() == 0 {
-				//	n.setBranchId(baseBranchNumber) // add all nodes in this branch
-				//} else {
-				//
-				//}
 				nextNode, _ := dagToChain.Find(n.GetNext()[0])
 				// chain the last node(s) of the input dag to the end node of the building dag
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && nextNode == dagToChain.End {

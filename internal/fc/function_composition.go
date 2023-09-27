@@ -19,7 +19,7 @@ type FunctionComposition struct {
 	Name      string // al posto del nome potrebbe essere un id da mettere in etcd
 	Functions map[string]*function.Function
 	Workflow  Dag
-	// Progress           *Progress
+	//Progress           *Progress
 	RemoveFnOnDeletion bool // TODO: spostare dentro la request
 	// ExecReport ExecutionReport
 }
@@ -250,4 +250,24 @@ func (fc *FunctionComposition) Equals(cmp types.Comparable) bool {
 		return false
 	}
 	return true
+}
+
+func (fc *FunctionComposition) String() string {
+	functions := "["
+	i := 0
+	for name, _ := range fc.Functions {
+		functions += name
+		if i < len(fc.Functions)-1 {
+			functions += ", "
+		}
+		i++
+	}
+	functions += "]"
+	workflow := fc.Workflow.Print()
+	return fmt.Sprintf(`FunctionComposition{
+		Name: %s,
+		Functions: %s,
+		Workflow:\n%s,
+		RemoveFnOnDeletion: %t
+	}`, fc.Name, functions, workflow, fc.RemoveFnOnDeletion)
 }

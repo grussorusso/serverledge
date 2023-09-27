@@ -2,6 +2,7 @@ package test
 
 /// fc_test contains test that executes serverledge server-side function composition apis directly. Internally it uses __function__ REST API.
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -10,6 +11,25 @@ import (
 	"log"
 	"testing"
 )
+
+func TestMarshalingFunctionComposition(t *testing.T) {
+	fcName := "sequence"
+	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNilMsg(t, err, "failed to initialize function")
+	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
+
+	marshaledFunc, errMarshal := json.Marshal(composition)
+	u.AssertNilMsg(t, errMarshal, "failed to marshal composition")
+	var retrieved fc.FunctionComposition
+	errUnmarshal := json.Unmarshal(marshaledFunc, &retrieved)
+	u.AssertNilMsg(t, errUnmarshal, "failed composition unmarshal")
+
+	u.AssertTrueMsg(t, retrieved.Equals(&composition), fmt.Sprintf("retrieved composition is not equal to initial composition. Retrieved : %s, Expected %s ", retrieved.String(), composition.String()))
+}
 
 // TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition
 func TestComposeFC(t *testing.T) {
