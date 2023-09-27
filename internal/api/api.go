@@ -297,27 +297,36 @@ func DeleteFunctionComposition(c echo.Context) error {
 		return err
 	}
 
-	_, ok := fc.GetFC(comp.Name) // TODO: we would need a system-wide lock here...
+	composition, ok := fc.GetFC(comp.Name) // TODO: we would need a system-wide lock here...
 	if !ok {
 		log.Printf("Dropping request for non existing function '%s'", comp.Name)
-		return c.JSON(http.StatusNotFound, "")
+		return c.JSON(http.StatusNotFound, "the request function composition to delete does not exist")
+	}
+	msg := ""
+	if composition.RemoveFnOnDeletion {
+		names := "["
+		i := 0
+		for _, f := range composition.Functions {
+			// Delete local warm containers
+			node.ShutdownWarmContainersFor(f)
+			names += f.Name
+			if i != len(composition.Functions)-1 {
+				names += " "
+			}
+			i++
+		}
+		names += "]"
+		msg = " - deleted functions: " + names
 	}
 
-	log.Printf("New request: deleting %s", comp.Name)
-	err = comp.Delete()
+	log.Printf("New request: deleting %s", composition.Name)
+	err = composition.Delete()
 	if err != nil {
 		log.Printf("Failed deletion: %v", err)
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 
-	names := ""
-	for _, f := range comp.Functions {
-		// Delete local warm containers
-		node.ShutdownWarmContainersFor(f)
-		names += f.Name + " "
-	}
-
-	response := struct{ Deleted string }{comp.Name + " - deleted functions: " + names}
+	response := struct{ Deleted string }{composition.Name + msg}
 	return c.JSON(http.StatusOK, response)
 }
 
