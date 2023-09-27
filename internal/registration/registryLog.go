@@ -55,6 +55,7 @@ func runMonitor() {
 func monitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
+	log.Println("Doing monitoring")
 	etcdServerMap, err := Reg.GetAll(false)
 	if err != nil {
 		log.Println(err)

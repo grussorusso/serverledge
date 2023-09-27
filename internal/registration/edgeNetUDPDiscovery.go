@@ -36,7 +36,9 @@ func UDPStatusServer() {
 
 	for {
 		// wait for UDP client to connect
-		handleUDPConnection(udpConn)
+		log.Println("Handling UDP connection")
+		handleUDPConnection(udpConn) // fixme qua ci sta l'errore della recvfrom
+		log.Println("Handled UDP connection")
 	}
 
 }
