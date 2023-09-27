@@ -62,3 +62,44 @@ type ReceivesOutput interface {
 type HasNext interface {
 	GetNext() []DagNodeId
 }
+
+func Equals[D DagNode](d1 D, d2 D) bool {
+	return d1.Equals(d2)
+}
+
+//type UnpackDagNode struct {
+//	DagNode DagNode
+//}
+//
+//func (u *UnpackDagNode) UnmarshalJSON(b []byte) error {
+//
+//	startNode := StartNode{}
+//	simpleNode := SimpleNode{}
+//	choiceNode := ChoiceNode{}
+//	fanOutNode := FanOutNode{}
+//	fanInNode := FanInNode{}
+//	endNode := EndNode{}
+//
+//	// startNode
+//	err := json.Unmarshal(b, &startNode)
+//
+//	// no error, but we also need to make sure we unmarshaled something
+//	if err == nil && smth1.Thing != "" {
+//		u.Data = smth1
+//		return nil
+//	}
+//
+//	// abort if we have an error other than the wrong type
+//	if _, ok := err.(*json.UnmarshalTypeError); err != nil && !ok {
+//		return err
+//	}
+//
+//	smth2 := &Something2{}
+//	err = json.Unmarshal(b, smth2)
+//	if err != nil {
+//		return err
+//	}
+//
+//	u.DagNode = smth2
+//	return nil
+//}
