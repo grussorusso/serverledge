@@ -16,7 +16,6 @@ import (
 // UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
 // this listener should be called asynchronously in the main function
 func UDPStatusServer() {
-	// Should listen for every possible client
 	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
 	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
 	address := fmt.Sprintf("%s:%d", hostname, port)
@@ -45,6 +44,7 @@ func UDPStatusServer() {
 
 func handleUDPConnection(conn *net.UDPConn) {
 	buffer := make([]byte, 1024)
+	log.Println(conn.LocalAddr())
 
 	_, addr, err := conn.ReadFromUDP(buffer)
 	if err != nil {
@@ -64,11 +64,19 @@ func handleUDPConnection(conn *net.UDPConn) {
 }
 
 func getCurrentStatusInformation() (status []byte, err error) {
-	portNumber := config.GetInt("api.port", 1323)
+	portNumberApi := config.GetInt("api.port", 1323)
+	portNumberReg := config.GetInt("registry.udp.port", 9876)
 	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
-	url := fmt.Sprintf("http://%s:%d", hostname, portNumber)
+	urlApi := fmt.Sprintf("http://%s:%d", hostname, portNumberApi)
+	urlReg := fmt.Sprintf("http://%s:%d", hostname, portNumberReg)
+
+	addr := NodeInterfaces{
+		NodeAddress:     urlApi,
+		RegistryAddress: urlReg,
+	}
+
 	response := StatusInformation{
-		Url:                     url,
+		Addresses:               addr,
 		AvailableWarmContainers: node.WarmStatus(),
 		AvailableMemMB:          node.Resources.AvailableMemMB,
 		AvailableCPUs:           node.Resources.AvailableCPUs,
@@ -84,6 +92,7 @@ func getCurrentStatusInformation() (status []byte, err error) {
 func statusInfoRequest(hostname string, port string) (info *StatusInformation, duration time.Duration) {
 	// Construct the address of the local registry of the target node
 	address := fmt.Sprintf("%s:%s", hostname, port)
+	log.Println("Request to address: ", address)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -124,5 +133,7 @@ func statusInfoRequest(hostname string, port string) (info *StatusInformation, d
 		fmt.Println("Can not unmarshal JSON")
 		return nil, 0
 	}
+
+	log.Println("result: ", result)
 	return &result, rtt
 }

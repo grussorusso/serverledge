@@ -24,7 +24,7 @@ type Registry struct {
 }
 
 type StatusInformation struct {
-	Url                     string
+	Addresses               NodeInterfaces
 	AvailableWarmContainers map[string]int // <k, v> = <function name, warm container number>
 	AvailableMemMB          int64
 	AvailableCPUs           float64
@@ -33,14 +33,14 @@ type StatusInformation struct {
 	Coordinates             vivaldi.Coordinate
 }
 
-type NodeInformation struct {
+type NodeInterfaces struct {
 	NodeAddress     string
 	RegistryAddress string
 }
 
-// GetNodeInformation writes the information present into the etcd entry of a node into a struct NodeInformation
-func GetNodeInformation(etcdValue string) *NodeInformation {
-	var nodeInfo NodeInformation
+// GetNodeInformation writes the information present into the etcd entry of a node into a struct NodeInterfaces
+func GetNodeInformation(etcdValue string) *NodeInterfaces {
+	var nodeInfo NodeInterfaces
 
 	// Get registry address of the target node registry server
 	err := json.Unmarshal([]byte(etcdValue), &nodeInfo)

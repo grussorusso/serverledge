@@ -215,10 +215,16 @@ func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
 func GetServerStatus(c echo.Context) error {
 	node.Resources.RLock()
 	defer node.Resources.RUnlock()
-	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+	portNumberApi := config.GetInt("api.port", 1323)
+	portNumberReg := config.GetInt("registry.udp.port", 9876)
+	urlApi := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumberApi)
+	urlReg := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumberReg)
+	nodeInterface := registration.NodeInterfaces{
+		NodeAddress:     urlApi,
+		RegistryAddress: urlReg,
+	}
 	response := registration.StatusInformation{
-		Url:                     url,
+		Addresses:               nodeInterface,
 		AvailableWarmContainers: node.WarmStatus(),
 		AvailableMemMB:          node.Resources.AvailableMemMB,
 		AvailableCPUs:           node.Resources.AvailableCPUs,
