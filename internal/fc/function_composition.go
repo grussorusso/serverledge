@@ -263,7 +263,7 @@ func (fc *FunctionComposition) String() string {
 		i++
 	}
 	functions += "]"
-	workflow := fc.Workflow.Print()
+	workflow := fc.Workflow.String()
 	return fmt.Sprintf(`FunctionComposition{
 		Name: %s,
 		Functions: %s,
