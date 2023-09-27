@@ -11,13 +11,15 @@ import (
 // TODO: si può mettere il dag privato all'interno di ogni nodo? Senza che si fa il marshaling, ma dopo si setta in seguito?
 // StartNode is a DagNode from which the execution of the Dag starts. Invokes the first DagNode
 type StartNode struct {
-	Id   DagNodeId
-	Next DagNodeId
+	Id       DagNodeId
+	NodeType DagNodeType
+	Next     DagNodeId
 }
 
 func NewStartNode() *StartNode {
 	return &StartNode{
-		Id: DagNodeId(shortuuid.New()),
+		Id:       DagNodeId(shortuuid.New()),
+		NodeType: Start,
 	}
 }
 

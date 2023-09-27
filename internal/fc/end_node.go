@@ -17,14 +17,16 @@ const (
 
 // EndNode is a DagNode that represents the end of the Dag.
 type EndNode struct {
-	Id     DagNodeId
-	Result map[string]interface{} // TODO: maybe useless
+	Id       DagNodeId
+	NodeType DagNodeType
+	Result   map[string]interface{} // TODO: maybe useless
 	// Reason Reason                 // TODO: maybe useless
 }
 
 func NewEndNode() *EndNode {
 	return &EndNode{
-		Id: DagNodeId(shortuuid.New()),
+		Id:       DagNodeId(shortuuid.New()),
+		NodeType: End,
 	}
 }
 

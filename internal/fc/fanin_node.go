@@ -18,10 +18,11 @@ const (
 // FanInNode receives and merges multiple input and produces a single result
 type FanInNode struct {
 	Id          DagNodeId
+	NodeType    DagNodeType
 	BranchId    int
 	OutputTo    DagNodeId
 	FanInDegree int
-	timeout     time.Duration
+	Timeout     time.Duration
 	Mode        MergeMode
 	input       map[string]interface{}
 	IsReached   bool
@@ -87,9 +88,10 @@ func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nil
 	}
 	fanIn := FanInNode{
 		Id:          DagNodeId(shortuuid.New()),
+		NodeType:    FanIn,
 		OutputTo:    "",
 		FanInDegree: fanInDegree,
-		timeout:     *timeout,
+		Timeout:     *timeout,
 		Mode:        mergeMode,
 		IsReached:   false,
 	}
@@ -102,7 +104,7 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 	switch f1 := cmp.(type) {
 	case *FanInNode:
 		return f.Id == f1.Id && f.FanInDegree == f1.FanInDegree && f.OutputTo == f1.OutputTo &&
-			f.timeout == f1.timeout && f.Mode == f1.Mode
+			f.Timeout == f1.Timeout && f.Mode == f1.Mode
 	default:
 		return false
 	}
@@ -143,7 +145,7 @@ func (f *FanInNode) Exec(*Progress) (map[string]interface{}, error) {
 
 	}()
 	// implementing timeout
-	cancel := time.AfterFunc(f.timeout, func() {
+	cancel := time.AfterFunc(f.Timeout, func() {
 		fmt.Println("timeout elapsed")
 		okChan <- false
 	})

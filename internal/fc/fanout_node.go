@@ -13,6 +13,7 @@ import (
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
 	Id              DagNodeId
+	NodeType        DagNodeType
 	BranchId        int
 	input           map[string]interface{}
 	OutputTo        []DagNodeId
@@ -39,6 +40,7 @@ const (
 func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
 	return &FanOutNode{
 		Id:           DagNodeId(shortuuid.New()),
+		NodeType:     FanOut,
 		OutputTo:     make([]DagNodeId, 0),
 		FanOutDegree: fanOutDegree,
 		Type:         fanOutType,

@@ -1,12 +1,37 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	u "github.com/grussorusso/serverledge/utils"
 	"math/rand"
 	"testing"
 )
+
+func TestDagMarshaling(t *testing.T) {
+	f, _ := initializeExamplePyFunction()
+
+	dag1, _ := fc.CreateEmptyDag()
+	dag2, _ := fc.CreateSequenceDag(f, f, f)
+	dag3, _ := fc.CreateChoiceDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) })
+	dag4, _ := fc.CreateBroadcastDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) }, 4)
+	dag5, _ := fc.CreateScatterSingleFunctionDag(f, 5)
+	dag6, _ := fc.CreateBroadcastMultiFunctionDag(
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f) },
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) },
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f, f) },
+	)
+	dags := []*fc.Dag{dag1, dag2, dag3, dag4, dag5, dag6}
+	for i, dag := range dags {
+		marshal, errMarshal := json.Marshal(dag)
+		u.AssertNilMsg(t, errMarshal, "error during marshaling "+string(rune(i)))
+		var retrieved fc.Dag
+		errUnmarshal := json.Unmarshal(marshal, &retrieved)
+		u.AssertNilMsg(t, errUnmarshal, "failed composition unmarshal "+string(rune(i)))
+		u.AssertTrueMsg(t, retrieved.Equals(dag), fmt.Sprintf("retrieved dag is not equal to initial dag. Retrieved:\n%s,\nExpected:\n%s ", retrieved.String(), dag.String()))
+	}
+}
 
 // test for dag connections
 func TestEmptyDag(t *testing.T) {

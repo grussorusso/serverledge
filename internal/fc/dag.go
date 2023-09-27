@@ -1,6 +1,8 @@
 package fc
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
@@ -360,132 +362,7 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 }
 
 // TODO: assicurarsi che si esegua in parallelo
-// TODO: aggiungere lo stato di avanzamento: ad esempio su ETCD, compresi i parametri di input/output
 func (dag *Dag) Execute(requestId ReqId) (bool, error) {
-	/*errChan := make(chan error)
-	if &dag.Start == nil && &dag.End == nil && dag.Width == 0 {
-		return nil, errors.New("you must instantiate the dag correctly with all fields")
-	}
-	startNode := dag.Start
-	var previousNode DagNode = dag.Start
-
-	previousNode = startNode
-	// you can have more than one next node (i.e. for FanOut node)
-	currentNodes := previousNode.GetNext()
-	previousOutput := input // nil???
-
-	parallel := false // TODO: maybe we need a stack of boolean variables. The top of the stack is the current section
-
-	// while loop to execute dag until we reach the end
-	for len(currentNodes) > 0 {
-		// execute a single node
-		nodeSet := NewNodeSet()
-		var nextCurrentNodes []DagNode
-		for _, node := range currentNodes {
-			// make transition
-			errRecv := node.ReceiveInput(previousOutput) // TODO: Retrieve input from ETCD (or from local cache, if the previous node is colocated with the current one)
-			if errRecv != nil {
-				return nil, fmt.Errorf("the node %s cannot receive the input: %v", node.ToString(), errRecv)
-			}
-			// handle the output
-			// For ChoiceNode, output is sent to first successful branch
-			// FIXME: For FanOutNode, output can be a simple copy of previous node output, but here we are calling multiple times
-			// FIXME: For FanInNode, output is a merge of all output from back. Todo: How to merge can be a problem... We should also check timeout and exiting if it happens
-			var output map[string]interface{}
-			if !parallel {
-				o, errExec := node.Exec() // simple, choice or fanout
-				if errExec != nil {
-					return nil, fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), errExec)
-				}
-				output = o
-				// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
-				switch node.(type) {
-				case *SimpleNode:
-					<-types.NodeDoneChan
-				}
-				previousOutput = output
-				// prepares the output for the next function(s)
-				errSend := node.PrepareOutput(output)
-				if errRecv != nil {
-					return nil, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
-				}
-				nextNodes := node.GetNext()
-				if len(nextNodes) > 0 {
-					// adding the next nodes to a set and to a list
-					nodeSet.AddAll(nextNodes)
-					nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
-				}
-			} else { // if parallel (only if it's not a fan in)
-				if _, ok := node.(*FanInNode); !ok {
-					// async
-					go func() {
-						o, err := node.Exec()
-						if err != nil {
-							errChan <- fmt.Errorf("the node %s has failed function execution: %v", node.ToString(), err)
-							return
-						}
-						// if the next node is fanIn, send the output to it
-						errChan <- nil
-						if fanIn, ok := node.GetNext()[0].(*FanInNode); ok {
-							fmt.Printf("node in branchId %d sent output to fanIn\n", node.GetBranchId())
-							fanInChannel := getChannelForParallelBranch(fanIn.Id, node.GetBranchId())
-							fanInChannel <- o
-						} else {
-							// output should go to the next node
-							previousOutput = output
-							// prepares the output for the next function(s)
-							errSend := node.PrepareOutput(output)
-							if errRecv != nil {
-								errChan <- fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
-								return
-							}
-							nextNodes := node.GetNext()
-							if len(nextNodes) > 0 {
-								// adding the next nodes to a set and to a list
-								nodeSet.AddAll(nextNodes)
-								nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
-							}
-						}
-						errChan <- nil
-					}()
-				}
-			}
-
-			switch fan := node.(type) {
-			case *FanOutNode:
-				parallel = true
-				associatedFanIn, _ := dag.Find(fan.AssociatedFanIn)
-				nextCurrentNodes = append(nextCurrentNodes, associatedFanIn) // FIXME: problem when there are more than 1 node in each branch
-			case *FanInNode:
-				parallel = false
-
-				for i := 0; i < fan.FanInDegree; i++ {
-					erro := <-errChan
-					if erro != nil {
-						return nil, erro
-					}
-				}
-				fmt.Println("FanIn: all function returned an output!")
-				// fan.PrepareOutput()
-				previousOutput = output
-				// prepares the output for the next function(s)
-				//errSend := node.PrepareOutput(output)
-				//if errSend != nil {
-				//	return nil, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
-				//}
-				nextNodes := node.GetNext()
-				if len(nextNodes) > 0 {
-					// adding the next nodes to a set and to a list
-					nodeSet.AddAll(nextNodes)
-					nextCurrentNodes = append(nextCurrentNodes, nodeSet.GetNodes()...)
-				}
-			}
-		}
-		currentNodes = nextCurrentNodes
-	}
-
-	return previousOutput, nil*/
-
 	progress, _ := progressCache.RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
 	shouldContinue := true
@@ -544,12 +421,164 @@ func (dag *Dag) Equals(comparer types.Comparable) bool {
 	dag2 := comparer.(*Dag)
 
 	for k := range dag.Nodes {
-		if dag.Nodes[k] != dag2.Nodes[k] {
+		if !dag.Nodes[k].Equals(dag2.Nodes[k]) {
 			return false
 		}
 	}
-	return dag.Start == dag2.Start &&
-		dag.End == dag2.End &&
+	return dag.Start.Equals(dag2.Start) &&
+		dag.End.Equals(dag2.End) &&
 		dag.Width == dag2.Width &&
 		len(dag.Nodes) == len(dag2.Nodes)
+}
+
+func (dag *Dag) String() string {
+	return fmt.Sprintf(`Dag{
+		Start: %s,
+		Nodes: %s,
+		End:   %s,
+		Width: %d,
+	}`, dag.Start.ToString(), dag.Nodes, dag.End.ToString(), dag.Width)
+}
+
+// MarshalJSON is needed because DagNode is an interface
+func (dag *Dag) MarshalJSON() ([]byte, error) {
+	// Create a map to hold the JSON representation of the Wrapper
+	data := make(map[string]interface{})
+
+	// Add the "wrappo" field to the map
+	data["Start"] = dag.Start
+	data["End"] = dag.End
+	data["Width"] = dag.Width
+	nodes := make(map[DagNodeId]interface{})
+
+	// Marshal the Simpatica interface and store it as "simpy" in the map
+	for nodeId, node := range dag.Nodes {
+		switch concreteNode := node.(type) {
+		case *StartNode:
+			nodes[nodeId] = concreteNode
+		case *EndNode:
+			nodes[nodeId] = concreteNode
+		case *SimpleNode:
+			nodes[nodeId] = concreteNode
+		case *ChoiceNode:
+			nodes[nodeId] = concreteNode
+		case *FanOutNode:
+			nodes[nodeId] = concreteNode
+		case *FanInNode:
+			nodes[nodeId] = concreteNode
+		default:
+			return nil, fmt.Errorf("unsupported Simpatica type")
+		}
+	}
+	data["Nodes"] = nodes
+
+	// Marshal the map to JSON
+	return json.Marshal(data)
+}
+
+// UnmarshalJSON is needed because DagNode is an interface
+func (dag *Dag) UnmarshalJSON(data []byte) error {
+	// Create a temporary map to decode the JSON data
+	var tempMap map[string]json.RawMessage
+	if err := json.Unmarshal(data, &tempMap); err != nil {
+		return err
+	}
+	// extract simple fields
+	if rawStart, ok := tempMap["Start"]; ok {
+		if err := json.Unmarshal(rawStart, &dag.Start); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("missing 'Start' field in JSON")
+	}
+
+	if rawEnd, ok := tempMap["End"]; ok {
+		if err := json.Unmarshal(rawEnd, &dag.End); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("missing 'End' field in JSON")
+	}
+
+	if rawWidth, ok := tempMap["Width"]; ok {
+		if err := json.Unmarshal(rawWidth, &dag.Width); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("missing 'Width' field in JSON")
+	}
+
+	// Cycle on each map entry and decode the type
+	var tempNodeMap map[string]json.RawMessage
+	if err := json.Unmarshal(tempMap["Nodes"], &tempNodeMap); err != nil {
+		return err
+	}
+	dag.Nodes = make(map[DagNodeId]DagNode)
+	for nodeId, value := range tempNodeMap {
+		err := dag.decodeNode(nodeId, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
+	var tempNodeMap map[string]interface{}
+	if err := json.Unmarshal(value, &tempNodeMap); err != nil {
+		return err
+	}
+	dagNodeType := int(tempNodeMap["NodeType"].(float64))
+	var err error
+	switch dagNodeType {
+	case Start:
+		node := &StartNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" && node.Next != "" {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	case End:
+		node := &EndNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	case Simple:
+		node := &SimpleNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" && node.Func != "" {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	case Choice:
+		node := &ChoiceNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" && node.Alternatives != nil && len(node.Alternatives) == len(node.Conditions) {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	case FanOut:
+		node := &FanOutNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	case FanIn:
+		node := &FanInNode{}
+		err = json.Unmarshal(value, node)
+		if err == nil && node.Id != "" {
+			dag.Nodes[DagNodeId(nodeId)] = node
+			return nil
+		}
+	}
+	var unmarshalTypeError *json.UnmarshalTypeError
+	if err != nil && !errors.As(err, &unmarshalTypeError) {
+		// abort if we have an error other than the wrong type
+		return err
+	}
+
+	return fmt.Errorf("failed to decode node")
 }

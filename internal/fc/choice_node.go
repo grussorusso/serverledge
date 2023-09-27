@@ -13,6 +13,7 @@ import (
 // ChoiceNode receives one input and produces one result to one of two alternative nodes, based on condition
 type ChoiceNode struct {
 	Id           DagNodeId
+	NodeType     DagNodeType
 	BranchId     int
 	input        map[string]interface{}
 	Alternatives []DagNodeId
@@ -23,6 +24,7 @@ type ChoiceNode struct {
 func NewChoiceNode(conds []Condition) *ChoiceNode {
 	return &ChoiceNode{
 		Id:           DagNodeId(shortuuid.New()),
+		NodeType:     Choice,
 		Conditions:   conds,
 		Alternatives: make([]DagNodeId, len(conds)),
 		FirstMatch:   -1,

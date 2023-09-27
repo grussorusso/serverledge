@@ -21,6 +21,7 @@ var compositionRequestsPool = sync.Pool{
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
 	Id         DagNodeId
+	NodeType   DagNodeType
 	BranchId   int
 	input      map[string]interface{}
 	OutputTo   DagNodeId
@@ -33,6 +34,7 @@ type SimpleNode struct {
 func NewSimpleNode(f string) *SimpleNode {
 	return &SimpleNode{
 		Id:         DagNodeId(shortuuid.New()),
+		NodeType:   Simple,
 		Func:       f,
 		IsParallel: false,
 		// Request: nil,
