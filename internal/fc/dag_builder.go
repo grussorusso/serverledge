@@ -7,16 +7,15 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
-var BranchNumber = 0
-
 // DagBuilder is a utility struct that helps easily define the Dag, using the Builder pattern.
 // Use NewDagBuilder() to safely initialize it. Then use the available methods to iteratively build the dag.
 // Finally use Build() to get the complete Dag.
 type DagBuilder struct {
-	dag      Dag
-	branches int
-	prevNode DagNode
-	errors   []error
+	dag          Dag
+	branches     int
+	prevNode     DagNode
+	errors       []error
+	BranchNumber int
 }
 
 func (b *DagBuilder) appendError(err error) {
@@ -46,9 +45,10 @@ type ParallelBroadcastBranchBuilder struct {
 
 func NewDagBuilder() *DagBuilder {
 	db := DagBuilder{
-		dag:      NewDAG(),
-		branches: 1,
-		errors:   make([]error, 0),
+		dag:          NewDAG(),
+		branches:     1,
+		errors:       make([]error, 0),
+		BranchNumber: 0,
 	}
 	db.prevNode = db.dag.Start
 	return &db
@@ -63,7 +63,7 @@ func (b *DagBuilder) AddSimpleNode(f *function.Function) *DagBuilder {
 	}
 
 	simpleNode := NewSimpleNode(f.Name)
-	simpleNode.setBranchId(BranchNumber)
+	simpleNode.setBranchId(b.BranchNumber)
 
 	b.dag.addNode(simpleNode)
 	err := b.dag.chain(b.prevNode, simpleNode)
@@ -87,7 +87,7 @@ func (b *DagBuilder) AddChoiceNode(conditions ...Condition) *ChoiceBranchBuilder
 
 	fmt.Println("Added choice node to Dag")
 	choiceNode := NewChoiceNode(conditions)
-	choiceNode.setBranchId(BranchNumber)
+	choiceNode.setBranchId(b.BranchNumber)
 	b.branches = len(conditions)
 	b.dag.addNode(choiceNode)
 	err := b.dag.chain(b.prevNode, choiceNode)
@@ -117,7 +117,7 @@ func (b *DagBuilder) AddScatterFanOutNode(fanOutDegree int) *ParallelScatterBran
 		return &ParallelScatterBranchBuilder{dagBuilder: b, terminalNodes: make([]DagNode, 0)}
 	}
 	fanOut := NewFanOutNode(fanOutDegree, Scatter)
-	fanOut.setBranchId(BranchNumber)
+	fanOut.setBranchId(b.BranchNumber)
 	b.dag.addNode(fanOut)
 	err := b.dag.chain(b.prevNode, fanOut)
 	if err != nil {
@@ -139,7 +139,7 @@ func (b *DagBuilder) AddBroadcastFanOutNode(fanOutDegree int) *ParallelBroadcast
 		return &ParallelBroadcastBranchBuilder{dagBuilder: b, completed: 0, terminalNodes: make([]DagNode, 0)}
 	}
 	fanOut := NewFanOutNode(fanOutDegree, Broadcast)
-	fanOut.setBranchId(BranchNumber)
+	fanOut.setBranchId(b.BranchNumber)
 	b.dag.addNode(fanOut)
 	err := b.dag.chain(b.prevNode, fanOut)
 	if err != nil {
@@ -169,9 +169,8 @@ func (c *ChoiceBranchBuilder) NextBranch(dagToChain *Dag, err1 error) *ChoiceBra
 
 	fmt.Println("Added simple node to a branch in choice node of Dag")
 	if c.HasNextBranch() {
-		BranchNumber++ // FIXME: what happens if we have to choice nodes with some branch each? maybe overwrites previous branchId
-
-		// TODO: maybe here is an error
+		c.dagBuilder.BranchNumber++ // FIXME: what happens if we have to choice nodes with some branch each? maybe overwrites previous branchId
+		baseBranchNumber := c.dagBuilder.BranchNumber
 		// getting start.Next from the dagToChain
 		startNext, _ := dagToChain.Find(dagToChain.Start.Next)
 		// chains the alternative to the input dag, which is already connected to a whole series of nodes
@@ -189,28 +188,27 @@ func (c *ChoiceBranchBuilder) NextBranch(dagToChain *Dag, err1 error) *ChoiceBra
 				continue
 			case *EndNode:
 				continue
+			case *FanOutNode:
+				c.dagBuilder.dag.addNode(n)
+				n.setBranchId(n.GetBranchId() + baseBranchNumber)
+				//errFanout := fmt.Errorf("you're trying to chain a fanout node to an end node. This will interrupt the execution immediately after the fanout is reached")
+				//c.dagBuilder.appendError(errFanout)
+				continue
 			default:
 				c.dagBuilder.dag.addNode(n)
-				if n.GetBranchId() == 0 {
-					n.setBranchId(BranchNumber) // add all nodes in this branch
-				} else {
-					n.setBranchId(n.GetBranchId() + 1)
-				}
-
+				n.setBranchId(n.GetBranchId() + baseBranchNumber)
+				//if n.GetBranchId() == 0 {
+				//	n.setBranchId(baseBranchNumber) // add all nodes in this branch
+				//} else {
+				//
+				//}
 				nextNode, _ := dagToChain.Find(n.GetNext()[0])
 				// chain the last node(s) of the input dag to the end node of the building dag
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && nextNode == dagToChain.End {
-					switch n.(type) {
-					case *FanOutNode:
-						errFanout := fmt.Errorf("you're trying to chain a fanout node to an end node. This will interrupt the execution immediately after the fanout is reached")
-						c.dagBuilder.appendError(errFanout)
-						continue
-					default:
-						errEnd := c.dagBuilder.dag.ChainToEndNode(n)
-						if errEnd != nil {
-							c.dagBuilder.appendError(errEnd)
-							return c
-						}
+					errEnd := c.dagBuilder.dag.ChainToEndNode(n)
+					if errEnd != nil {
+						c.dagBuilder.appendError(errEnd)
+						return c
 					}
 				}
 			}
@@ -235,8 +233,8 @@ func (c *ChoiceBranchBuilder) EndNextBranch() *ChoiceBranchBuilder {
 	dag := &c.dagBuilder.dag
 
 	if c.HasNextBranch() {
-		BranchNumber++ // we only increase the branch number, but we do not use in any node
-		fmt.Printf("Ending branch %d for Dag\n", BranchNumber)
+		c.dagBuilder.BranchNumber++ // we only increase the branch number, but we do not use in any node
+		fmt.Printf("Ending branch %d for Dag\n", c.dagBuilder.BranchNumber)
 		// chain the alternative of the choice node to the end node of the building dag
 		alternative, _ := dag.Find(c.dagBuilder.prevNode.(*ChoiceNode).Alternatives[c.completed])
 		err := c.dagBuilder.dag.ChainToEndNode(alternative)
@@ -279,8 +277,8 @@ func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *Choice
 	// once := true
 	remainingBranches := c.dagBuilder.branches
 	for i := c.completed; i < remainingBranches; i++ {
-		BranchNumber++
-		fmt.Printf("Adding dag to branch %d\n", BranchNumber)
+		c.dagBuilder.BranchNumber++
+		fmt.Printf("Adding dag to branch %d\n", c.dagBuilder.BranchNumber)
 		// recreates a dag executing the same function
 		dagCopy, errDag := dagger()
 		if errDag != nil {
@@ -304,7 +302,7 @@ func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *Choice
 				c.dagBuilder.appendError(errFanout)
 				continue
 			default:
-				n.setBranchId(BranchNumber)
+				n.setBranchId(c.dagBuilder.BranchNumber)
 				c.dagBuilder.dag.addNode(n)
 				// chain the last node(s) of the input dag to the end node of the building dag
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dagCopy.End.GetId() {
@@ -329,7 +327,7 @@ func (p *ParallelBroadcastBranchBuilder) ForEachParallelBranch(dagger func() (*D
 	// we suppose the branches 0, ..., (completed-1) are already completed
 	remainingBranches := p.dagBuilder.branches
 	for i := p.completed; i < remainingBranches; i++ {
-		BranchNumber++
+		p.dagBuilder.BranchNumber++
 		fmt.Printf("Adding dag to branch %d\n", i)
 		// recreates a dag executing the same function
 		dagCopy, errDag := dagger()
@@ -355,7 +353,7 @@ func (p *ParallelBroadcastBranchBuilder) ForEachParallelBranch(dagger func() (*D
 				continue
 			default:
 				p.dagBuilder.dag.addNode(n)
-				n.setBranchId(BranchNumber)
+				n.setBranchId(p.dagBuilder.BranchNumber)
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dagCopy.End.GetId() {
 					p.terminalNodes = append(p.terminalNodes, n) // we do not chain to end node, only add to terminal nodes, so that we can chain to a fan in later
 				}
@@ -374,7 +372,7 @@ func (p *ParallelScatterBranchBuilder) ForEachParallelBranch(dagger func() (*Dag
 	// we suppose the branches 0, ..., (completed-1) are already completed
 	remainingBranches := p.dagBuilder.branches
 	for i := p.completed; i < remainingBranches; i++ {
-		BranchNumber++
+		p.dagBuilder.BranchNumber++
 		fmt.Printf("Adding dag to branch %d\n", i)
 		// recreates a dag executing the same function
 		dagCopy, errDag := dagger()
@@ -400,7 +398,7 @@ func (p *ParallelScatterBranchBuilder) ForEachParallelBranch(dagger func() (*Dag
 				continue
 			default:
 				p.dagBuilder.dag.addNode(n)
-				n.setBranchId(BranchNumber)
+				n.setBranchId(p.dagBuilder.BranchNumber)
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dagCopy.End.GetId() {
 					p.terminalNodes = append(p.terminalNodes, n) // we do not chain to end node, only add to terminal nodes, so that we can chain to a fan in later
 				}
@@ -419,8 +417,8 @@ func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBui
 	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers(dag)
 
 	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
-	BranchNumber++
-	fanInNode.setBranchId(BranchNumber)
+	p.dagBuilder.BranchNumber++
+	fanInNode.setBranchId(p.dagBuilder.BranchNumber)
 	// TODO: set fanin inside fanout, so that we know which fanin are dealing with
 	for _, n := range p.terminalNodes {
 		// terminal nodes
@@ -447,8 +445,8 @@ func (p *ParallelBroadcastBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagB
 	dag := &p.dagBuilder.dag
 	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers(dag)
 	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
-	BranchNumber++
-	fanInNode.setBranchId(BranchNumber)
+	p.dagBuilder.BranchNumber++
+	fanInNode.setBranchId(p.dagBuilder.BranchNumber)
 	for _, n := range p.terminalNodes {
 		// terminal nodes
 		errAdd := n.AddOutput(dag, fanInNode.GetId())
@@ -481,7 +479,7 @@ func (p *ParallelBroadcastBranchBuilder) NextFanOutBranch(dagToChain *Dag, err1 
 
 	fmt.Println("Added simple node to a branch in choice node of Dag")
 	if p.HasNextBranch() {
-		BranchNumber++
+		p.dagBuilder.BranchNumber++
 		// chains the alternative to the input dag, which is already connected to a whole series of nodes
 		next, _ := dagToChain.Find(dagToChain.Start.Next)
 		err := p.dagBuilder.dag.chain(p.dagBuilder.prevNode, next)
@@ -502,7 +500,7 @@ func (p *ParallelBroadcastBranchBuilder) NextFanOutBranch(dagToChain *Dag, err1 
 				continue
 			default:
 				p.dagBuilder.dag.addNode(n)
-				n.setBranchId(BranchNumber)
+				n.setBranchId(p.dagBuilder.BranchNumber)
 				if n.GetNext() != nil && len(n.GetNext()) > 0 && n.GetNext()[0] == dagToChain.End.GetId() {
 					p.terminalNodes = append(p.terminalNodes, n)
 				}

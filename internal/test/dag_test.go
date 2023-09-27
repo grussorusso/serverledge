@@ -10,7 +10,7 @@ import (
 
 // test for dag connections
 func TestEmptyDag(t *testing.T) {
-	fc.BranchNumber = 0
+	// fc.BranchNumber = 0
 
 	input := 1
 	m := make(map[string]interface{})
@@ -29,7 +29,7 @@ func TestEmptyDag(t *testing.T) {
 
 // TestSimpleDag creates a simple Dag with one StartNode, two SimpleNode and one EndNode, executes it and gets the result.
 func TestSimpleDag(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	input := 1
 	m := make(map[string]interface{})
@@ -76,7 +76,7 @@ func TestSimpleDag(t *testing.T) {
 }
 
 func TestChoiceDag(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	m := make(map[string]interface{})
 	m["input"] = 1
@@ -127,7 +127,7 @@ func TestChoiceDag(t *testing.T) {
 }
 
 func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	m := make(map[string]interface{})
 	m["input"] = 1
@@ -191,7 +191,7 @@ func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
 // TestBroadcastDag verifies that a broadcast dag is created correctly with fan out, simple nodes and fan in.
 // All dag branches have the same sequence of simple nodes.
 func TestBroadcastDag(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	m := make(map[string]interface{})
 	m["input"] = 1
@@ -241,7 +241,7 @@ func TestBroadcastDag(t *testing.T) {
 }
 
 func TestScatterDag(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	f, err := initializeExamplePyFunction()
 	u.AssertNil(t, err)
@@ -294,7 +294,7 @@ func TestScatterDag(t *testing.T) {
 }
 
 func TestCreateBroadcastMultiFunctionDag(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	length1 := 2
 	f, fArrPy, err := initializeSameFunctionSlice(length1, "py")
@@ -376,7 +376,7 @@ func TestCreateBroadcastMultiFunctionDag(t *testing.T) {
 //	       |        |
 //	       |---->[ End  ]
 func TestDagBuilder(t *testing.T) {
-	fc.BranchNumber = 0
+	//fc.BranchNumber = 0
 
 	f, err := initializeExamplePyFunction()
 	u.AssertNil(t, err)
@@ -401,7 +401,7 @@ func TestDagBuilder(t *testing.T) {
 			fanOut := node
 			u.AssertEquals(t, len(fanOut.OutputTo), fanOut.FanOutDegree)
 			u.AssertEquals(t, width, fanOut.FanOutDegree)
-			u.AssertEquals(t, 2, fanOut.GetBranchId())
+			u.AssertEqualsMsg(t, 2, fanOut.GetBranchId(), "fan out has wrong branchId")
 			for _, s := range fanOut.OutputTo {
 				_, found := dag.Find(s)
 				u.AssertTrue(t, found)
@@ -410,19 +410,19 @@ func TestDagBuilder(t *testing.T) {
 			fanIn := node
 			u.AssertEquals(t, width, fanIn.FanInDegree)
 			u.AssertEquals(t, dag.End.GetId(), fanIn.OutputTo)
-			u.AssertEquals(t, 6, fanIn.GetBranchId())
+			u.AssertEqualsMsg(t, 6, fanIn.GetBranchId(), "wrong branchId for fan in")
 		case *fc.SimpleNode:
 			u.AssertTrue(t, node.Func == f.Name)
 			nextNode, _ := dag.Find(node.GetNext()[0])
 			if _, ok := nextNode.(*fc.FanInNode); ok {
 				simpleNodeChainedToFanIn++
-				u.AssertTrue(t, node.GetBranchId() > 2 && node.GetBranchId() < 6) // the parallel branches of fan out node
+				u.AssertTrueMsg(t, node.GetBranchId() > 2 && node.GetBranchId() < 6, "wrong branch for simple node connected to fanIn input") // the parallel branches of fan out node
 			} else if _, ok2 := nextNode.(*fc.ChoiceNode); ok2 {
-				u.AssertEquals(t, node.GetBranchId(), 0) // the first simple node
+				u.AssertEqualsMsg(t, 0, node.GetBranchId(), "wrong branch for simpleNode connected to choice node input") // the first simple node
 			} else if _, ok3 := nextNode.(*fc.EndNode); ok3 {
-				u.AssertEquals(t, node.GetBranchId(), 1) // the first branch of choice node
+				u.AssertEqualsMsg(t, 1, node.GetBranchId(), "wrong branch for simpleNode connected to choice alternative 1") // the first branch of choice node
 			} else {
-				u.AssertTrue(t, node.GetBranchId() > 2 && node.GetBranchId() < 6) // the parallel branches of fan out node
+				u.AssertTrueMsg(t, node.GetBranchId() > 2 && node.GetBranchId() < 6, "wrong branch for simple node inside parallel section") // the parallel branches of fan out node
 			}
 		case *fc.ChoiceNode:
 			choice := node
