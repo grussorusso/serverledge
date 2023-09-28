@@ -2,7 +2,6 @@ package fc
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/scheduling"
@@ -20,24 +19,25 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id         DagNodeId
-	NodeType   DagNodeType
-	BranchId   int
-	input      map[string]interface{}
-	OutputTo   DagNodeId
-	Func       string
-	IsParallel bool
+	Id                    DagNodeId
+	NodeType              DagNodeType
+	BranchId              int
+	input                 map[string]interface{}
+	OutputTo              DagNodeId
+	Func                  string
+	MaxResponseTimeMillis int
+	IsParallel            bool
 	// Request   *function.Request
 	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
 
-func NewSimpleNode(f string) *SimpleNode {
+func NewSimpleNode(f string, maxRespTimeMillis int) *SimpleNode {
 	return &SimpleNode{
-		Id:         DagNodeId(shortuuid.New()),
-		NodeType:   Simple,
-		Func:       f,
-		IsParallel: false,
-		// Request: nil,
+		Id:                    DagNodeId(shortuuid.New()),
+		NodeType:              Simple,
+		Func:                  f,
+		IsParallel:            false,
+		MaxResponseTimeMillis: maxRespTimeMillis,
 	}
 }
 
@@ -55,36 +55,29 @@ func (s *SimpleNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *SimpleNode) Exec(*Progress) (map[string]interface{}, error) {
+func (s *SimpleNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
 	}
 	fmt.Printf("executing simple node %s", s.Id)
 	// creates the function if not exists. Maybe someone deleted by accident the function before starting the dag.
-	//if !s.Func.Exists() {
-	//	errNotSaved := s.Func.SaveToEtcd()
-	//	return nil, fmt.Errorf("the function %s cannot be saved while trying to exec the function composition %v", s.Func.Name, errNotSaved)
-	//}
-	// the rest of the code is similar to a single function execution
-	invocationRequest := client.InvocationRequest{
-		Params:          s.input,
-		QoSMaxRespT:     500,
-		CanDoOffloading: true,
-		Async:           false, // should always be synchronous. If we need to call the dag asynchronously, we can do that regardless.
-		// TODO: aggiungere un campo che distingue se l'invocazione fa parte di una composizione o è una funzione singola
+	if !funct.Exists() {
+		errNotSaved := funct.SaveToEtcd()
+		return nil, fmt.Errorf("the function %s cannot be saved while trying to exec the function composition %v", s.Func, errNotSaved)
 	}
+	// the rest of the code is similar to a single function execution
 	r := compositionRequestsPool.Get().(*function.Request) // function.Request will be created if does not exists, otherwise removed from the pool
 	defer compositionRequestsPool.Put(r)                   // at the end of the function, the function.Request is added to the pool.
 
 	// s.Request = r
 	r.Fun = funct
-	r.Params = invocationRequest.Params
+	r.Params = s.input
 	r.Arrival = time.Now()
 
-	r.MaxRespT = invocationRequest.QoSMaxRespT
-	r.CanDoOffloading = invocationRequest.CanDoOffloading
-	r.Async = invocationRequest.Async
+	r.MaxRespT = float64(s.MaxResponseTimeMillis)
+	r.CanDoOffloading = true
+	r.Async = false
 	r.ReqId = fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
@@ -112,18 +105,14 @@ func (s *SimpleNode) Exec(*Progress) (map[string]interface{}, error) {
 		}
 		// TODO: else if the output is a struct/map, we should return a map with struct field and values
 	}
+	// saving execution report for this function
+	execReport.Reports[s.Id] = &r.ExecReport
 	cs := ""
 	if !r.ExecReport.IsWarmStart {
 		cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)
 	}
 	fmt.Printf("result: %v %s\n", r.ExecReport.Result, cs)
 	return m, nil
-}
-
-// AddInput connects a DagNode to the input of this SimpleNode TODO: REMOVE
-func (s *SimpleNode) AddInput(dagNode DagNode) error {
-	// s.InputFrom = dagNode
-	return nil
 }
 
 // AddOutput connects the output of the SimpleNode to another DagNode

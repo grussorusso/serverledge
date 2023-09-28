@@ -224,3 +224,9 @@ func deleteCompositionApiTest(t *testing.T, fcName string, host string, port int
 
 	utils.PrintJsonResponse(resp.Body)
 }
+
+func newExecutionReportTest() *fc.ExecutionReport {
+	return &fc.ExecutionReport{
+		Reports: make(map[fc.DagNodeId]*function.ExecutionReport),
+	}
+}

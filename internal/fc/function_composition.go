@@ -26,7 +26,7 @@ type FunctionComposition struct {
 
 type ExecutionReport struct {
 	Result       map[string]interface{}
-	reports      []function.ExecutionReport
+	Reports      map[DagNodeId]*function.ExecutionReport
 	ResponseTime float64 // time waited by the user to get the output of the entire composition
 	// InitTime       float64 // time spent sleeping before executing the request (the cold start)
 	// OffloadLatency float64 // time spent offloading the requests
@@ -158,7 +158,10 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 }
 
 // Invoke schedules each function of the composition and invokes them
-func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId ReqId) (ExecutionReport, error) {
+func (fc *FunctionComposition) Invoke(r *CompositionRequest) (ExecutionReport, error) {
+	requestId := ReqId(r.ReqId)
+	input := r.Params
+
 	// initialize struct progress from dag
 	progress := InitProgressRecursive(requestId, &fc.Workflow)
 	// initialize partial data cache
@@ -172,10 +175,15 @@ func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId Re
 	if err != nil {
 		return ExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
+
+	fcExecutionReport := ExecutionReport{
+		Reports: make(map[DagNodeId]*function.ExecutionReport),
+	}
+
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(requestId)
+		shouldContinue, err = fc.Workflow.Execute(requestId, &fcExecutionReport)
 		if err != nil {
 			return ExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
 		}
@@ -185,7 +193,8 @@ func (fc *FunctionComposition) Invoke(input map[string]interface{}, requestId Re
 	if err != nil {
 		return ExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
 	}
-	return ExecutionReport{Result: result}, nil
+	fcExecutionReport.Result = result
+	return fcExecutionReport, nil
 }
 
 // Delete removes the FunctionComposition from cache and from etcd, so it cannot be invoked anymore

@@ -32,10 +32,6 @@ func (s *StartNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *StartNode) AddInput(dagNode DagNode) error {
-	panic("not supported")
-}
-
 func (s *StartNode) AddOutput(dag *Dag, nodeId DagNodeId) error {
 	node, found := dag.Find(nodeId)
 	if !found {
@@ -50,7 +46,7 @@ func (s *StartNode) AddOutput(dag *Dag, nodeId DagNodeId) error {
 	return nil
 }
 
-func (s *StartNode) Exec(*Progress) (map[string]interface{}, error) {
+func (s *StartNode) Exec(*ExecutionReport) (map[string]interface{}, error) {
 	panic("you can't exec a start node")
 }
 

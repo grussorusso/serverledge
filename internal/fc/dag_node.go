@@ -10,7 +10,6 @@ type DagNode interface {
 	types.Comparable
 	Display
 	Executable
-	HasInput
 	HasOutput
 	ReceivesInput
 	ReceivesOutput
@@ -36,12 +35,7 @@ type Display interface {
 
 type Executable interface {
 	// Exec defines the execution of the Dag. TODO: The output are saved in the struct, or returned?
-	Exec(progress *Progress) (map[string]interface{}, error)
-}
-
-type HasInput interface {
-	// AddInput adds an input node, if compatible. For some DagNodes can be called multiple times
-	AddInput(dagNode DagNode) error
+	Exec(execReport *ExecutionReport) (map[string]interface{}, error)
 }
 
 type HasOutput interface {

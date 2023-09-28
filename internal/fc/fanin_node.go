@@ -2,6 +2,7 @@ package fc
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
 	"time"
@@ -111,13 +112,13 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec waits all output from previous nodes or return an error after a timeout expires
-func (f *FanInNode) Exec(*Progress) (map[string]interface{}, error) {
+func (f *FanInNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
 	if !f.IsReached {
 		f.IsReached = true
 	} else {
 		return nil, nil // fmt.Errorf("node is already reached, skip me")
 	}
-
+	t0 := time.Now()
 	okChan := make(chan bool)
 	// getting outputs
 	go func() {
@@ -151,24 +152,27 @@ func (f *FanInNode) Exec(*Progress) (map[string]interface{}, error) {
 	})
 
 	ok := <-okChan
+	var output map[string]interface{} = nil
+	var err error = nil
 	if ok {
 		cancel.Stop() // stopping timer, we're all good
 		// merging outputs with the chosen mergeMode
 		fanInOutputChannel := getOutputChannelForFanIn(f.Id)
-		output := <-fanInOutputChannel
-		return output, nil
+		output = <-fanInOutputChannel
 	} else {
-		return nil, fmt.Errorf("fan-in merge failed - timeout occurred")
+		err = fmt.Errorf("fan-in merge failed - timeout occurred")
 	}
-}
-
-func (f *FanInNode) AddInput(dagNode DagNode) error {
-	//if len(f.InputFrom) == f.FanInDegree {
-	//	return errors.New("input already present in node")
-	//}
-	//
-	//f.InputFrom = append(f.InputFrom, dagNode)
-	return nil
+	respAndDuration := time.Now().Sub(t0).Seconds()
+	execReport.Reports[f.Id] = &function.ExecutionReport{
+		Result:         fmt.Sprintf("%v", output),
+		ResponseTime:   respAndDuration,
+		IsWarmStart:    true, // not in a container
+		InitTime:       0,
+		OffloadLatency: 0,
+		Duration:       respAndDuration,
+		SchedAction:    "",
+	}
+	return output, err
 }
 
 func (f *FanInNode) AddOutput(dag *Dag, dagNode DagNodeId) error {

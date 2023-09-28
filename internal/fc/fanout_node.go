@@ -3,11 +3,13 @@ package fc
 import (
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
 	"log"
 	"math"
 	"strings"
+	"time"
 )
 
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
@@ -74,10 +76,13 @@ func (f *FanOutNode) Equals(cmp types.Comparable) bool {
 // Exec splits the output for the next parallel dags
 // Scatter mode can only be used if the value held in the map is of type slice. Subdivides each map entry to a different node
 // Broadcast mode can always be used. Copies the entire map to each of the subsequent nodes
-func (f *FanOutNode) Exec(*Progress) (map[string]interface{}, error) {
+func (f *FanOutNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
+	var output map[string]interface{} = nil
+	var err error = nil
+	t0 := time.Now()
 	// input -> output: map["input":1] -> map["0":map["input":1], "1":map["input":1]]
 	if f.Type == Broadcast {
-		return f.input, nil // simply returns input, that will be copied to each subsequent node
+		output = f.input // simply returns input, that will be copied to each subsequent node
 	} else if f.Type == Scatter {
 		// get inputs
 		inputToCopy := f.input
@@ -85,19 +90,22 @@ func (f *FanOutNode) Exec(*Progress) (map[string]interface{}, error) {
 		for i := 0; i < f.FanOutDegree; i++ {
 			scatter[fmt.Sprintf("%d", i)] = inputToCopy // TODO: problem is that the fanout degree is fixed
 		}
-		return scatter, nil
+		output = scatter
 	} else {
-		return nil, fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
+		output = nil
+		err = fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
 	}
-}
-
-func (f *FanOutNode) AddInput(dagNode DagNode) error {
-	//if f.InputFrom != nil {
-	//	return errors.New("input already present in node")
-	//}
-	//
-	//f.InputFrom = dagNode
-	return nil
+	respAndDuration := time.Now().Sub(t0).Seconds()
+	execReport.Reports[f.Id] = &function.ExecutionReport{
+		Result:         fmt.Sprintf("%v", output),
+		ResponseTime:   respAndDuration,
+		IsWarmStart:    true, // not in a container
+		InitTime:       0,
+		OffloadLatency: 0,
+		Duration:       respAndDuration,
+		SchedAction:    "",
+	}
+	return output, err
 }
 
 func (f *FanOutNode) AddOutput(dag *Dag, dagNode DagNodeId) error {

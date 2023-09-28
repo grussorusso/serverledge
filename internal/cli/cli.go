@@ -222,7 +222,7 @@ func invoke(cmd *cobra.Command, args []string) {
 	// Prepare request
 	request := client.InvocationRequest{
 		Params:   paramsMap,
-		QoSClass: int64(api.DecodeServiceClass(qosClass)),
+		QoSClass: api.DecodeServiceClass(qosClass),
 		// QoSClass:        qosClass,
 		QoSMaxRespT:     qosMaxRespT,
 		CanDoOffloading: true,
@@ -412,7 +412,7 @@ func invokeFunctionComposition(cmd *cobra.Command, args []string) {
 	// Prepare request // TODO: it's ok to reuse the same type that function invocation uses?
 	request := client.InvocationRequest{
 		Params:   paramsMap,
-		QoSClass: int64(api.DecodeServiceClass(qosClass)),
+		QoSClass: api.DecodeServiceClass(qosClass),
 		// QoSClass:        qosClass,
 		QoSMaxRespT:     qosMaxRespT,
 		CanDoOffloading: true,

@@ -1,11 +1,9 @@
 package fc
 
 import (
-	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
-	"reflect"
 )
 
 type Reason int
@@ -44,17 +42,8 @@ func (e *EndNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (e *EndNode) Exec(*Progress) (map[string]interface{}, error) {
+func (e *EndNode) Exec(*ExecutionReport) (map[string]interface{}, error) {
 	return e.Result, nil
-}
-
-func (e *EndNode) AddInput(dagNode DagNode) error {
-	switch dagNode.(type) {
-	case *EndNode:
-		return errors.New(fmt.Sprintf("you cannot add an input of type %s to a %s", reflect.TypeOf(dagNode), reflect.TypeOf(e)))
-	default:
-		return nil
-	}
 }
 
 func (e *EndNode) AddOutput(dag *Dag, dagNode DagNodeId) error {

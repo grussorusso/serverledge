@@ -60,8 +60,5 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 
 	// notify scheduler
 	completions <- &completion{scheduledRequest: r, contID: contID} // Success == true
-	if fromComposition {
-		// nodeCompleted <- &nodeCompletion{}
-	}
 	return nil
 }

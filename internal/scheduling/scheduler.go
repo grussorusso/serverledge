@@ -18,6 +18,8 @@ import (
 )
 
 var requests chan *scheduledRequest
+
+// var compositionRequests chan *scheduledCompositionRequest // watch out for circular import!!!
 var completions chan *completion
 
 var remoteServerUrl string
@@ -77,7 +79,6 @@ func Run(p Policy) {
 
 }
 
-// TODO: maybe we should make separate function to handle request from function or function compositions
 // SubmitRequest submits a newly arrived request for scheduling and execution
 func SubmitRequest(r *function.Request) error {
 	schedRequest := scheduledRequest{

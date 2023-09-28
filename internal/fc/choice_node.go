@@ -3,9 +3,12 @@ package fc
 import (
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
 	"math"
+	"time"
+
 	// "strconv"
 	"strings"
 )
@@ -55,7 +58,10 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec for choice node evaluates the condition
-func (c *ChoiceNode) Exec(*Progress) (map[string]interface{}, error) {
+func (c *ChoiceNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
+	t0 := time.Now()
+	output := make(map[string]interface{})
+	var err error = nil
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
 		ok, err := condition.Test()
@@ -65,19 +71,25 @@ func (c *ChoiceNode) Exec(*Progress) (map[string]interface{}, error) {
 		if ok {
 			c.FirstMatch = i
 			// the output map should be like the input map!
-			return c.input, nil
+			output = c.input
+			break
 		}
 	}
-	return nil, fmt.Errorf("no condition is met")
-}
-
-func (c *ChoiceNode) AddInput(dagNode DagNode) error {
-	//if c.InputFrom != nil {
-	//	return errors.New("input already present in node")
-	//}
-	//
-	//c.InputFrom = dagNode
-	return nil
+	if c.FirstMatch == -1 {
+		err = fmt.Errorf("no condition is met")
+		output["error"] = fmt.Sprintf("failed choice node %s - no condition is met", c.Id)
+	}
+	respAndDuration := time.Now().Sub(t0).Seconds()
+	execReport.Reports[c.Id] = &function.ExecutionReport{
+		Result:         fmt.Sprintf("%v", output),
+		ResponseTime:   respAndDuration,
+		IsWarmStart:    true, // not in a container
+		InitTime:       0,
+		OffloadLatency: 0,
+		Duration:       respAndDuration,
+		SchedAction:    "",
+	}
+	return output, err
 }
 
 // TODO: thats a bit useless
