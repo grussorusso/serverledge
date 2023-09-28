@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Request represents a single function invocation.
+// Request represents a single function invocation, with a ReqId, reference to the Function, parameters and metrics data
 type Request struct {
 	ReqId      string
 	Fun        *Function

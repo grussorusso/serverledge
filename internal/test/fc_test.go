@@ -106,7 +106,10 @@ func TestInvokeFC(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = 0
-	resultMap, err2 := fcomp.Invoke(params, fc.ReqId(shortuuid.New()))
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+
+	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 
 	// check result
@@ -164,7 +167,9 @@ func TestInvokeChoiceFC(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = input
-	resultMap, err2 := fcomp.Invoke(params, fc.ReqId(shortuuid.New()))
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 	// checking the result, should be input + 1
 	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
@@ -215,7 +220,8 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 2
-	resultMap, err2 := fcomp.Invoke(params, fc.ReqId(shortuuid.New()))
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
 	if err2 != nil {
 		log.Printf("%v\n", err2)
 		t.FailNow()
@@ -274,7 +280,8 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 1
-	resultMap, err2 := fcomp.Invoke(params, fc.ReqId(shortuuid.New()))
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 
 	// check multiple result

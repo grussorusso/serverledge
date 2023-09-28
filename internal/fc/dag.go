@@ -213,7 +213,7 @@ func (dag *Dag) Print() string {
 	return result
 }
 
-func (dag *Dag) executeStart(progress *Progress, node *StartNode) (bool, error) {
+func (dag *Dag) executeStart(progress *Progress, node *StartNode, execReport *ExecutionReport) (bool, error) {
 	err := progress.CompleteNode(node.GetId())
 	if err != nil {
 		return false, err
@@ -221,31 +221,31 @@ func (dag *Dag) executeStart(progress *Progress, node *StartNode) (bool, error) 
 	return true, nil
 }
 
-func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, node *SimpleNode) (bool, error) {
+func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *SimpleNode, execReport *ExecutionReport) (bool, error) {
 	// retrieving input
 	var pd *PartialData
-	nodeId := node.GetId()
+	nodeId := simpleNode.GetId()
 
 	input, err := partialDataCache.Retrieve(requestId, nodeId)
 	if err != nil {
 		return false, err
 	}
-	err = node.ReceiveInput(input)
+	err = simpleNode.ReceiveInput(input)
 	if err != nil {
 		return false, err
 	}
 	// executing node
-	output, err := node.Exec(progress)
+	output, err := simpleNode.Exec(execReport)
 	if err != nil {
 		return false, err
 	}
 	// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
 	<-types.NodeDoneChan
 
-	pd = NewPartialData(requestId, node.GetNext()[0], nodeId, output)
-	errSend := node.PrepareOutput(dag, output)
+	pd = NewPartialData(requestId, simpleNode.GetNext()[0], nodeId, output)
+	errSend := simpleNode.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", node.ToString(), errSend)
+		return false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.ToString(), errSend)
 	}
 
 	// saving partial data and updating progress
@@ -258,7 +258,7 @@ func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, node *SimpleN
 	return true, nil
 }
 
-func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *ChoiceNode) (bool, error) {
+func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *ChoiceNode, execReport *ExecutionReport) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := choice.GetId()
@@ -272,7 +272,7 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 		return false, err
 	}
 	// executing node
-	output, err := choice.Exec(progress)
+	output, err := choice.Exec(execReport)
 	if err != nil {
 		return false, err
 	}
@@ -299,7 +299,7 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 	return true, nil
 }
 
-func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes []DagNodeId) error {
+func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes []DagNodeId, execReport *ExecutionReport) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
 	outputChannels := make([]chan map[string]interface{}, 0)
@@ -316,7 +316,7 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 	// executing all nodes in parallel
 	for i, node := range parallelDagNodes {
 		go func(i int, node DagNode) {
-			output, err := node.Exec(progress)
+			output, err := node.Exec(execReport)
 			if err != nil {
 				outputChannels[i] <- nil
 				errorChannels[i] <- err
@@ -362,13 +362,13 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 }
 
 // TODO: assicurarsi che si esegua in parallelo
-func (dag *Dag) Execute(requestId ReqId) (bool, error) {
+func (dag *Dag) Execute(requestId ReqId, execReport *ExecutionReport) (bool, error) {
 	progress, _ := progressCache.RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
 	shouldContinue := true
 	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
 	if len(nextNodes) > 1 {
-		err := dag.executeParallel(requestId, progress, nextNodes)
+		err := dag.executeParallel(requestId, progress, nextNodes, execReport)
 		if err != nil {
 			return true, err
 		}
@@ -380,12 +380,12 @@ func (dag *Dag) Execute(requestId ReqId) (bool, error) {
 
 		switch node := n.(type) {
 		case *SimpleNode:
-			shouldContinue, err = dag.executeSimple(requestId, progress, node)
+			shouldContinue, err = dag.executeSimple(requestId, progress, node, execReport)
 		case *ChoiceNode:
-			shouldContinue, err = dag.executeChoice(requestId, progress, node)
+			shouldContinue, err = dag.executeChoice(requestId, progress, node, execReport)
 		case *FanInNode:
 		case *StartNode:
-			shouldContinue, err = dag.executeStart(progress, node)
+			shouldContinue, err = dag.executeStart(progress, node, execReport)
 		case *FanOutNode:
 		case *EndNode:
 			shouldContinue = false

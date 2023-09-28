@@ -310,7 +310,7 @@ func checkAndCompleteChoice(t *testing.T, progress *fc.Progress, choice *fc.Choi
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[0]))
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[1]))
 
-	_, _ = choice.Exec(nil)
+	_, _ = choice.Exec(newExecutionReportTest())
 	err = progress.CompleteNode(nextNode[choice.FirstMatch])
 	u.AssertNil(t, err)
 	nodeToSkip := choice.GetNodesToSkip(dag)

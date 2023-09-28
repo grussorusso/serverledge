@@ -10,7 +10,7 @@ type ReqId string
 // local cache TODO: usare una vera cache!!!
 var progressCache = newProgressCache()
 
-// TODO: add progress to FunctionComposition Request (maybe doesn't exists)
+// TODO: add progress to FunctionComposition CompositionRequest (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
 	ReqId     ReqId // requestId, used to distinguish different dag's progresses
@@ -57,6 +57,7 @@ const (
 	Executed
 	Skipped // if a node is skipped, all its children nodes should also be skipped
 	Failed
+	Waiting // only fan in node should wait (in a goroutine!!). When invoking a fanIn, if it is already waiting, we do not to nothing and free the serverledge node execution
 )
 
 func printStatus(s DagNodeStatus) string {

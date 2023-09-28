@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/fc"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
+	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
@@ -32,7 +32,7 @@ var requestsPool = sync.Pool{
 
 var compositionRequestsPool = sync.Pool{
 	New: func() any {
-		return new(fc.Request)
+		return new(fc.CompositionRequest)
 	},
 }
 
@@ -219,27 +219,8 @@ func GetServerStatus(c echo.Context) error {
 
 func CreateFunctionComposition(e echo.Context) error {
 	var comp fc.FunctionComposition
-	// TODO: here we receive the function composition struct already parsed from JSON/YAML
+	// here we expect to receive the function composition struct already parsed from JSON/YAML
 	var body []byte
-	// we need the loop because the size of the data can be greater than 4096 bytes
-	//for {
-	//	reader, err :=
-	//	if err != nil {
-	//		return err
-	//	}
-	//	part, err := reader.NextPart()
-	//	if err == io.EOF {
-	//		break
-	//	}
-	//	if err != nil {
-	//		return err
-	//	}
-	//	body, err = io.ReadAll(part)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	// p is []byte with the contents of the part
-	//}
 	body, errReadBody := io.ReadAll(e.Request().Body)
 	if errReadBody != nil {
 		return errReadBody
@@ -302,6 +283,7 @@ func DeleteFunctionComposition(c echo.Context) error {
 		log.Printf("Dropping request for non existing function '%s'", comp.Name)
 		return c.JSON(http.StatusNotFound, "the request function composition to delete does not exist")
 	}
+	// only if RemoveFnOnDeletion is true, we also remove functions and associated warm (idle) containers
 	msg := ""
 	if composition.RemoveFnOnDeletion {
 		names := "["
@@ -340,34 +322,49 @@ func InvokeFunctionComposition(e echo.Context) error {
 		return e.JSON(http.StatusNotFound, "")
 	}
 
-	// TODO: check if it's ok to reuse InvocationRequest also for Function Composition
-	var invocationRequest client.InvocationRequest
-	err := json.NewDecoder(e.Request().Body).Decode(&invocationRequest)
+	// we use invocation request that is specific to function compositions
+	var fcInvocationRequest client.CompositionInvocationRequest
+	err := json.NewDecoder(e.Request().Body).Decode(&fcInvocationRequest)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
 		return fmt.Errorf("could not parse request: %v", err)
 	}
-	// gets a fc.Request from the pool goroutine-safe cache.
-	r := compositionRequestsPool.Get().(*fc.Request) // A pointer *function.Request will be created if does not exists, otherwise removed from the pool
-	defer compositionRequestsPool.Put(r)             // at the end of the function, the function.Request is added to the pool.
-	r.Fc = funComp
-	r.Params = invocationRequest.Params
-	r.Arrival = time.Now()
+	// gets a fc.CompositionRequest from the pool goroutine-safe cache.
+	fcReq := compositionRequestsPool.Get().(*fc.CompositionRequest) // A pointer *function.CompositionRequest will be created if does not exists, otherwise removed from the pool
+	defer compositionRequestsPool.Put(fcReq)                        // at the end of the function, the function.CompositionRequest is added to the pool.
+	fcReq.Fc = funComp
+	fcReq.Params = fcInvocationRequest.Params
+	fcReq.Arrival = time.Now()
 
-	r.MaxRespT = invocationRequest.QoSMaxRespT
-	r.CanDoOffloading = invocationRequest.CanDoOffloading
-	r.Async = invocationRequest.Async
-	r.ReqId = fmt.Sprintf("%v-%s%d", funComp, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
+	// instead of saving only one RequestQoS, we save a map with an entry for each function in the composition
+	fcReq.RequestQoSMap = fcInvocationRequest.RequestQoSMap
+
+	fcReq.CanDoOffloading = fcInvocationRequest.CanDoOffloading
+	fcReq.Async = fcInvocationRequest.Async
+	fcReq.ReqId = fmt.Sprintf("%v-%s%d", funComp, node.NodeIdentifier[len(node.NodeIdentifier)-5:], fcReq.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
-	r.ExecReport.SchedAction = ""
-	r.ExecReport.OffloadLatency = 0.0
-	// TODO: CAPIRE SE FARLA ASYNC E/O SYNC!
-	if r.Async {
-		// go scheduling.SubmitAsyncRequest(r)
-		return e.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
+
+	for nodeId := range funComp.Workflow.Nodes {
+		fcReq.ExecReport.Reports[nodeId] = new(function.ExecutionReport)
+		fcReq.ExecReport.Reports[nodeId].SchedAction = ""
+		fcReq.ExecReport.Reports[nodeId].OffloadLatency = 0.0
 	}
 
-	// err = scheduling.SubmitRequest(r) // Fai partire la prima funzione, aspetta il completamento, e cosi' via
+	// TODO: ASYNC E SYNC!
+	if fcReq.Async {
+		return e.JSON(http.StatusNotImplemented, "")
+		// go scheduling.SubmitAsyncCompositionRequest(fcReq)
+		// return e.JSON(http.StatusOK, function.AsyncResponse{ReqId: fcReq.ReqId})
+	}
+
+	// err = scheduling.SubmitCompositionRequest(fcReq) // Fai partire la prima funzione, aspetta il completamento, e cosi' via
+
+	executionReport, err := funComp.Invoke(fcReq)
+	if err != nil {
+		return err
+	}
+	fcReq.ExecReport = executionReport
+	fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return e.String(http.StatusTooManyRequests, "")
@@ -375,6 +372,6 @@ func InvokeFunctionComposition(e echo.Context) error {
 		log.Printf("Invocation failed: %v", err)
 		return e.String(http.StatusInternalServerError, "Node has not enough resources")
 	} else {
-		return e.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		return e.JSON(http.StatusOK, fc.CompositionResponse{Success: true, ExecutionReport: fcReq.ExecReport})
 	}
 }
