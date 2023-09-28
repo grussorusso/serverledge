@@ -69,7 +69,7 @@ func monitoring() {
 	for key, values := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
 
-		nodeInfo := GetNodeInformation(values)
+		nodeInfo := GetNodeAddresses(values)
 		url := nodeInfo.RegistryAddress
 		hostname := url[7 : len(url)-5]
 		port := url[len(url)-4:]

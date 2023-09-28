@@ -38,8 +38,8 @@ type NodeInterfaces struct {
 	RegistryAddress string
 }
 
-// GetNodeInformation writes the information present into the etcd entry of a node into a struct NodeInterfaces
-func GetNodeInformation(etcdValue string) *NodeInterfaces {
+// GetNodeAddresses writes the information present into the etcd entry of a node into a struct NodeInterfaces
+func GetNodeAddresses(etcdValue string) *NodeInterfaces {
 	var nodeInfo NodeInterfaces
 
 	// Get registry address of the target node registry server
