@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"errors"
-	"fmt"
 	"log"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -73,7 +72,6 @@ func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
 
 // OnArrival for default policy is executed every time a function is invoked, before invoking the function
 func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
-	fmt.Printf("Completed execution of dagNode\n")
 	containerID, err := node.AcquireWarmContainer(r.Fun)
 	if err == nil {
 		execLocally(r, containerID, true) // decides to execute locally

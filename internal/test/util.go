@@ -189,7 +189,7 @@ func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc st
 	request := client.InvocationRequest{
 		Params: params,
 		// QoSClass:        qosClass,
-		QoSMaxRespT:     250,
+		QoSMaxRespT:     500,
 		CanDoOffloading: true,
 		Async:           false,
 	}
@@ -225,8 +225,8 @@ func deleteCompositionApiTest(t *testing.T, fcName string, host string, port int
 	utils.PrintJsonResponse(resp.Body)
 }
 
-func newExecutionReportTest() *fc.ExecutionReport {
-	return &fc.ExecutionReport{
+func newExecutionReportTest() *fc.CompositionExecutionReport {
+	return &fc.CompositionExecutionReport{
 		Reports: make(map[fc.DagNodeId]*function.ExecutionReport),
 	}
 }

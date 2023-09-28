@@ -341,11 +341,11 @@ func InvokeFunctionComposition(e echo.Context) error {
 
 	fcReq.CanDoOffloading = fcInvocationRequest.CanDoOffloading
 	fcReq.Async = fcInvocationRequest.Async
-	fcReq.ReqId = fmt.Sprintf("%v-%s%d", funComp, node.NodeIdentifier[len(node.NodeIdentifier)-5:], fcReq.Arrival.Nanosecond())
+	fcReq.ReqId = fmt.Sprintf("%v-%s%d", funComp.Name, node.NodeIdentifier[len(node.NodeIdentifier)-5:], fcReq.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
-
+	fcReq.ExecReport.Reports = make(map[fc.DagNodeId]*function.ExecutionReport)
 	for nodeId := range funComp.Workflow.Nodes {
-		fcReq.ExecReport.Reports[nodeId] = new(function.ExecutionReport)
+		fcReq.ExecReport.Reports[nodeId] = &function.ExecutionReport{}
 		fcReq.ExecReport.Reports[nodeId].SchedAction = ""
 		fcReq.ExecReport.Reports[nodeId].OffloadLatency = 0.0
 	}
@@ -358,10 +358,11 @@ func InvokeFunctionComposition(e echo.Context) error {
 	}
 
 	// err = scheduling.SubmitCompositionRequest(fcReq) // Fai partire la prima funzione, aspetta il completamento, e cosi' via
-
+	// sync execution
 	executionReport, err := funComp.Invoke(fcReq)
 	if err != nil {
-		return err
+		log.Printf("Invocation failed: %v", err)
+		return e.String(http.StatusInternalServerError, "Composition invocation failed")
 	}
 	fcReq.ExecReport = executionReport
 	fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
@@ -372,6 +373,6 @@ func InvokeFunctionComposition(e echo.Context) error {
 		log.Printf("Invocation failed: %v", err)
 		return e.String(http.StatusInternalServerError, "Node has not enough resources")
 	} else {
-		return e.JSON(http.StatusOK, fc.CompositionResponse{Success: true, ExecutionReport: fcReq.ExecReport})
+		return e.JSON(http.StatusOK, fc.CompositionResponse{Success: true, CompositionExecutionReport: fcReq.ExecReport})
 	}
 }
