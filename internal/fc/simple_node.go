@@ -55,34 +55,35 @@ func (s *SimpleNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *SimpleNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
+func (s *SimpleNode) Exec(execReport *CompositionExecutionReport) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
 	}
-	fmt.Printf("executing simple node %s", s.Id)
+	fmt.Printf("executing simple node %s\n", s.Id)
 	// creates the function if not exists. Maybe someone deleted by accident the function before starting the dag.
 	if !funct.Exists() {
 		errNotSaved := funct.SaveToEtcd()
 		return nil, fmt.Errorf("the function %s cannot be saved while trying to exec the function composition %v", s.Func, errNotSaved)
 	}
 	// the rest of the code is similar to a single function execution
-	r := compositionRequestsPool.Get().(*function.Request) // function.Request will be created if does not exists, otherwise removed from the pool
-	defer compositionRequestsPool.Put(r)                   // at the end of the function, the function.Request is added to the pool.
-
-	// s.Request = r
-	r.Fun = funct
-	r.Params = s.input
-	r.Arrival = time.Now()
-
-	r.MaxRespT = float64(s.MaxResponseTimeMillis)
-	r.CanDoOffloading = true
-	r.Async = false
-	r.ReqId = fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
-	// init fields if possibly not overwritten later
-	r.ExecReport.SchedAction = ""
-	r.ExecReport.OffloadLatency = 0.0
-	r.IsInComposition = true
+	now := time.Now()
+	r := &function.Request{
+		ReqId:   fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], now.Nanosecond()),
+		Fun:     funct,
+		Params:  s.input,
+		Arrival: now,
+		ExecReport: function.ExecutionReport{
+			SchedAction:    "",
+			OffloadLatency: 0.0,
+		},
+		RequestQoS: function.RequestQoS{
+			MaxRespT: float64(s.MaxResponseTimeMillis),
+		},
+		CanDoOffloading: true,
+		Async:           false,
+		IsInComposition: true,
+	}
 
 	// executes the function, waiting for the result
 	err := scheduling.SubmitRequest(r)
@@ -91,8 +92,12 @@ func (s *SimpleNode) Exec(execReport *ExecutionReport) (map[string]interface{}, 
 	}
 
 	m := make(map[string]interface{})
+	firstOutputName := ""
 	// extract output map
-	for _, o := range funct.Signature.GetOutputs() {
+	for i, o := range funct.Signature.GetOutputs() {
+		if i == 0 {
+			firstOutputName = o.Name
+		}
 		// if the output is a simple type (e.g. int, bool, string, array) we simply add it to the map
 		m[o.Name] = r.ExecReport.Result
 		err1 := o.CheckOutput(m)
@@ -104,6 +109,11 @@ func (s *SimpleNode) Exec(execReport *ExecutionReport) (map[string]interface{}, 
 			return nil, fmt.Errorf("failed to parse intermediate output: %v", err1)
 		}
 		// TODO: else if the output is a struct/map, we should return a map with struct field and values
+	}
+	if len(m) == 1 {
+		r.ExecReport.Result = fmt.Sprintf("%v", m[firstOutputName])
+	} else {
+		r.ExecReport.Result = fmt.Sprintf("%v", m)
 	}
 	// saving execution report for this function
 	execReport.Reports[s.Id] = &r.ExecReport

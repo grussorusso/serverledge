@@ -11,7 +11,7 @@ type CompositionRequest struct {
 	Fc              *FunctionComposition
 	Params          map[string]interface{}
 	Arrival         time.Time
-	ExecReport      ExecutionReport                // each function has its execution report, and the composition has additional metrics
+	ExecReport      CompositionExecutionReport     // each function has its execution report, and the composition has additional metrics
 	RequestQoSMap   map[string]function.RequestQoS // every function should have its RequestQoS
 	CanDoOffloading bool                           // every function inherits this flag
 	Async           bool
@@ -23,7 +23,7 @@ func NewCompositionRequest(reqId string, composition *FunctionComposition, param
 		Fc:              composition,
 		Params:          params,
 		Arrival:         time.Now(),
-		ExecReport:      ExecutionReport{},
+		ExecReport:      CompositionExecutionReport{},
 		RequestQoSMap:   make(map[string]function.RequestQoS),
 		CanDoOffloading: true,
 		Async:           false,
@@ -32,7 +32,7 @@ func NewCompositionRequest(reqId string, composition *FunctionComposition, param
 
 type CompositionResponse struct {
 	Success bool
-	ExecutionReport
+	CompositionExecutionReport
 }
 
 type CompositionAsyncResponse struct {

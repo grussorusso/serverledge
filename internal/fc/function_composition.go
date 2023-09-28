@@ -16,15 +16,13 @@ import (
 
 // FunctionComposition is a serverless Function Composition
 type FunctionComposition struct {
-	Name      string // al posto del nome potrebbe essere un id da mettere in etcd
-	Functions map[string]*function.Function
-	Workflow  Dag
-	//Progress           *Progress
-	RemoveFnOnDeletion bool // TODO: spostare dentro la request
-	// ExecReport ExecutionReport
+	Name               string // al posto del nome potrebbe essere un id da mettere in etcd
+	Functions          map[string]*function.Function
+	Workflow           Dag
+	RemoveFnOnDeletion bool
 }
 
-type ExecutionReport struct {
+type CompositionExecutionReport struct {
 	Result       map[string]interface{}
 	Reports      map[DagNodeId]*function.ExecutionReport
 	ResponseTime float64 // time waited by the user to get the output of the entire composition
@@ -46,7 +44,6 @@ func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDelet
 		Functions:          functionMap,
 		Workflow:           dag,
 		RemoveFnOnDeletion: removeFnOnDeletion,
-		// ExecReport: ExecutionReport{},
 	}
 }
 
@@ -76,7 +73,6 @@ func getFCFromCache(name string) (*FunctionComposition, bool) {
 	return &fc, true
 }
 
-// FIXME: this should return Deployable and merged with function.getFromEtcd
 func getFCFromEtcd(name string) (*FunctionComposition, error) {
 	cli, err := utils.GetEtcdClient()
 	if err != nil {
@@ -98,7 +94,6 @@ func getFCFromEtcd(name string) (*FunctionComposition, error) {
 	return &f, nil
 }
 
-// FIXME: this shold return Deployable and be merged with function.GetFunction
 func GetFC(name string) (*FunctionComposition, bool) {
 	val, found := getFCFromCache(name)
 	if !found {
@@ -158,7 +153,7 @@ func (fc *FunctionComposition) SaveToEtcd() error {
 }
 
 // Invoke schedules each function of the composition and invokes them
-func (fc *FunctionComposition) Invoke(r *CompositionRequest) (ExecutionReport, error) {
+func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecutionReport, error) {
 	requestId := ReqId(r.ReqId)
 	input := r.Params
 
@@ -173,28 +168,24 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (ExecutionReport, e
 	partialDataCache.Save(pd)
 	err := progressCache.SaveProgress(progress)
 	if err != nil {
-		return ExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
-	}
-
-	fcExecutionReport := ExecutionReport{
-		Reports: make(map[DagNodeId]*function.ExecutionReport),
+		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
 
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(requestId, &fcExecutionReport)
+		shouldContinue, err = fc.Workflow.Execute(requestId, &r.ExecReport)
 		if err != nil {
-			return ExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
+			return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
 		}
 	}
 	// retrieving output of  execution
 	result, err := partialDataCache.Retrieve(requestId, fc.Workflow.End.GetId())
 	if err != nil {
-		return ExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
+		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
 	}
-	fcExecutionReport.Result = result
-	return fcExecutionReport, nil
+	r.ExecReport.Result = result
+	return r.ExecReport, nil
 }
 
 // Delete removes the FunctionComposition from cache and from etcd, so it cannot be invoked anymore

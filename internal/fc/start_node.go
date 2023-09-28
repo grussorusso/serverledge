@@ -46,7 +46,7 @@ func (s *StartNode) AddOutput(dag *Dag, nodeId DagNodeId) error {
 	return nil
 }
 
-func (s *StartNode) Exec(*ExecutionReport) (map[string]interface{}, error) {
+func (s *StartNode) Exec(*CompositionExecutionReport) (map[string]interface{}, error) {
 	panic("you can't exec a start node")
 }
 

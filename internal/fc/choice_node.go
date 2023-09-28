@@ -58,7 +58,7 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec for choice node evaluates the condition
-func (c *ChoiceNode) Exec(execReport *ExecutionReport) (map[string]interface{}, error) {
+func (c *ChoiceNode) Exec(execReport *CompositionExecutionReport) (map[string]interface{}, error) {
 	t0 := time.Now()
 	output := make(map[string]interface{})
 	var err error = nil

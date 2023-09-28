@@ -37,7 +37,7 @@ type Array[D DataTypeEnum] struct {
 // Option represent a value that can either be a DataType or be nil
 // type Option[D DataTypeEnum, N None] struct{}
 
-// TODO: be sure that the input it is not always string. If it is always string, use string instead of interface{}
+// TypeCheck checks if val is a string; input val is not always string, so we can use interface as parameter
 func (t Text) TypeCheck(val interface{}) error {
 	switch val.(type) {
 	case string:
@@ -49,6 +49,18 @@ func (t Text) TypeCheck(val interface{}) error {
 func (i Int) TypeCheck(val interface{}) error {
 	switch val := val.(type) {
 	case int:
+		return nil
+	case int8:
+		return nil
+	case int16:
+		return nil
+	case int32:
+		return nil
+	case int64:
+		return nil
+	case float32:
+		return nil
+	case float64:
 		return nil
 	case string:
 		_, err := strconv.Atoi(val)

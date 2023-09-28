@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
 	"strings"
@@ -213,15 +214,16 @@ func (dag *Dag) Print() string {
 	return result
 }
 
-func (dag *Dag) executeStart(progress *Progress, node *StartNode, execReport *ExecutionReport) (bool, error) {
+func (dag *Dag) executeStart(progress *Progress, node *StartNode, execReport *CompositionExecutionReport) (bool, error) {
 	err := progress.CompleteNode(node.GetId())
 	if err != nil {
 		return false, err
 	}
+	execReport.Reports[node.Id] = &function.ExecutionReport{Result: "start"}
 	return true, nil
 }
 
-func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *SimpleNode, execReport *ExecutionReport) (bool, error) {
+func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *SimpleNode, execReport *CompositionExecutionReport) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
@@ -258,7 +260,7 @@ func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *S
 	return true, nil
 }
 
-func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *ChoiceNode, execReport *ExecutionReport) (bool, error) {
+func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *ChoiceNode, execReport *CompositionExecutionReport) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := choice.GetId()
@@ -299,7 +301,7 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 	return true, nil
 }
 
-func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes []DagNodeId, execReport *ExecutionReport) error {
+func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes []DagNodeId, execReport *CompositionExecutionReport) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
 	outputChannels := make([]chan map[string]interface{}, 0)
@@ -362,7 +364,7 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 }
 
 // TODO: assicurarsi che si esegua in parallelo
-func (dag *Dag) Execute(requestId ReqId, execReport *ExecutionReport) (bool, error) {
+func (dag *Dag) Execute(requestId ReqId, execReport *CompositionExecutionReport) (bool, error) {
 	progress, _ := progressCache.RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
 	shouldContinue := true
@@ -388,6 +390,7 @@ func (dag *Dag) Execute(requestId ReqId, execReport *ExecutionReport) (bool, err
 			shouldContinue, err = dag.executeStart(progress, node, execReport)
 		case *FanOutNode:
 		case *EndNode:
+			execReport.Reports[node.Id] = &function.ExecutionReport{Result: "end"}
 			shouldContinue = false
 		}
 		if err != nil {

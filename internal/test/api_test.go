@@ -88,7 +88,6 @@ func TestCreateComposition(t *testing.T) {
 
 // TestInvokeComposition tests the REST API that executes a given function composition
 func TestInvokeComposition(t *testing.T) {
-	t.Skip()
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
