@@ -173,7 +173,7 @@ func checkIfCloudOffloading(serverUrl string) bool {
 	allCloudNodes, _ := registration.Reg.GetAll(true)
 	for key, value := range allCloudNodes {
 
-		nodeInfo := registration.GetNodeInformation(value)
+		nodeInfo := registration.GetNodeAddresses(value)
 		url := nodeInfo.NodeAddress
 		if serverUrl == url {
 			log.Printf("Server with key %v was chosen to host offloading", key)
