@@ -1,0 +1,25 @@
+- name: ping the master
+  hosts: remote
+  tasks:
+    - name: Ping my hosts
+      ansible.builtin.ping:
+
+    - name: Print message
+      ansible.builtin.debug:
+        msg: Hello world
+- name: copy ansible inventory and vm/playbook in master
+  hosts: remote
+  tasks:
+    - name: copy inventory.yaml
+      copy:
+        src: ../inventory.yaml
+        dest: ~/inventory.yaml
+    - name: copy playbook.yaml
+      copy:
+        src: ../vm/playbook.yaml
+        dest: ~/playbook.yaml
+- name: execute ansible playbook in master
+  hosts: remote
+  tasks:
+    - name: execute
+      shell: ansible-playbook -i inventory.yaml playbook.yaml

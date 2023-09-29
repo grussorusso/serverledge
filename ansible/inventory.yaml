@@ -1,0 +1,25 @@
+nodes: # group name
+  hosts:
+    edge1: # vm diana1
+      ansible_host: 192.168.122.5
+      ansible_connection: ssh
+      ansible_ssh_user: root
+    edge2: # vm diana2
+      ansible_host: 192.168.122.4
+      ansible_connection: ssh
+      ansible_ssh_user: root
+    edge3: # vm diana3
+      ansible_host: 192.168.122.2
+      ansible_connection: ssh
+      ansible_ssh_user: root
+    cloud1: # vm diana4
+      ansible_host: 192.168.122.6
+      ansible_connection: ssh
+      ansible_ssh_user: root
+remote:
+  hosts:
+    master:
+      ansible_host: 160.80.97.154
+      ansible_connection: ssh
+      ansible_ssh_user: diana
+      ansible_ssh_pass: maryann
