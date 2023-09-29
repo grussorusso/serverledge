@@ -123,7 +123,6 @@ func TestInvokeFC(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 
-	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -183,7 +182,6 @@ func TestInvokeChoiceFC(t *testing.T) {
 	u.AssertNil(t, err3)
 	//}
 
-	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -247,7 +245,6 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 	//}
-	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -302,6 +299,5 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 
-	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }

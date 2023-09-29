@@ -1,8 +1,14 @@
 package fc
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/cache"
+	"github.com/grussorusso/serverledge/utils"
 	"math"
+	"time"
 )
 
 type ReqId string
@@ -294,7 +300,6 @@ func popMinGroupAndBranchNode(infos *[]*DagNodeInfo) *DagNodeInfo {
 
 func reorder(infos []*DagNodeInfo) []*DagNodeInfo {
 	reordered := make([]*DagNodeInfo, 0)
-	fmt.Println(len(reordered))
 	for len(infos) > 0 {
 		next := popMinGroupAndBranchNode(&infos)
 		reordered = append(reordered, next)
@@ -419,30 +424,127 @@ func (p *Progress) Equals(p2 *Progress) bool {
 	return p.ReqId == p2.ReqId && p.NextGroup == p2.NextGroup
 }
 
-// Update should be used by a completed node after its execution
-//func Update(p *Progress, s DagNodeStatus, n string, next n) {
-//	p.doneNodes++ // TODO: how to deal with choice nodes?
-//}
-
 // SaveProgress should be used by a completed node after its execution
-func (cache *ProgressCache) SaveProgress(p *Progress) error {
-	// TODO: Save always in cache and in ETCD
-	cache.progresses[p.ReqId] = p
+func SaveProgress(p *Progress) error {
+	// save progress to etcd and in cache
+	err := saveProgressToEtcd(p)
+	if err != nil {
+		return err
+	}
+	inCache := saveProgressInCache(p)
+	if !inCache {
+		return errors.New("failed to save progress in cache")
+	}
 	return nil
 }
 
 // RetrieveProgress should be used by the next node to execute
-func (cache *ProgressCache) RetrieveProgress(reqId ReqId) (*Progress, bool) {
-	// TODO: Get from cache if exists, otherwise from ETCD
-	// TODO: retrieve progress from ETCD
-	progress, ok := cache.progresses[reqId]
-	return progress, ok
+func RetrieveProgress(reqId ReqId) (*Progress, bool) {
+	var err error
+
+	// Get from cache if exists, otherwise from ETCD
+	progress, found := getProgressFromCache(reqId)
+	if !found {
+		// cache miss - retrieve progress from ETCD
+		progress, err = getProgressFromEtcd(reqId)
+		if err != nil {
+			return nil, false
+		}
+		// insert a new element to the cache
+		ok := saveProgressInCache(progress)
+		if !ok {
+			return nil, false
+		}
+	}
+
+	return progress, true
 }
 
-func (cache *ProgressCache) DeleteProgress(reqId ReqId) {
-	delete(cache.progresses, reqId)
+func DeleteProgress(reqId ReqId) error {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return fmt.Errorf("failed to connect to etcd: %v", err)
+	}
+	ctx := context.TODO()
+	// remove the progress from ETCD
+	dresp, err := cli.Delete(ctx, getProgressEtcdKey(reqId))
+	if err != nil || dresp.Deleted != 1 {
+		return fmt.Errorf("failed progress delete: %v", err)
+	}
+
+	// Remove the progress from the local cache
+	cache.GetCacheInstance().Delete(string(reqId))
+
+	return nil
 }
 
-func IsEmptyProgressCache() bool {
-	return len(progressCache.progresses) == 0
+func getProgressEtcdKey(reqId ReqId) string {
+	return fmt.Sprintf("/progress/%s", reqId)
+}
+
+func saveProgressInCache(p *Progress) bool {
+	// save in cache
+	c := cache.GetCacheInstance()
+	requestId := string(p.ReqId)
+	if _, found := c.Get(requestId); !found {
+		progressMap := make(map[ReqId]*Progress)
+		c.Set(requestId, progressMap, cache.NoExpiration)
+	}
+	progressMap, found := c.Get(requestId)
+	if !found {
+		return false
+	}
+	progressMap.(map[ReqId]*Progress)[p.ReqId] = p
+	return true
+}
+
+func saveProgressToEtcd(p *Progress) error {
+	// save in ETCD
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return err
+	}
+	ctx := context.TODO()
+	// marshal the progress object into json
+	payload, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("could not marshal progress: %v", err)
+	}
+	// saves the json object into etcd
+	_, err = cli.Put(ctx, getProgressEtcdKey(p.ReqId), string(payload))
+	if err != nil {
+		return fmt.Errorf("failed etcd Put: %v", err)
+	}
+	return nil
+}
+
+func getProgressFromCache(requestId ReqId) (*Progress, bool) {
+	c := cache.GetCacheInstance()
+	progress, found := c.Get(string(requestId))
+	if found {
+		return progress.(map[ReqId]*Progress)[requestId], found
+	}
+	return nil, false
+}
+
+func getProgressFromEtcd(requestId ReqId) (*Progress, error) {
+	cli, err := utils.GetEtcdClient()
+	if err != nil {
+		return nil, errors.New("failed to connect to ETCD")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	key := getProgressEtcdKey(requestId)
+	getResponse, err := cli.Get(ctx, key)
+	if err != nil || len(getResponse.Kvs) < 1 {
+		return nil, fmt.Errorf("failed to retrieve progress for requestId: %s", key)
+	}
+
+	var progress Progress
+	err = json.Unmarshal(getResponse.Kvs[0].Value, &progress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal progress json: %v", err)
+	}
+
+	return &progress, nil
 }

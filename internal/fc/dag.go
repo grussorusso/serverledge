@@ -368,7 +368,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 // TODO: assicurarsi che si esegua in parallelo
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
-	progress, _ := progressCache.RetrieveProgress(requestId)
+	progress, _ := RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
 	shouldContinue := true
 	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
@@ -401,7 +401,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		}
 	}
 
-	err = progressCache.SaveProgress(progress)
+	err = SaveProgress(progress)
 	if err != nil {
 		return true, err
 	}

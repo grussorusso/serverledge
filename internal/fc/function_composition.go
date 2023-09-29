@@ -185,7 +185,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	pd.Data = input
 	// saving partial data and progress to cache
 	partialDataCache.Save(pd)
-	err := progressCache.SaveProgress(progress)
+	err := SaveProgress(progress)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
@@ -205,7 +205,10 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	}
 
 	// deleting progresses and partial datas from cache and etcd
-	progressCache.DeleteProgress(requestId)
+	err = DeleteProgress(requestId)
+	if err != nil {
+		return CompositionExecutionReport{}, err
+	}
 	partialDataCache.Purge(requestId)
 
 	r.ExecReport.Result = result

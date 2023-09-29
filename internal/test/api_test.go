@@ -55,7 +55,6 @@ func TestContainerPool(t *testing.T) {
 	for _, name := range funcs {
 		deleteApiTest(t, name, HOST, PORT)
 	}
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -89,7 +88,6 @@ func TestCreateComposition(t *testing.T) {
 	functionNames = getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{}, functionNames)
 
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -129,7 +127,6 @@ func TestInvokeComposition(t *testing.T) {
 	functionNames = getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{}, functionNames)
 
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -174,7 +171,6 @@ func TestInvokeComposition_DifferentFunctions(t *testing.T) {
 	functionNames = getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{}, functionNames)
 
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -229,7 +225,6 @@ func TestDeleteComposition(t *testing.T) {
 	node.ShutdownWarmContainersFor(fn)
 
 	// utils.AssertTrueMsg(t, node.ArePoolsEmptyInThisNode(), "container pools are not empty after the end of test")
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
@@ -288,6 +283,5 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	err = composition.Delete()
 	utils.AssertNilMsg(t, err, "failed to delete composition")
 
-	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
