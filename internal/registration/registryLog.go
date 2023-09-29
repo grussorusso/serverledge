@@ -45,10 +45,8 @@ func runMonitor() {
 		case <-Reg.etcdCh:
 			monitoring()
 		case <-monitoringTicker.C:
-			log.Println("GENERAL MONITORING")
 			monitoring()
 		case <-nearbyTicker.C:
-			log.Println("NEARBY MONITORING")
 			nearbyMonitoring()
 		}
 	}
@@ -57,7 +55,6 @@ func runMonitor() {
 func monitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
-	log.Println("Doing monitoring")
 	etcdServerMap, err := Reg.GetAll(false)
 	if err != nil {
 		log.Println(err)
@@ -142,7 +139,6 @@ func nearbyMonitoring() {
 			go func() { Reg.etcdCh <- true }()
 			return
 		}
-		log.Println("new info: ", newInfo)
 		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			Reg.Client.Update("node", &newInfo.Coordinates, rtt)

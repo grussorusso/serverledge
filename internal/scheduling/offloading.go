@@ -118,6 +118,7 @@ func Offload(r *function.Request, serverUrl string) error {
 		return err
 	}
 	sendingTime := time.Now() // used to compute latency later on
+	log.Println("invoking function on node with URL: ", serverUrl)
 	resp, err := offloadingClient.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
 		bytes.NewBuffer(invocationBody))
 
@@ -142,10 +143,12 @@ func Offload(r *function.Request, serverUrl string) error {
 	// Check if r.ExecReport.Duration and r.ExecReport.InitTime are greater than 0
 
 	if checkIfCloudOffloading(serverUrl) {
+		log.Println("IS CLOUD OFFLOADING")
 		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
 		r.ExecReport.VerticallyOffloaded = true
 	} else {
+		log.Println("IS EDGE OFFLOADING")
 		r.ExecReport.OffloadLatencyEdge = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_EDGE
 		r.ExecReport.VerticallyOffloaded = false

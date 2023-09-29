@@ -106,14 +106,14 @@ func SubmitRequest(r *function.Request) error {
 	if !ok {
 		return fmt.Errorf("could not schedule the request")
 	}
-	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+	log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var err error
 	if schedDecision.action == DROP {
-		//log.Printf("[%s] Dropping request", r)
+		log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
-		//log.Printf("Offloading request")
+		log.Printf("Offloading request")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return err

@@ -35,9 +35,7 @@ func UDPStatusServer() {
 
 	for {
 		// wait for UDP client to connect
-		log.Println("Handling UDP connection")
-		handleUDPConnection(udpConn) // fixme qua ci sta l'errore della recvfrom
-		log.Println("Handled UDP connection")
+		handleUDPConnection(udpConn)
 	}
 
 }
@@ -92,7 +90,6 @@ func getCurrentStatusInformation() (status []byte, err error) {
 func statusInfoRequest(hostname string, port string) (info *StatusInformation, duration time.Duration) {
 	// Construct the address of the local registry of the target node
 	address := fmt.Sprintf("%s:%s", hostname, port)
-	log.Println("Request to address: ", address)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -134,6 +131,5 @@ func statusInfoRequest(hostname string, port string) (info *StatusInformation, d
 		return nil, 0
 	}
 
-	log.Println("result: ", result)
 	return &result, rtt
 }
