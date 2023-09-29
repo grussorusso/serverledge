@@ -106,7 +106,7 @@ func SubmitRequest(r *function.Request) error {
 	if !ok {
 		return fmt.Errorf("could not schedule the request")
 	}
-	log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+	// log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var err error
 	if schedDecision.action == DROP {

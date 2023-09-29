@@ -1,4 +1,4 @@
 api.port: 1327
 registry.udp.port: 9878
 scheduler.policy: edgeCluster
-cloud.server.url: http://192.168.0.131:1326
+cloud.server.url: http://10.220.158.155:1326
