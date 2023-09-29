@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/utils"
 	"testing"
 	"time"
@@ -98,7 +99,7 @@ func TestInvokeComposition(t *testing.T) {
 		t.Skip()
 	}
 	fcName := "sequence"
-	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+	fn, err := initializeJsFunction("inc", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -110,6 +111,51 @@ func TestInvokeComposition(t *testing.T) {
 	// verifies the function exists (using function REST API)
 	functionNames := getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{"inc"}, functionNames)
+
+	// === this is the test ===
+	params := make(map[string]interface{})
+	params["input"] = 1
+	invocationResult := invokeCompositionApiTest(t, params, fcName, HOST, PORT, false)
+	fmt.Println(invocationResult)
+
+	// here we do not use REST API
+	getFC, b := fc.GetFC(fcName)
+	utils.AssertTrue(t, b)
+	utils.AssertTrueMsg(t, composition.Equals(getFC), "composition comparison failed")
+	err = composition.Delete()
+	utils.AssertNilMsg(t, err, "failed to delete composition")
+
+	// verifies the function does not exists  (using function REST API)
+	functionNames = getFunctionApiTest(t, HOST, PORT)
+	utils.AssertSliceEquals(t, []string{}, functionNames)
+
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
+}
+
+// TestInvokeComposition tests the REST API that executes a given function composition
+func TestInvokeComposition_DifferentFunctions(t *testing.T) {
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+	fcName := "sequence"
+	fnJs, err := initializeJsFunction("inc", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	utils.AssertNilMsg(t, err, "failed to initialize javascript function")
+	fnPy, err := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	utils.AssertNilMsg(t, err, "failed to initialize python function")
+	dag, err := fc.CreateSequenceDag(fnPy, fnJs, fnPy, fnJs)
+	composition := fc.NewFC(fcName, *dag, []*function.Function{fnPy, fnJs}, true)
+	createCompositionApiTest(t, &composition, HOST, PORT)
+
+	// verifies the function exists (using function REST API)
+	functionNames := getFunctionApiTest(t, HOST, PORT)
+	utils.AssertEquals(t, 2, len(functionNames))
 
 	// === this is the test ===
 	params := make(map[string]interface{})
@@ -178,6 +224,11 @@ func TestDeleteComposition(t *testing.T) {
 		}
 	}
 
+	// delete the container when not used
+	deleteApiTest(t, fn.Name, HOST, PORT)
+	node.ShutdownWarmContainersFor(fn)
+
+	// utils.AssertTrueMsg(t, node.ArePoolsEmptyInThisNode(), "container pools are not empty after the end of test")
 	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
 	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }

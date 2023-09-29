@@ -20,7 +20,7 @@ func PublishAsyncResponse(reqId string, response function.Response) {
 
 	ctx := context.Background()
 
-	resp, err := etcdClient.Grant(ctx, 1800)
+	resp, err := etcdClient.Grant(ctx, 1800) // 30 min
 	if err != nil {
 		log.Fatal(err)
 		return
