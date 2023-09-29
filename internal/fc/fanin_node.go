@@ -112,7 +112,7 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec waits all output from previous nodes or return an error after a timeout expires
-func (f *FanInNode) Exec(execReport *CompositionExecutionReport) (map[string]interface{}, error) {
+func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
 	if !f.IsReached {
 		f.IsReached = true
 	} else {
@@ -163,7 +163,7 @@ func (f *FanInNode) Exec(execReport *CompositionExecutionReport) (map[string]int
 		err = fmt.Errorf("fan-in merge failed - timeout occurred")
 	}
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	execReport.Reports[f.Id] = &function.ExecutionReport{
+	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container

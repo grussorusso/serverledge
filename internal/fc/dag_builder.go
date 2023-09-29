@@ -62,7 +62,7 @@ func (b *DagBuilder) AddSimpleNode(f *function.Function) *DagBuilder {
 		return b
 	}
 
-	simpleNode := NewSimpleNode(f.Name, 500)
+	simpleNode := NewSimpleNode(f.Name)
 	simpleNode.setBranchId(b.BranchNumber)
 
 	b.dag.addNode(simpleNode)

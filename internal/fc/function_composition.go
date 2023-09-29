@@ -174,7 +174,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(requestId, &r.ExecReport)
+		shouldContinue, err = fc.Workflow.Execute(r)
 		if err != nil {
 			return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
 		}

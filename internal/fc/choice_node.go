@@ -58,7 +58,7 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec for choice node evaluates the condition
-func (c *ChoiceNode) Exec(execReport *CompositionExecutionReport) (map[string]interface{}, error) {
+func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
 	t0 := time.Now()
 	output := make(map[string]interface{})
 	var err error = nil
@@ -80,7 +80,7 @@ func (c *ChoiceNode) Exec(execReport *CompositionExecutionReport) (map[string]in
 		output["error"] = fmt.Sprintf("failed choice node %s - no condition is met", c.Id)
 	}
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	execReport.Reports[c.Id] = &function.ExecutionReport{
+	compRequest.ExecReport.Reports[c.Id] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container

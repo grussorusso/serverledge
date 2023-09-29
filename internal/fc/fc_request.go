@@ -19,11 +19,13 @@ type CompositionRequest struct {
 
 func NewCompositionRequest(reqId string, composition *FunctionComposition, params map[string]interface{}) *CompositionRequest {
 	return &CompositionRequest{
-		ReqId:           reqId,
-		Fc:              composition,
-		Params:          params,
-		Arrival:         time.Now(),
-		ExecReport:      CompositionExecutionReport{},
+		ReqId:   reqId,
+		Fc:      composition,
+		Params:  params,
+		Arrival: time.Now(),
+		ExecReport: CompositionExecutionReport{
+			Reports: make(map[DagNodeId]*function.ExecutionReport),
+		},
 		RequestQoSMap:   make(map[string]function.RequestQoS),
 		CanDoOffloading: true,
 		Async:           false,
