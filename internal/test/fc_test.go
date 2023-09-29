@@ -66,7 +66,7 @@ func TestComposeFC(t *testing.T) {
 	funcs2, err3 := fc.GetAllFC()
 	fmt.Println(funcs2)
 	u.AssertNil(t, err3)
-	u.AssertEquals(t, lenFuncs+1, len(funcs2))
+	u.AssertEqualsMsg(t, lenFuncs+1, len(funcs2), "creation of function failed")
 
 	// the function is exactly the one i created?
 	fun, ok := fc.GetFC(fcName)
@@ -82,7 +82,7 @@ func TestComposeFC(t *testing.T) {
 	funcs3, err5 := fc.GetAllFC()
 	fmt.Println(funcs3)
 	u.AssertNil(t, err5)
-	u.AssertEquals(t, len(funcs3), lenFuncs)
+	u.AssertEqualsMsg(t, len(funcs3), lenFuncs, "deletion of function failed")
 }
 
 // TestInvokeFC executes a Sequential Dag of length N, where each node executes a simple increment function.

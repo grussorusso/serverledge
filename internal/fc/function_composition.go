@@ -31,6 +31,24 @@ type CompositionExecutionReport struct {
 	// Duration       float64 // time spent executing the requests
 }
 
+func (cer *CompositionExecutionReport) GetSingleResult() string {
+	if len(cer.Result) == 1 {
+		for _, value := range cer.Result {
+			return fmt.Sprintf("%v", value)
+		}
+	}
+	return fmt.Sprintf("%v", cer.Result)
+}
+
+func (cer *CompositionExecutionReport) GetAllResults() string {
+	result := "[\n"
+	for _, value := range cer.Result {
+		result += fmt.Sprintf("\t%v\n", value)
+	}
+	result += "]\n"
+	return result
+}
+
 // NewFC instantiates a new FunctionComposition with a name and a corresponding dag. Function can contain duplicate functions (with the same name)
 func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDeletion bool) FunctionComposition {
 	functionMap := make(map[string]*function.Function)
