@@ -185,13 +185,17 @@ func createCompositionApiTest(t *testing.T, fc *fc.FunctionComposition, host str
 	utils.PrintJsonResponse(postJson.Body)
 }
 
-func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc string, host string, port int) {
-	request := client.InvocationRequest{
-		Params: params,
-		// QoSClass:        qosClass,
-		QoSMaxRespT:     500,
+func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc string, host string, port int, async bool) {
+	qosMap := make(map[string]function.RequestQoS)
+	qosMap["inc"] = function.RequestQoS{
+		Class:    0,
+		MaxRespT: 500,
+	}
+	request := client.CompositionInvocationRequest{
+		Params:          params,
+		RequestQoSMap:   qosMap,
 		CanDoOffloading: true,
-		Async:           false,
+		Async:           async,
 	}
 	invocationBody, err1 := json.Marshal(request)
 	utils.AssertNilMsg(t, err1, "error while marshaling invocation request for composition")
@@ -225,8 +229,12 @@ func deleteCompositionApiTest(t *testing.T, fcName string, host string, port int
 	utils.PrintJsonResponse(resp.Body)
 }
 
-func newExecutionReportTest() *fc.CompositionExecutionReport {
-	return &fc.CompositionExecutionReport{
-		Reports: make(map[fc.DagNodeId]*function.ExecutionReport),
+func newCompositionRequestTest() *fc.CompositionRequest {
+
+	return &fc.CompositionRequest{
+		ReqId: "test",
+		ExecReport: fc.CompositionExecutionReport{
+			Reports: make(map[fc.DagNodeId]*function.ExecutionReport),
+		},
 	}
 }

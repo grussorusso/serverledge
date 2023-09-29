@@ -66,7 +66,7 @@ func TestComposeFC(t *testing.T) {
 	funcs2, err3 := fc.GetAllFC()
 	fmt.Println(funcs2)
 	u.AssertNil(t, err3)
-	u.AssertEquals(t, len(funcs2), lenFuncs+1)
+	u.AssertEquals(t, lenFuncs+1, len(funcs2))
 
 	// the function is exactly the one i created?
 	fun, ok := fc.GetFC(fcName)

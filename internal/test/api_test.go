@@ -108,7 +108,7 @@ func TestInvokeComposition(t *testing.T) {
 	// === this is the test ===
 	params := make(map[string]interface{})
 	params["input"] = 1
-	invokeCompositionApiTest(t, params, fcName, HOST, PORT)
+	invokeCompositionApiTest(t, params, fcName, HOST, PORT, false)
 
 	// here we do not use REST API
 	getFC, b := fc.GetFC(fcName)
@@ -167,4 +167,42 @@ func TestDeleteComposition(t *testing.T) {
 			utils.AssertSliceEquals(t, []string{"double", "inc"}, functionNames)
 		}
 	}
+}
+
+// TestAsyncInvokeComposition tests the REST API that executes a given function composition
+func TestAsyncInvokeComposition(t *testing.T) {
+	t.Skip() // TODO: Assicurarsi di aspettare la fine della chiamata asincrona
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+	fcName := "sequence"
+	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	utils.AssertNilMsg(t, err, "failed to initialize function")
+	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
+	createCompositionApiTest(t, &composition, HOST, PORT)
+
+	// verifies the function exists (using function REST API)
+	functionNames := getFunctionApiTest(t, HOST, PORT)
+	utils.AssertSliceEquals(t, []string{"inc"}, functionNames)
+
+	// === this is the test ===
+	params := make(map[string]interface{})
+	params["input"] = 1
+	invokeCompositionApiTest(t, params, fcName, HOST, PORT, true)
+	// TODO wait until the result is available
+
+	// here we do not use REST API
+	getFC, b := fc.GetFC(fcName)
+	utils.AssertTrue(t, b)
+	utils.AssertTrueMsg(t, composition.Equals(getFC), "composition comparison failed")
+	err = composition.Delete()
+	utils.AssertNilMsg(t, err, "failed to delete composition")
+
+	// verifies the function does not exists  (using function REST API)
+	functionNames = getFunctionApiTest(t, HOST, PORT)
+	utils.AssertSliceEquals(t, []string{}, functionNames)
 }

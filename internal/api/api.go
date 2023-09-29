@@ -352,11 +352,27 @@ func InvokeFunctionComposition(e echo.Context) error {
 		fcReq.ExecReport.Reports[nodeId].OffloadLatency = 0.0
 	}
 
-	// TODO: ASYNC E SYNC!
 	if fcReq.Async {
-		return e.JSON(http.StatusNotImplemented, "")
-		// go scheduling.SubmitAsyncCompositionRequest(fcReq)
-		// return e.JSON(http.StatusOK, function.AsyncResponse{ReqId: fcReq.ReqId})
+		errChan := make(chan error)
+		go func(fcReq *fc.CompositionRequest) {
+			executionReport, errInvoke := funComp.Invoke(fcReq)
+			if errInvoke != nil {
+				errChan <- errInvoke
+				return
+			}
+			errChan <- nil
+			fcReq.ExecReport = executionReport
+			fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
+		}(fcReq)
+
+		errAsyncInvoke := <-errChan // FIXME: forse non va bene bloccarsi qui
+
+		if errAsyncInvoke != nil {
+			log.Printf("Invocation failed: %v", errAsyncInvoke)
+			return e.String(http.StatusInternalServerError, "Composition invocation failed")
+		}
+
+		return e.JSON(http.StatusOK, function.AsyncResponse{ReqId: fcReq.ReqId})
 	}
 
 	// err = scheduling.SubmitCompositionRequest(fcReq) // Fai partire la prima funzione, aspetta il completamento, e cosi' via

@@ -19,25 +19,23 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id                    DagNodeId
-	NodeType              DagNodeType
-	BranchId              int
-	input                 map[string]interface{}
-	OutputTo              DagNodeId
-	Func                  string
-	MaxResponseTimeMillis int
-	IsParallel            bool
+	Id         DagNodeId
+	NodeType   DagNodeType
+	BranchId   int
+	input      map[string]interface{}
+	OutputTo   DagNodeId
+	Func       string
+	IsParallel bool
 	// Request   *function.Request
 	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
 
-func NewSimpleNode(f string, maxRespTimeMillis int) *SimpleNode {
+func NewSimpleNode(f string) *SimpleNode {
 	return &SimpleNode{
-		Id:                    DagNodeId(shortuuid.New()),
-		NodeType:              Simple,
-		Func:                  f,
-		IsParallel:            false,
-		MaxResponseTimeMillis: maxRespTimeMillis,
+		Id:         DagNodeId(shortuuid.New()),
+		NodeType:   Simple,
+		Func:       f,
+		IsParallel: false,
 	}
 }
 
@@ -55,7 +53,7 @@ func (s *SimpleNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *SimpleNode) Exec(execReport *CompositionExecutionReport) (map[string]interface{}, error) {
+func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
@@ -77,9 +75,7 @@ func (s *SimpleNode) Exec(execReport *CompositionExecutionReport) (map[string]in
 			SchedAction:    "",
 			OffloadLatency: 0.0,
 		},
-		RequestQoS: function.RequestQoS{
-			MaxRespT: float64(s.MaxResponseTimeMillis),
-		},
+		RequestQoS:      compRequest.RequestQoSMap[s.Func],
 		CanDoOffloading: true,
 		Async:           false,
 		IsInComposition: true,
@@ -116,7 +112,7 @@ func (s *SimpleNode) Exec(execReport *CompositionExecutionReport) (map[string]in
 		r.ExecReport.Result = fmt.Sprintf("%v", m)
 	}
 	// saving execution report for this function
-	execReport.Reports[s.Id] = &r.ExecReport
+	compRequest.ExecReport.Reports[s.Id] = &r.ExecReport
 	cs := ""
 	if !r.ExecReport.IsWarmStart {
 		cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)

@@ -214,20 +214,20 @@ func (dag *Dag) Print() string {
 	return result
 }
 
-func (dag *Dag) executeStart(progress *Progress, node *StartNode, execReport *CompositionExecutionReport) (bool, error) {
+func (dag *Dag) executeStart(progress *Progress, node *StartNode, r *CompositionRequest) (bool, error) {
 	err := progress.CompleteNode(node.GetId())
 	if err != nil {
 		return false, err
 	}
-	execReport.Reports[node.Id] = &function.ExecutionReport{Result: "start"}
+	r.ExecReport.Reports[node.Id] = &function.ExecutionReport{Result: "start"}
 	return true, nil
 }
 
-func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *SimpleNode, execReport *CompositionExecutionReport) (bool, error) {
+func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *CompositionRequest) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
-
+	requestId := ReqId(r.ReqId)
 	input, err := partialDataCache.Retrieve(requestId, nodeId)
 	if err != nil {
 		return false, err
@@ -237,7 +237,7 @@ func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *S
 		return false, err
 	}
 	// executing node
-	output, err := simpleNode.Exec(execReport)
+	output, err := simpleNode.Exec(r)
 	if err != nil {
 		return false, err
 	}
@@ -260,11 +260,11 @@ func (dag *Dag) executeSimple(requestId ReqId, progress *Progress, simpleNode *S
 	return true, nil
 }
 
-func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *ChoiceNode, execReport *CompositionExecutionReport) (bool, error) {
+func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *CompositionRequest) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := choice.GetId()
-
+	requestId := ReqId(r.ReqId)
 	input, err := partialDataCache.Retrieve(requestId, nodeId)
 	if err != nil {
 		return false, err
@@ -274,7 +274,7 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 		return false, err
 	}
 	// executing node
-	output, err := choice.Exec(execReport)
+	output, err := choice.Exec(r)
 	if err != nil {
 		return false, err
 	}
@@ -301,12 +301,13 @@ func (dag *Dag) executeChoice(requestId ReqId, progress *Progress, choice *Choic
 	return true, nil
 }
 
-func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes []DagNodeId, execReport *CompositionExecutionReport) error {
+func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
 	outputChannels := make([]chan map[string]interface{}, 0)
 	errorChannels := make([]chan error, 0)
 	partialDatas := make([]*PartialData, 0)
+	requestId := ReqId(r.ReqId)
 	for _, nodeId := range nextNodes {
 		node, ok := dag.Find(nodeId)
 		if ok {
@@ -318,7 +319,7 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 	// executing all nodes in parallel
 	for i, node := range parallelDagNodes {
 		go func(i int, node DagNode) {
-			output, err := node.Exec(execReport)
+			output, err := node.Exec(r)
 			if err != nil {
 				outputChannels[i] <- nil
 				errorChannels[i] <- err
@@ -364,13 +365,14 @@ func (dag *Dag) executeParallel(requestId ReqId, progress *Progress, nextNodes [
 }
 
 // TODO: assicurarsi che si esegua in parallelo
-func (dag *Dag) Execute(requestId ReqId, execReport *CompositionExecutionReport) (bool, error) {
+func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
+	requestId := ReqId(r.ReqId)
 	progress, _ := progressCache.RetrieveProgress(requestId)
 	nextNodes, err := progress.NextNodes()
 	shouldContinue := true
 	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
 	if len(nextNodes) > 1 {
-		err := dag.executeParallel(requestId, progress, nextNodes, execReport)
+		err := dag.executeParallel(progress, nextNodes, r)
 		if err != nil {
 			return true, err
 		}
@@ -382,15 +384,15 @@ func (dag *Dag) Execute(requestId ReqId, execReport *CompositionExecutionReport)
 
 		switch node := n.(type) {
 		case *SimpleNode:
-			shouldContinue, err = dag.executeSimple(requestId, progress, node, execReport)
+			shouldContinue, err = dag.executeSimple(progress, node, r)
 		case *ChoiceNode:
-			shouldContinue, err = dag.executeChoice(requestId, progress, node, execReport)
+			shouldContinue, err = dag.executeChoice(progress, node, r)
 		case *FanInNode:
 		case *StartNode:
-			shouldContinue, err = dag.executeStart(progress, node, execReport)
+			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
 		case *EndNode:
-			execReport.Reports[node.Id] = &function.ExecutionReport{Result: "end"}
+			r.ExecReport.Reports[node.Id] = &function.ExecutionReport{Result: "end"}
 			shouldContinue = false
 		}
 		if err != nil {
