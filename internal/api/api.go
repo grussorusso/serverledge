@@ -232,15 +232,16 @@ func CreateFunctionComposition(e echo.Context) error {
 		log.Printf("Could not parse request: %v", err)
 		return err
 	}
-
-	_, ok := fc.GetFC(comp.Name) // TODO: we would need a system-wide lock here...
-	if ok {
+	// checking if the function already exists. If exists we return an error
+	alreadyPresent := comp.Exists() // TODO: we would need a system-wide lock here...
+	if alreadyPresent {
 		log.Printf("Dropping request for already existing composition '%s'", comp.Name)
 		return e.JSON(http.StatusConflict, "composition already exists")
 	}
 
 	log.Printf("New request: creation of composition %s", comp.Name)
 
+	// checking if the chosen container runtime exists
 	for _, f := range comp.Functions {
 		// Check that the selected runtime exists
 		if f.Runtime != container.CUSTOM_RUNTIME {

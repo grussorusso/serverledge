@@ -54,7 +54,8 @@ func TestContainerPool(t *testing.T) {
 	for _, name := range funcs {
 		deleteApiTest(t, name, HOST, PORT)
 	}
-
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestCreateComposition tests the compose REST API that creates a new function composition
@@ -86,6 +87,9 @@ func TestCreateComposition(t *testing.T) {
 	// verifies the function does not exists  (using function REST API)
 	functionNames = getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{}, functionNames)
+
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeComposition tests the REST API that executes a given function composition
@@ -123,6 +127,9 @@ func TestInvokeComposition(t *testing.T) {
 	// verifies the function does not exists  (using function REST API)
 	functionNames = getFunctionApiTest(t, HOST, PORT)
 	utils.AssertSliceEquals(t, []string{}, functionNames)
+
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestDeleteComposition tests the compose REST API that deletes a function composition
@@ -170,6 +177,9 @@ func TestDeleteComposition(t *testing.T) {
 			utils.AssertSliceEquals(t, []string{"double", "inc"}, functionNames)
 		}
 	}
+
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestAsyncInvokeComposition tests the REST API that executes a given function composition
@@ -226,4 +236,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	utils.AssertTrueMsg(t, composition.Equals(getFC), "composition comparison failed")
 	err = composition.Delete()
 	utils.AssertNilMsg(t, err, "failed to delete composition")
+
+	utils.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }

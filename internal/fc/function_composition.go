@@ -78,7 +78,6 @@ func GetAllFC() ([]string, error) {
 	return function.GetAllWithPrefix("/fc")
 }
 
-// FIXME: this should return Deployable and be merged with function.getFromCache
 func getFCFromCache(name string) (*FunctionComposition, bool) {
 	localCache := cache.GetCacheInstance()
 	cachedObj, found := localCache.Get(name)
@@ -98,9 +97,10 @@ func getFCFromEtcd(name string) (*FunctionComposition, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	getResponse, err := cli.Get(ctx, getEtcdKey(name))
+	key := getEtcdKey(name)
+	getResponse, err := cli.Get(ctx, key)
 	if err != nil || len(getResponse.Kvs) < 1 {
-		return nil, errors.New("failed to retrieve value for key")
+		return nil, fmt.Errorf("failed to retrieve value for key %s", key)
 	}
 
 	var f FunctionComposition
@@ -112,13 +112,14 @@ func getFCFromEtcd(name string) (*FunctionComposition, error) {
 	return &f, nil
 }
 
+// GetFC gets the FunctionComposition from cache or from ETCD
 func GetFC(name string) (*FunctionComposition, bool) {
 	val, found := getFCFromCache(name)
 	if !found {
 		// cache miss
 		f, err := getFCFromEtcd(name)
 		if err != nil {
-			log.Error(err.Error())
+			log.Error(err.Error()) // at times, this error is returned, but only to check that the FC doesn't exists
 			return nil, false
 		}
 		//insert a new element to the cache
@@ -202,6 +203,11 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
 	}
+
+	// deleting progresses and partial datas from cache and etcd
+	progressCache.DeleteProgress(requestId)
+	partialDataCache.Purge(requestId)
+
 	r.ExecReport.Result = result
 	return r.ExecReport, nil
 }
@@ -251,8 +257,23 @@ func (fc *FunctionComposition) DeleteAll() error {
 	return err
 }
 
-func (fc *FunctionComposition) Poll() interface{} {
-	panic("implement me")
+// Exists return true if the function composition exists either in etcd or in cache. If it only exists in Etcd, it saves the composition also in caches
+func (fc *FunctionComposition) Exists() bool {
+	_, found := getFCFromCache(fc.Name)
+	if !found {
+		// cache miss
+		f, err := getFCFromEtcd(fc.Name)
+		if err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
+			return false
+		} else if err != nil {
+			log.Error(err.Error())
+			return false
+		}
+		//insert a new element to the cache
+		cache.GetCacheInstance().Set(f.Name, f, cache.DefaultExp)
+		return true
+	}
+	return found
 }
 
 // Equals is used in tests to check function composition equality
