@@ -1,6 +1,8 @@
 package test
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
@@ -108,7 +110,8 @@ func TestInvokeComposition(t *testing.T) {
 	// === this is the test ===
 	params := make(map[string]interface{})
 	params["input"] = 1
-	invokeCompositionApiTest(t, params, fcName, HOST, PORT, false)
+	invocationResult := invokeCompositionApiTest(t, params, fcName, HOST, PORT, false)
+	fmt.Println(invocationResult)
 
 	// here we do not use REST API
 	getFC, b := fc.GetFC(fcName)
@@ -171,7 +174,6 @@ func TestDeleteComposition(t *testing.T) {
 
 // TestAsyncInvokeComposition tests the REST API that executes a given function composition
 func TestAsyncInvokeComposition(t *testing.T) {
-	t.Skip() // TODO: Assicurarsi di aspettare la fine della chiamata asincrona
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
@@ -185,15 +187,38 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
 	createCompositionApiTest(t, &composition, HOST, PORT)
 
-	// verifies the function exists (using function REST API)
-	functionNames := getFunctionApiTest(t, HOST, PORT)
-	utils.AssertSliceEquals(t, []string{"inc"}, functionNames)
-
 	// === this is the test ===
 	params := make(map[string]interface{})
 	params["input"] = 1
-	invokeCompositionApiTest(t, params, fcName, HOST, PORT, true)
-	// TODO wait until the result is available
+	invocationResult := invokeCompositionApiTest(t, params, fcName, HOST, PORT, true)
+	fmt.Println(invocationResult)
+
+	reqIdStruct := &struct {
+		ReqId string
+	}{}
+
+	errUnmarshal := json.Unmarshal([]byte(invocationResult), reqIdStruct)
+	utils.AssertNil(t, errUnmarshal)
+
+	// wait until the result is available
+	i := 0
+	for {
+		pollResult := pollCompositionTest(t, reqIdStruct.ReqId, HOST, PORT)
+		fmt.Println(pollResult)
+
+		compExecReport := &fc.CompositionExecutionReport{}
+		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), compExecReport)
+
+		result := compExecReport.GetSingleResult()
+		if errUnmarshalExecResult != nil {
+			i++
+			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms\n", i)
+			time.Sleep(200 * time.Millisecond)
+		} else {
+			utils.AssertEquals(t, "4", result)
+			break
+		}
+	}
 
 	// here we do not use REST API
 	getFC, b := fc.GetFC(fcName)
@@ -201,8 +226,4 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	utils.AssertTrueMsg(t, composition.Equals(getFC), "composition comparison failed")
 	err = composition.Delete()
 	utils.AssertNilMsg(t, err, "failed to delete composition")
-
-	// verifies the function does not exists  (using function REST API)
-	functionNames = getFunctionApiTest(t, HOST, PORT)
-	utils.AssertSliceEquals(t, []string{}, functionNames)
 }

@@ -1,17 +1,16 @@
-package scheduling
+package fc_scheduling
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-
-	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/utils"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"log"
 )
 
-func PublishAsyncResponse(reqId string, response function.Response) {
+func PublishAsyncCompositionResponse(reqId string, response fc.CompositionResponse) {
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal("Client not available")
@@ -26,10 +25,10 @@ func PublishAsyncResponse(reqId string, response function.Response) {
 		return
 	}
 
-	key := fmt.Sprintf("async/%s", reqId)
+	key := fmt.Sprintf("async/%s", reqId) // async is for function and function compositions, so we can reuse poll!!!
 	payload, err := json.Marshal(response)
 	if err != nil {
-		log.Printf("Could not marshal response: %v\n", err)
+		log.Printf("Could not marshal response: %v", err)
 		return
 	}
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/fc_scheduling"
 	"io"
 	"log"
 	"net/http"
@@ -120,7 +121,7 @@ func PollAsyncResult(c echo.Context) error {
 		payload := res.Kvs[0].Value
 		return c.JSONBlob(http.StatusOK, payload)
 	} else {
-		return c.JSON(http.StatusNotFound, "function not found")
+		return c.JSON(http.StatusNotFound, "request not found")
 	}
 }
 
@@ -353,37 +354,12 @@ func InvokeFunctionComposition(e echo.Context) error {
 	}
 
 	if fcReq.Async {
-		errChan := make(chan error)
-		go func(fcReq *fc.CompositionRequest) {
-			executionReport, errInvoke := funComp.Invoke(fcReq)
-			if errInvoke != nil {
-				errChan <- errInvoke
-				return
-			}
-			errChan <- nil
-			fcReq.ExecReport = executionReport
-			fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
-		}(fcReq)
-
-		errAsyncInvoke := <-errChan // FIXME: forse non va bene bloccarsi qui
-
-		if errAsyncInvoke != nil {
-			log.Printf("Invocation failed: %v", errAsyncInvoke)
-			return e.String(http.StatusInternalServerError, "Composition invocation failed")
-		}
-
+		go fc_scheduling.SubmitAsyncCompositionRequest(fcReq)
 		return e.JSON(http.StatusOK, function.AsyncResponse{ReqId: fcReq.ReqId})
 	}
 
-	// err = scheduling.SubmitCompositionRequest(fcReq) // Fai partire la prima funzione, aspetta il completamento, e cosi' via
 	// sync execution
-	executionReport, err := funComp.Invoke(fcReq)
-	if err != nil {
-		log.Printf("Invocation failed: %v", err)
-		return e.String(http.StatusInternalServerError, "Composition invocation failed")
-	}
-	fcReq.ExecReport = executionReport
-	fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
+	err = fc_scheduling.SubmitCompositionRequest(fcReq)
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return e.String(http.StatusTooManyRequests, "")

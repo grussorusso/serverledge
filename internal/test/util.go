@@ -185,7 +185,7 @@ func createCompositionApiTest(t *testing.T, fc *fc.FunctionComposition, host str
 	utils.PrintJsonResponse(postJson.Body)
 }
 
-func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc string, host string, port int, async bool) {
+func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc string, host string, port int, async bool) string {
 	qosMap := make(map[string]function.RequestQoS)
 	qosMap["inc"] = function.RequestQoS{
 		Class:    0,
@@ -203,7 +203,7 @@ func invokeCompositionApiTest(t *testing.T, params map[string]interface{}, fc st
 	url := fmt.Sprintf("http://%s:%d/play/%s", host, port, fc)
 	resp, err2 := utils.PostJson(url, invocationBody)
 	utils.AssertNilMsg(t, err2, "error while posting json request for invoking a composition")
-	utils.PrintJsonResponse(resp.Body)
+	return utils.GetJsonResponse(resp.Body)
 }
 
 func getCompositionsApiTest(t *testing.T, host string, port int) []string {
@@ -227,6 +227,13 @@ func deleteCompositionApiTest(t *testing.T, fcName string, host string, port int
 	utils.AssertNilMsg(t, err, "failed to delete composition")
 
 	utils.PrintJsonResponse(resp.Body)
+}
+
+func pollCompositionTest(t *testing.T, requestId string, host string, port int) string {
+	url := fmt.Sprintf("http://%s:%d/poll/%s", host, port, requestId)
+	resp, err := http.Get(url)
+	utils.AssertNilMsg(t, err, "failed to poll invocation result")
+	return utils.GetJsonResponse(resp.Body)
 }
 
 func newCompositionRequestTest() *fc.CompositionRequest {
