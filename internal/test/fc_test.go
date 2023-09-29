@@ -122,6 +122,9 @@ func TestInvokeFC(t *testing.T) {
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
+
+	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeChoiceFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
@@ -180,11 +183,13 @@ func TestInvokeChoiceFC(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 	//}
+
+	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions (in different languages)
 func TestInvokeFC_DifferentFunctions(t *testing.T) {
-
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
@@ -243,7 +248,8 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 	//}
-
+	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
@@ -297,4 +303,6 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 
+	u.AssertTrueMsg(t, fc.IsEmptyProgressCache(), "progress cache is not empty")
+	u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }

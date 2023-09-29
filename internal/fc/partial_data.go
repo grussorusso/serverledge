@@ -13,7 +13,7 @@ var partialDataCache = newPartialDataCache()
 type PartialData struct {
 	ReqId    ReqId     // request referring to this partial data
 	ForNode  DagNodeId // dagNode that should receive this partial data
-	FromNode DagNodeId // TODO: maybe useless
+	FromNode DagNodeId // useful for fanin
 	Data     map[string]interface{}
 }
 
@@ -65,7 +65,7 @@ func newPartialDataCache() PartialDataCache {
 }
 
 func (cache *PartialDataCache) InitNewRequest(req ReqId) {
-	partialDataCache.partialDatas[ReqId(req)] = make(map[DagNodeId]*PartialData)
+	partialDataCache.partialDatas[req] = make(map[DagNodeId]*PartialData)
 }
 
 func (cache *PartialDataCache) Save(pd *PartialData) {
@@ -89,6 +89,10 @@ func (cache *PartialDataCache) Retrieve(reqId ReqId, nodeId DagNodeId) (map[stri
 }
 
 func (cache *PartialDataCache) Purge(reqId ReqId) {
-	delete(progressCache.progresses, reqId) // this should remove also the sub-map
+	delete(partialDataCache.partialDatas, reqId) // this should remove also the sub-map
 	// TODO: delete from etcd: all partial data connected to the same request should be deleted, only after the dag is complete.
+}
+
+func IsEmptyPartialDataCache() bool {
+	return len(partialDataCache.partialDatas) == 0
 }

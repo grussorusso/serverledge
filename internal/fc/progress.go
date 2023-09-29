@@ -435,10 +435,14 @@ func (cache *ProgressCache) SaveProgress(p *Progress) error {
 func (cache *ProgressCache) RetrieveProgress(reqId ReqId) (*Progress, bool) {
 	// TODO: Get from cache if exists, otherwise from ETCD
 	// TODO: retrieve progress from ETCD
-	progress, ok := cache.progresses[ReqId(reqId)]
+	progress, ok := cache.progresses[reqId]
 	return progress, ok
 }
 
 func (cache *ProgressCache) DeleteProgress(reqId ReqId) {
-	delete(cache.progresses, ReqId(reqId))
+	delete(cache.progresses, reqId)
+}
+
+func IsEmptyProgressCache() bool {
+	return len(progressCache.progresses) == 0
 }
