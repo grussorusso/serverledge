@@ -282,7 +282,9 @@ func (fc *FunctionComposition) Equals(cmp types.Comparable) bool {
 	if fc.Name != fc2.Name {
 		return false
 	}
-	if !slices.Equal(fc.Workflow.GetUniqueDagFunctions(), fc2.Workflow.GetUniqueDagFunctions()) {
+	funcs1 := fc.Workflow.GetUniqueDagFunctions()
+	funcs2 := fc2.Workflow.GetUniqueDagFunctions()
+	if !slices.Equal(funcs1, funcs2) {
 		return false
 	}
 	if !fc.Workflow.Equals(&fc2.Workflow) {
