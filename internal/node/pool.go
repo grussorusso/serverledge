@@ -14,25 +14,27 @@ import (
 )
 
 type ContainerPool struct {
-	busy  *list.List // list of ContainerID
-	ready *list.List // list of warmContainer
+	busy  *list.List // circular list of ContainerID
+	ready *list.List // circular list of warmContainer
 }
 
 type warmContainer struct {
 	Expiration int64
 	Function   string
+	Runtime    string
 	contID     container.ContainerID
 }
 
 type busyContainer struct {
 	Function string
+	Runtime  string
 	contID   container.ContainerID
 }
 
 var NoWarmFoundErr = errors.New("no warm container is available")
 
-// getFunctionPool retrieves (or creates) the container pool for a function.
-func getFunctionPool(f *function.Function) *ContainerPool {
+// GetFunctionPool retrieves (or creates) the container pool for a function.
+func GetFunctionPool(f *function.Function) *ContainerPool {
 	if fp, ok := Resources.ContainerPools[f.Name]; ok {
 		return fp
 	}
@@ -42,37 +44,50 @@ func getFunctionPool(f *function.Function) *ContainerPool {
 	return fp
 }
 
-func (fp *ContainerPool) getWarmContainer(funcName string) (container.ContainerID, bool) {
+func ArePoolsEmptyInThisNode() bool {
+	return len(Resources.ContainerPools) == 0
+}
+
+func (fp *ContainerPool) getWarmContainer(f *function.Function) (container.ContainerID, bool) {
 	// TODO: picking most-recent / least-recent container might be better?
 	elem := fp.ready.Front()
 	if elem == nil {
 		return "", false
 	}
 
-	if elem.Value.(warmContainer).Function != funcName {
+	if elem.Value.(warmContainer).Function != f.Name {
 		return "no function", false
+	}
+
+	if elem.Value.(warmContainer).Runtime != f.Runtime {
+		return "no runtime", false
 	}
 
 	fp.ready.Remove(elem)
 	contID := elem.Value.(warmContainer).contID
-	fp.putBusyContainer(contID, funcName)
+	fp.putBusyContainer(contID, f)
 
 	return contID, true
 }
 
-func (fp *ContainerPool) putBusyContainer(contID container.ContainerID, funcName string) {
-	fmt.Printf("storing in the busy pool the container %s for func '%s'\n", contID, funcName)
-	fp.busy.PushBack(busyContainer{
-		Function: funcName,
+func (fp *ContainerPool) putBusyContainer(contID container.ContainerID, f *function.Function) {
+	log.Printf("storing in the busy pool the container %s for func '%s' with runtime '%s'\n", contID, f.Name, f.Runtime)
+	fp.busy.PushBack(busyContainer{ // creating
+		Function: f.Name,
+		Runtime:  f.Runtime,
 		contID:   contID,
 	})
 }
 
-func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, funcName string, expiration int64) {
+func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, busyContainer busyContainer, expiration int64) {
+	funcName := busyContainer.Function
+	runtime := busyContainer.Runtime
 	fmt.Printf("storing in the ready pool warm container %s for func '%s'\n", contID, funcName)
-	fp.ready.PushBack(warmContainer{
+
+	fp.ready.PushBack(warmContainer{ // creates warmContainer
 		contID:     contID,
-		Function:   funcName, // FIXME this is wrong sometimes (multithreading)
+		Function:   funcName,
+		Runtime:    runtime,
 		Expiration: expiration,
 	})
 }
@@ -133,12 +148,17 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	defer Resources.Unlock()
 
-	fp := getFunctionPool(f)
+	fp := GetFunctionPool(f)
 	// fmt.Printf("ready containers: %+v\nbusy containers: %+v\n", fp.ready.Len(), fp.busy.Len())
-	contID, found := fp.getWarmContainer(f.Name)
+	contID, found := fp.getWarmContainer(f)
 	if !found {
 		if contID == "no function" {
-			return "", fmt.Errorf("the container exists, but doesn't have the function %s", f.Name)
+			fmt.Printf("the container exists, but doesn't have the function %s\n", f.Name)
+			return "", NoWarmFoundErr
+		}
+		if contID == "no runtime" {
+			fmt.Printf("the container exists, but doesn't have the correct runtime (%s) for function %s\n", f.Runtime, f.Name)
+			return "", NoWarmFoundErr
 		}
 		return "", NoWarmFoundErr
 	}
@@ -160,21 +180,18 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function, isInCo
 
 	Resources.Lock()
 	defer Resources.Unlock()
-	// fmt.Printf("getting function pool for function %s\n", f.Name)
-	fp := getFunctionPool(f)
-	fName := f.Name
+	fp := GetFunctionPool(f)
 	// we must update the busy list by removing this element
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(busyContainer).contID == contID {
 			fp.busy.Remove(elem) // delete the element from the busy list
-			fName = elem.Value.(busyContainer).Function
 			break
 		}
 		elem = elem.Next()
 	}
 
-	fp.putReadyContainer(contID, fName, expTime) // FIXME: passare la funzione giusta, l'ultima che è stata eseguita
+	fp.putReadyContainer(contID, elem.Value.(busyContainer), expTime) // FIXME: passare la funzione giusta, l'ultima che è stata eseguita
 
 	releaseResources(f.CPUDemand, 0)
 	// only in compositions, we send to a channel a message so that the next node can execute
@@ -235,8 +252,8 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 		return "", err
 	}
 
-	fp := getFunctionPool(fun)
-	fp.putBusyContainer(contID, fun.Name) // We immediately mark it as busy
+	fp := GetFunctionPool(fun)
+	fp.putBusyContainer(contID, fun) // We immediately mark it as busy
 
 	return contID, nil
 }

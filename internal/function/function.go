@@ -145,8 +145,8 @@ func (f *Function) Equals(cmp types.Comparable) bool {
 
 // Exists checks if the function is already saved to Etcd
 func (f *Function) Exists() bool {
-	_, ok := GetFunction(f.Name)
-	return ok
+	savedFunction, ok := GetFunction(f.Name)
+	return ok && f.Equals(savedFunction)
 }
 
 // GetAll returns all function names

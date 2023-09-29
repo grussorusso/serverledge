@@ -129,7 +129,6 @@ func TestInvokeFC(t *testing.T) {
 
 // TestInvokeChoiceFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
 func TestInvokeChoiceFC(t *testing.T) {
-
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
