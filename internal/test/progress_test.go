@@ -97,6 +97,49 @@ func TestProgressMarshaling(t *testing.T) {
 	}
 }
 
+func TestProgressCache(t *testing.T) {
+	// it's an integration test because it needs etcd
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+
+	condition := fc.NewPredicate().And(
+		fc.NewEqCondition(1, 3),
+		fc.NewGreaterCondition(1, 3),
+	).Build()
+
+	progress1, dag1 := simpleProgress(t)
+	progress2, dag2 := choiceProgress(t, condition)
+	progress3, dag3 := parallelProgress(t)
+	progress4, dag4 := complexProgress(t, condition)
+	progresses := []*fc.Progress{progress1, progress2, progress3, progress4}
+	dags := []*fc.Dag{dag1, dag2, dag3, dag4}
+
+	for i := 0; i < len(dags); i++ {
+		progress := progresses[i]
+		dag := dags[i]
+		err := fc.SaveProgress(progress)
+		u.AssertNilMsg(t, err, "failed to save progress")
+
+		retrievedProgress, found := fc.RetrieveProgress(progress.ReqId)
+		u.AssertTrueMsg(t, found, "progress not found")
+		u.AssertTrueMsg(t, progress.Equals(retrievedProgress), "progresses don't match")
+
+		err = progress.CompleteNode(dag.Start.Id)
+		u.AssertNilMsg(t, err, "failed to update progress")
+		err = progress.CompleteNode(dag.Start.Next)
+		u.AssertNilMsg(t, err, "failed to update progress")
+
+		err = fc.SaveProgress(progress)
+		u.AssertNilMsg(t, err, "failed to save after update")
+
+		retrievedProgress, found = fc.RetrieveProgress(progress.ReqId)
+		u.AssertTrueMsg(t, found, "progress not found after update")
+		u.AssertTrueMsg(t, progress.Equals(retrievedProgress), "progresses don't match after update")
+
+	}
+}
+
 // TestProgressSequence tests a sequence dag with 2 simple node
 func TestProgressSequence(t *testing.T) {
 	progress, dag := simpleProgress(t)
