@@ -7,6 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
+	"sort"
 	"strings"
 )
 
@@ -407,18 +408,25 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	return shouldContinue, nil
 }
 
-// GetUniqueDagFunctions returns a list with the function used in the Dag
+// GetUniqueDagFunctions returns a list with the function names used in the Dag. The returned function names are unique and in alphabetical order
 func (dag *Dag) GetUniqueDagFunctions() []string {
-	allFunctions := make([]string, 0)
+	allFunctionsMap := make(map[string]void)
 	for _, node := range dag.Nodes {
-		switch node.(type) {
+		switch n := node.(type) {
 		case *SimpleNode:
-			allFunctions = append(allFunctions, node.(*SimpleNode).Func)
+			allFunctionsMap[n.Func] = null
 		default:
 			continue
 		}
 	}
-	return allFunctions
+	uniqueFunctions := make([]string, 0, len(allFunctionsMap))
+	for fName := range allFunctionsMap {
+		uniqueFunctions = append(uniqueFunctions, fName)
+	}
+	// we sort the list to always get the same result
+	sort.Strings(uniqueFunctions)
+
+	return uniqueFunctions
 }
 
 func (dag *Dag) Equals(comparer types.Comparable) bool {
