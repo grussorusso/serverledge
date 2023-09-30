@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+type ReqId string
+
 // CompositionRequest represents a single function composition internal invocation, with params and metrics data
 type CompositionRequest struct {
 	ReqId           string

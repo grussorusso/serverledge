@@ -4,6 +4,8 @@ import (
 	"github.com/grussorusso/serverledge/internal/types"
 )
 
+type DagNodeId string
+
 // DagNode is an interface for a single node in the Dag
 // all implementors must be pointers to a struct
 type DagNode interface {

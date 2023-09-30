@@ -11,10 +11,11 @@ import (
 	"time"
 )
 
-type ReqId string
+type ProgressId string
 
-// local cache TODO: usare una vera cache!!!
-var progressCache = newProgressCache()
+func newProgressId(reqId ReqId) ProgressId {
+	return ProgressId("progress_" + reqId)
+}
 
 // TODO: add progress to FunctionComposition CompositionRequest (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
@@ -25,13 +26,7 @@ type Progress struct {
 }
 
 type ProgressCache struct {
-	progresses map[ReqId]*Progress
-}
-
-func newProgressCache() ProgressCache {
-	return ProgressCache{
-		progresses: make(map[ReqId]*Progress),
-	}
+	progresses map[ProgressId]*Progress
 }
 
 type DagNodeInfo struct {
@@ -254,7 +249,7 @@ func InitProgressRecursive(reqId ReqId, dag *Dag) *Progress {
 	nodeInfos = moveEndNodeAtTheEnd(nodeInfos)
 	nodeInfos = reorder(nodeInfos)
 	return &Progress{
-		ReqId:     ReqId(reqId),
+		ReqId:     reqId,
 		DagNodes:  nodeInfos,
 		NextGroup: 0,
 	}
@@ -443,7 +438,7 @@ func RetrieveProgress(reqId ReqId) (*Progress, bool) {
 	var err error
 
 	// Get from cache if exists, otherwise from ETCD
-	progress, found := getProgressFromCache(reqId)
+	progress, found := getProgressFromCache(newProgressId(reqId))
 	if !found {
 		// cache miss - retrieve progress from ETCD
 		progress, err = getProgressFromEtcd(reqId)
@@ -473,7 +468,7 @@ func DeleteProgress(reqId ReqId) error {
 	}
 
 	// Remove the progress from the local cache
-	cache.GetCacheInstance().Delete(string(reqId))
+	cache.GetCacheInstance().Delete(string(newProgressId(reqId)))
 
 	return nil
 }
@@ -483,18 +478,18 @@ func getProgressEtcdKey(reqId ReqId) string {
 }
 
 func saveProgressInCache(p *Progress) bool {
-	// save in cache
 	c := cache.GetCacheInstance()
-	requestId := string(p.ReqId)
-	if _, found := c.Get(requestId); !found {
-		progressMap := make(map[ReqId]*Progress)
-		c.Set(requestId, progressMap, cache.NoExpiration)
+	progressIdType := newProgressId(p.ReqId)
+	progressId := string(progressIdType)
+	if _, found := c.Get(progressId); !found {
+		progressMap := make(map[ProgressId]*Progress)
+		c.Set(progressId, progressMap, cache.NoExpiration)
 	}
-	progressMap, found := c.Get(requestId)
+	progressMap, found := c.Get(string(progressIdType))
 	if !found {
 		return false
 	}
-	progressMap.(map[ReqId]*Progress)[p.ReqId] = p
+	progressMap.(map[ProgressId]*Progress)[progressIdType] = p
 	return true
 }
 
@@ -518,13 +513,13 @@ func saveProgressToEtcd(p *Progress) error {
 	return nil
 }
 
-func getProgressFromCache(requestId ReqId) (*Progress, bool) {
+func getProgressFromCache(requestId ProgressId) (*Progress, bool) {
 	c := cache.GetCacheInstance()
 	progress, found := c.Get(string(requestId))
-	if found {
-		return progress.(map[ReqId]*Progress)[requestId], found
+	if !found {
+		return nil, false
 	}
-	return nil, false
+	return progress.(map[ProgressId]*Progress)[requestId], found
 }
 
 func getProgressFromEtcd(requestId ReqId) (*Progress, error) {
