@@ -106,7 +106,7 @@ func VisitDag(dag *Dag, nodeId DagNodeId, nodes []DagNode, excludeEnd bool) []Da
 	case *EndNode:
 		if !excludeEnd { // move end node to the end of the visit list
 			endNode := n
-			// get index of end node to remove
+			// get index of end node to remove\
 			indexToRemove := -1
 			for i, dagNode := range nodes {
 				if isEndNode(dagNode) {
