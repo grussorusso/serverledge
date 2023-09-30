@@ -9,7 +9,12 @@ lb:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/main.go
 
 serverledge-cli:
-	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/cli/main.go
+	cd internal
+	cp -r . ../temp
+	cd ../temp
+	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/cli/main.go internal/fc/*.go
+	cd ..
+	rm -rf temp
 
 executor:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/executor.go

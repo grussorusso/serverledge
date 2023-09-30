@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/fc"
-	"github.com/grussorusso/serverledge/internal/parser"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -141,21 +140,21 @@ func Init() {
 	// Function composition
 
 	rootCmd.AddCommand(compInvokeCmd)
-	invokeCmd.Flags().StringVarP(&compName, "function-composition", "m", "", "name of the function composition")
-	invokeCmd.Flags().Float64VarP(&qosMaxRespT, "fc-resptime", "", -1.0, "Max. response time (optional)")
-	invokeCmd.Flags().StringVarP(&qosClass, "fc-class", "", "", "QoS class (optional)")
-	invokeCmd.Flags().StringSliceVarP(&params, "fc-param", "", nil, "Function parameter: <name>:<value>")
-	invokeCmd.Flags().StringVarP(&paramsFile, "fc-params_file", "", "", "File containing parameters (JSON)")
-	invokeCmd.Flags().BoolVarP(&asyncInvocation, "fc-async", "", false, "Asynchronous invocation")
+	compInvokeCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function composition")
+	compInvokeCmd.Flags().Float64VarP(&qosMaxRespT, "resptime", "r", -1.0, "Max. response time (optional)")
+	compInvokeCmd.Flags().StringVarP(&qosClass, "class", "c", "", "QoS class (optional)")
+	compInvokeCmd.Flags().StringSliceVarP(&params, "param", "p", nil, "Composition parameter: <name>:<value>")
+	compInvokeCmd.Flags().StringVarP(&paramsFile, "params_file", "j", "", "File containing parameters (JSON) for composition")
+	compInvokeCmd.Flags().BoolVarP(&asyncInvocation, "async", "a", false, "Asynchronous composition invocation")
 
 	rootCmd.AddCommand(compCreateCmd)
 	compCreateCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function")
-	compCreateCmd.Flags().StringVarP(&yamlSrc, "afcl", "y", "", "source YAML file that defines for the function composition with AFCL syntax (if specified, jsonSrc must not be set)")
-	compCreateCmd.Flags().StringVarP(&jsonSrc, "aws", "j", "", "source JSON file  that defines for the function composition with AWS Step Function syntax (if specified, yamlSrc must not be set)")
+	compCreateCmd.Flags().StringVarP(&yamlSrc, "afcl", "y", "", "source YAML file that defines for the function composition with AFCL syntax (if specified, 'aws' must not be set)")
+	compCreateCmd.Flags().StringVarP(&jsonSrc, "aws", "j", "", "source JSON file  that defines for the function composition with AWS Step Function syntax (if specified, 'afcl' must not be set)")
 	compCreateCmd.Flags().BoolVarP(&removeFnOnDelete, "remove-function-on-delete", "r", false, "when the function composition is deleted, if this flag is true, the associated function will also be deleted")
 
 	rootCmd.AddCommand(compDeleteCmd)
-	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "c", "", "name of the function composition")
+	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function composition")
 
 	rootCmd.AddCommand(compListCmd)
 
@@ -352,6 +351,7 @@ func poll(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
+	fmt.Println()
 }
 
 // ============== FUNTION COMPOSITION ===============
@@ -407,7 +407,7 @@ func invokeFunctionComposition(cmd *cobra.Command, args []string) {
 	}
 
 	// Send invocation request
-	url := fmt.Sprintf("http://%s:%d/play/%s", ServerConfig.Host, ServerConfig.Port, funcName)
+	url := fmt.Sprintf("http://%s:%d/play/%s", ServerConfig.Host, ServerConfig.Port, compName)
 	resp, err := utils.PostJson(url, invocationBody)
 	if err != nil {
 		fmt.Printf("Invocation failed: %v", err)
@@ -430,21 +430,21 @@ func createComposition(cmd *cobra.Command, args []string) {
 	var dag fc.Dag
 	var funcSlice []*function.Function
 	if yamlSrc != "" {
-		dag1, funcs, err := parser.ReadFromYAML(yamlSrc)
-		dag = *dag1
-		funcSlice = funcs
+		dag1, funcs, err := ReadFromYAML(yamlSrc)
 		if err != nil {
 			fmt.Printf("%v", err)
 			os.Exit(3)
 		}
+		dag = *dag1
+		funcSlice = funcs
 	} else if jsonSrc != "" {
-		dag1, funcs, err := parser.ReadFromJSON(jsonSrc)
-		dag = *dag1
-		funcSlice = funcs
+		dag1, funcs, err := ReadFromJSON(jsonSrc)
 		if err != nil {
 			fmt.Printf("%v", err)
 			os.Exit(3)
 		}
+		dag = *dag1
+		funcSlice = funcs
 	}
 	// getting all functions. Todo: register all functions
 
@@ -468,17 +468,19 @@ func createComposition(cmd *cobra.Command, args []string) {
 }
 
 func deleteComposition(cmd *cobra.Command, args []string) {
+	if compName == "" {
+		cmd.Help()
+		os.Exit(1)
+	}
 	request := fc.FunctionComposition{
-		Name:               compName,
-		RemoveFnOnDeletion: removeFnOnDelete,
+		Name: compName,
 	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 		os.Exit(2)
 	}
-	// TODO: capire come si fa a passare il flag RemoveFnOnDeletion!!!
-	url := fmt.Sprintf("http://%s:%d/uncompose/%v", ServerConfig.Host, ServerConfig.Port, removeFnOnDelete)
+	url := fmt.Sprintf("http://%s:%d/uncompose", ServerConfig.Host, ServerConfig.Port)
 	resp, err := utils.PostJson(url, requestBody)
 	if err != nil {
 		fmt.Printf("Deletion request failed: %v\n", err)

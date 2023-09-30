@@ -544,6 +544,10 @@ func CreateSequenceDag(funcs ...*function.Function) (*Dag, error) {
 	return builder.Build()
 }
 
+func LambdaSequenceDag(funcs ...*function.Function) func() (*Dag, error) {
+	return func() (*Dag, error) { return CreateSequenceDag(funcs...) }
+}
+
 // CreateChoiceDag if successful, returns a dag with one Choice Node with each branch consisting of the same sub-dag
 func CreateChoiceDag(dagger func() (*Dag, error), condArr ...Condition) (*Dag, error) {
 	return NewDagBuilder().
