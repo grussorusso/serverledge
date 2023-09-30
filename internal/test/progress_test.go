@@ -6,6 +6,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/fc"
 	u "github.com/grussorusso/serverledge/utils"
 	"testing"
+	"time"
 )
 
 func simpleProgress(t *testing.T) (*fc.Progress, *fc.Dag) {
@@ -137,6 +138,13 @@ func TestProgressCache(t *testing.T) {
 		u.AssertTrueMsg(t, found, "progress not found after update")
 		u.AssertTrueMsg(t, progress.Equals(retrievedProgress), "progresses don't match after update")
 
+		err = fc.DeleteProgress(progress.ReqId)
+		u.AssertNilMsg(t, err, "failed to delete progress")
+
+		time.Sleep(200 * time.Millisecond)
+
+		_, found = fc.RetrieveProgress(progress.ReqId)
+		u.AssertFalseMsg(t, found, "progress should have been deleted")
 	}
 }
 

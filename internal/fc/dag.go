@@ -229,11 +229,12 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
 	requestId := ReqId(r.ReqId)
-	input, err := partialDataCache.Retrieve(requestId, nodeId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
+
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
 	}
-	err = simpleNode.ReceiveInput(input)
+	err = simpleNode.ReceiveInput(partialData.Data)
 	if err != nil {
 		return false, err
 	}
@@ -252,7 +253,10 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	}
 
 	// saving partial data and updating progress
-	partialDataCache.Save(pd)
+	err = SavePartialData(pd)
+	if err != nil {
+		return false, err
+	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
 		return false, err
@@ -266,11 +270,11 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	var pd *PartialData
 	nodeId := choice.GetId()
 	requestId := ReqId(r.ReqId)
-	input, err := partialDataCache.Retrieve(requestId, nodeId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
 	}
-	err = choice.ReceiveInput(input)
+	err = choice.ReceiveInput(partialData.Data)
 	if err != nil {
 		return false, err
 	}
@@ -293,7 +297,10 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	}
 
 	// saving partial data and updating progress
-	partialDataCache.Save(pd)
+	err = SavePartialData(pd)
+	if err != nil {
+		return false, err
+	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
 		return false, err
@@ -356,8 +363,11 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
 		partialDatas = append(partialDatas, pd)
 		pd.Data = output
-		partialDataCache.Save(pd)
-		err := progress.CompleteNode(parallelDagNodes[i].GetId())
+		err := SavePartialData(pd)
+		if err != nil {
+			return err
+		}
+		err = progress.CompleteNode(parallelDagNodes[i].GetId())
 		if err != nil {
 			return err
 		}

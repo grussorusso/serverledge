@@ -179,13 +179,16 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	// initialize struct progress from dag
 	progress := InitProgressRecursive(requestId, &fc.Workflow)
 	// initialize partial data cache
-	partialDataCache.InitNewRequest(requestId)
+	// partialDataCache.InitNewRequest(requestId)
 	// initialize partial data with input, directly from the Start.Next node
 	pd := NewPartialData(requestId, fc.Workflow.Start.Next, "nil", input)
 	pd.Data = input
 	// saving partial data and progress to cache
-	partialDataCache.Save(pd)
-	err := SaveProgress(progress)
+	err := SavePartialData(pd)
+	if err != nil {
+		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save partial data %v", err)
+	}
+	err = SaveProgress(progress)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
@@ -199,9 +202,9 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		}
 	}
 	// retrieving output of  execution
-	result, err := partialDataCache.Retrieve(requestId, fc.Workflow.End.GetId())
+	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId())
 	if err != nil {
-		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve result %v", err)
+		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
 	// deleting progresses and partial datas from cache and etcd
@@ -209,9 +212,12 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	partialDataCache.Purge(requestId)
+	_, err = DeleteAllPartialData(requestId)
+	if err != nil {
+		return CompositionExecutionReport{}, err
+	}
 
-	r.ExecReport.Result = result
+	r.ExecReport.Result = result.Data
 	return r.ExecReport, nil
 }
 
