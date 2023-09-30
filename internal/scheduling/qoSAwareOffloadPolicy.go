@@ -8,11 +8,11 @@ import (
 
 // EdgePolicy supports only Edge-Edge offloading
 
-type OffloadToCluster struct{}
+type QoSAwareOffloadPolicy struct{}
 
 var engine decisionEngine
 
-func (p *OffloadToCluster) Init() {
+func (p *QoSAwareOffloadPolicy) Init() {
 	// initialize decision engine
 	version := config.GetString(config.SCHEDULING_POLICY_VERSION, "flux")
 	if version == "mem" {
@@ -24,7 +24,7 @@ func (p *OffloadToCluster) Init() {
 	engine.InitDecisionEngine()
 }
 
-func (p *OffloadToCluster) OnCompletion(r *scheduledRequest) {
+func (p *QoSAwareOffloadPolicy) OnCompletion(r *scheduledRequest) {
 	if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD_CLOUD {
 		engine.Completed(r, OFFLOADED_CLOUD)
 	} else if r.ExecReport.SchedAction == SCHED_ACTION_OFFLOAD_EDGE {
@@ -34,7 +34,7 @@ func (p *OffloadToCluster) OnCompletion(r *scheduledRequest) {
 	}
 }
 
-func (p *OffloadToCluster) OnArrival(r *scheduledRequest) {
+func (p *QoSAwareOffloadPolicy) OnArrival(r *scheduledRequest) {
 	dec := engine.Decide(r)
 
 	if dec == LOCAL_EXEC_REQUEST {
