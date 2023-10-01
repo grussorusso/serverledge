@@ -59,6 +59,21 @@ func pickEdgeNodeWithWarmForOffloading(r *scheduledRequest) (url string) {
 	return ""
 }
 
+func pickCloudNodeForOffloading() (url string) {
+	cloudServersInfoMap, err := registration.Reg.GetAll(true)
+	if err != nil {
+		return ""
+	}
+
+	// search first available node
+	for _, values := range cloudServersInfoMap {
+		nodeInfo := registration.GetNodeAddresses(values)
+		return nodeInfo.NodeAddress
+	}
+
+	return ""
+}
+
 /* FIXME never used - functions to get warm containers in cloud nodes and to get rtt between edge nodes
 func getWarmContainersInCloud(r *scheduledRequest) int {
 	cloudServersMap := registration.Reg.CloudServersMap
