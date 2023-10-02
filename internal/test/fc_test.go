@@ -300,3 +300,85 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 
 	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
+
+// TestInvokeFC_Concurrent executes concurrently m times a Sequential Dag of length N, where each node executes a simple increment function.
+func TestInvokeFC_Concurrent(t *testing.T) {
+
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+
+	fcName := "test"
+	// CREATE - we create a test function composition
+	length := 5
+	f, fArr, err := initializeSameFunctionSlice(length, "py")
+	u.AssertNil(t, err)
+	builder := fc.NewDagBuilder()
+	for i := 0; i < length; i++ {
+		builder.AddSimpleNodeWithId(f, fmt.Sprintf("simple %d", i))
+	}
+	dag, errDag := builder.Build()
+	u.AssertNil(t, errDag)
+
+	fcomp := fc.NewFC(fcName, *dag, fArr, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	concurrencyLevel := 10
+	start := make(chan int)
+	results := make(map[int]chan interface{})
+	errors := make(map[int]chan error)
+	// initialize channels
+	for i := 0; i < concurrencyLevel; i++ {
+		results[i] = make(chan interface{})
+		errors[i] = make(chan error)
+	}
+
+	fmt.Println("initializing goroutines...")
+	for i := 0; i < concurrencyLevel; i++ {
+		resultChan := results[i]
+		errChan := errors[i]
+		// INVOKE - we call the function composition concurrently m times
+		go func(i int, resultChan chan interface{}, errChan chan error, start chan int) {
+			params := make(map[string]interface{})
+			params[f.Signature.GetInputs()[0].Name] = i
+
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine %d", i), &fcomp, params)
+			// wait until all goroutines are ready
+			<-start
+			fmt.Printf("goroutine %d started invoking\n", i)
+			// return error
+			resultMap, err2 := fcomp.Invoke(request)
+			errChan <- err2
+			// return result
+			output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
+			fmt.Printf("goroutine %d - result: %d\n", i, resultMap.Result["result"])
+			resultChan <- output
+		}(i, resultChan, errChan, start)
+	}
+	// let's start all the goroutines at the same time
+	for i := 0; i < concurrencyLevel; i++ {
+		start <- 1
+	}
+
+	// and wait for errors (hopefully not) and results
+	for i, e := range errors {
+		fmt.Printf("waiting for errors for goroutine %d...\n", i)
+		maybeError := <-e
+		u.AssertNilMsg(t, maybeError, "error in goroutine")
+	}
+
+	for i, r := range results {
+		fmt.Printf("waiting for result for goroutine %d...\n", i)
+		output := <-r
+		fmt.Printf("result of goroutine %d = %d\n", i, output.(int))
+		u.AssertEqualsMsg(t, length+i, output.(int), fmt.Sprintf("output of goroutine %d is wrong", i))
+	}
+
+	fmt.Println("deleting all composition and functions...")
+	// cleaning up function composition and function
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+
+	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
+}

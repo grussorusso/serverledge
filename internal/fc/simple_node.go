@@ -58,7 +58,7 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
 	}
-	fmt.Printf("executing simple node %s\n", s.Id)
+	fmt.Printf("executing simple node %s for request %s with input %v\n", s.Id, compRequest.ReqId, s.input)
 	// creates the function if not exists. Maybe someone deleted by accident the function before starting the dag.
 	if !funct.Exists() {
 		errNotSaved := funct.SaveToEtcd()
@@ -117,7 +117,7 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	if !r.ExecReport.IsWarmStart {
 		cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)
 	}
-	fmt.Printf("result: %v %s\n", r.ExecReport.Result, cs)
+	fmt.Printf("Request %s - result of simple node %s: %v %s\n", r.ReqId, s.Id, r.ExecReport.Result, cs)
 	return m, nil
 }
 
