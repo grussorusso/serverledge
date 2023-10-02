@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/utils"
 	"math"
+	"sync"
 	"time"
 )
 
 type ProgressId string
+
+var progressMutex = &sync.Mutex{}
 
 func newProgressId(reqId ReqId) ProgressId {
 	return ProgressId("progress_" + reqId)
@@ -26,7 +30,7 @@ type Progress struct {
 }
 
 type ProgressCache struct {
-	progresses map[ProgressId]*Progress
+	progresses hashmap.Map[ProgressId, *Progress] // a lock-free thread-safe map
 }
 
 type DagNodeInfo struct {
@@ -479,17 +483,21 @@ func getProgressEtcdKey(reqId ReqId) string {
 
 func saveProgressInCache(p *Progress) bool {
 	c := cache.GetCacheInstance()
+	progressMutex.Lock()
+	defer progressMutex.Unlock()
+
 	progressIdType := newProgressId(p.ReqId)
 	progressId := string(progressIdType)
+
 	if _, found := c.Get(progressId); !found {
-		progressMap := make(map[ProgressId]*Progress)
+		progressMap := hashmap.New[ProgressId, *Progress]()
 		c.Set(progressId, progressMap, cache.NoExpiration)
 	}
 	progressMap, found := c.Get(string(progressIdType))
 	if !found {
 		return false
 	}
-	progressMap.(map[ProgressId]*Progress)[progressIdType] = p
+	progressMap.(*hashmap.Map[ProgressId, *Progress]).Set(progressIdType, p)
 	return true
 }
 
@@ -513,13 +521,15 @@ func saveProgressToEtcd(p *Progress) error {
 	return nil
 }
 
-func getProgressFromCache(requestId ProgressId) (*Progress, bool) {
+func getProgressFromCache(progressId ProgressId) (*Progress, bool) {
 	c := cache.GetCacheInstance()
-	progress, found := c.Get(string(requestId))
+	progressMutex.Lock()
+	defer progressMutex.Unlock()
+	progress, found := c.Get(string(progressId))
 	if !found {
 		return nil, false
 	}
-	return progress.(map[ProgressId]*Progress)[requestId], found
+	return progress.(*hashmap.Map[ProgressId, *Progress]).Get(progressId)
 }
 
 func getProgressFromEtcd(requestId ReqId) (*Progress, error) {

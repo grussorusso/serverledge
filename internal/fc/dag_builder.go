@@ -77,6 +77,30 @@ func (b *DagBuilder) AddSimpleNode(f *function.Function) *DagBuilder {
 	return b
 }
 
+// AddSimpleNodeWithId connects a simple node with the specified id to the previous node
+func (b *DagBuilder) AddSimpleNodeWithId(f *function.Function, id string) *DagBuilder {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		fmt.Printf("AddSimpleNode skipped, because of %d error(s) in dagBuilder\n", nErrors)
+		return b
+	}
+
+	simpleNode := NewSimpleNode(f.Name)
+	simpleNode.Id = DagNodeId(id)
+	simpleNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(simpleNode)
+	err := b.dag.chain(b.prevNode, simpleNode)
+	if err != nil {
+		b.appendError(err)
+		return b
+	}
+
+	b.prevNode = simpleNode
+	fmt.Printf("Added simple node to Dag with id %s\n", id)
+	return b
+}
+
 // AddChoiceNode connects a choice node to the previous node. From the choice node, multiple branch are created and each one of those must be fully defined
 func (b *DagBuilder) AddChoiceNode(conditions ...Condition) *ChoiceBranchBuilder {
 	nErrors := len(b.errors)

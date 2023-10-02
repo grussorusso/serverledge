@@ -71,7 +71,7 @@ func (fp *ContainerPool) getWarmContainer(f *function.Function) (container.Conta
 }
 
 func (fp *ContainerPool) putBusyContainer(contID container.ContainerID, f *function.Function) {
-	log.Printf("storing in the busy pool the container %s for func '%s' with runtime '%s'\n", contID, f.Name, f.Runtime)
+	// log.Printf("storing in the busy pool the container %s for func '%s' with runtime '%s'\n", contID, f.Name, f.Runtime)
 	fp.busy.PushBack(busyContainer{ // creating
 		Function: f.Name,
 		Runtime:  f.Runtime,
@@ -82,7 +82,7 @@ func (fp *ContainerPool) putBusyContainer(contID container.ContainerID, f *funct
 func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, busyContainer busyContainer, expiration int64) {
 	funcName := busyContainer.Function
 	runtime := busyContainer.Runtime
-	fmt.Printf("storing in the ready pool warm container %s for func '%s'\n", contID, funcName)
+	// fmt.Printf("storing in the ready pool warm container %s for func '%s'\n", contID, funcName)
 
 	fp.ready.PushBack(warmContainer{ // creates warmContainer
 		contID:     contID,

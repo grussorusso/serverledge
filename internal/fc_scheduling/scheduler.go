@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TODO: offload the entire node when is cloud only
 func SubmitCompositionRequest(fcReq *fc.CompositionRequest) error {
 	executionReport, err := fcReq.Fc.Invoke(fcReq)
 	if err != nil {
@@ -15,6 +16,8 @@ func SubmitCompositionRequest(fcReq *fc.CompositionRequest) error {
 	return nil
 }
 
+// TODO: offload the entire node.
+// TODO: make sure the requestId is the one returned from the serverledge node that will execute
 func SubmitAsyncCompositionRequest(fcReq *fc.CompositionRequest) {
 	executionReport, errInvoke := fcReq.Fc.Invoke(fcReq)
 	if errInvoke != nil {
