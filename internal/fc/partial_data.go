@@ -15,7 +15,7 @@ import (
 
 type PartialDataId string
 
-var mut = &sync.Mutex{}
+var pdMutex = &sync.Mutex{}
 
 func newPartialDataId(reqId ReqId) PartialDataId {
 	return PartialDataId("partialData_" + reqId)
@@ -186,14 +186,14 @@ func DeleteAllPartialData(reqId ReqId) (int64, error) {
 	}
 	ctx := context.TODO()
 
-	mut.Lock()
+	pdMutex.Lock()
 	// remove the progress from ETCD
 	removed, err := cli.Delete(ctx, getPartialDataEtcdKey(reqId, ""), clientv3.WithPrefix())
 	if err != nil {
-		mut.Unlock()
+		pdMutex.Unlock()
 		return 0, fmt.Errorf("failed partialData delete: %v", err)
 	}
-	mut.Unlock()
+	pdMutex.Unlock()
 
 	// Remove the progress from the local cache
 	cache.GetCacheInstance().Delete(string(newPartialDataId(reqId)))
@@ -255,8 +255,8 @@ func savePartialDataToEtcd(pd *PartialData) error {
 	if err != nil {
 		return fmt.Errorf("could not marshal progress: %v", err)
 	}
-	mut.Lock()
-	defer mut.Unlock()
+	pdMutex.Lock()
+	defer pdMutex.Unlock()
 	// saves the json object into etcd
 	_, err = cli.Put(ctx, getPartialDataEtcdKey(pd.ReqId, pd.ForNode), string(payload))
 	if err != nil {
@@ -288,13 +288,13 @@ func getPartialDataFromEtcd(requestId ReqId, nodeId DagNodeId) ([]*PartialData, 
 	defer cancel()
 	key := getPartialDataEtcdKey(requestId, nodeId)
 	println("getting key from etcd: ", key)
-	mut.Lock()
+	pdMutex.Lock()
 	getResponse, err := cli.Get(ctx, key)
 	if err != nil || len(getResponse.Kvs) < 1 {
-		mut.Unlock()
+		pdMutex.Unlock()
 		return nil, fmt.Errorf("failed to retrieve partialDatas for requestId: %s", key)
 	}
-	mut.Unlock()
+	pdMutex.Unlock()
 	partialDatas := make([]*PartialData, 0, len(getResponse.Kvs))
 	for _, v := range getResponse.Kvs {
 		var partialData *PartialData
@@ -315,14 +315,14 @@ func getAllPartialDataFromEtcd(requestId ReqId) (map[DagNodeId][]*PartialData, e
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	mut.Lock()
 	key := getPartialDataEtcdKey(requestId, "") // we get only the request prefix, so we retrieve all data
+	pdMutex.Lock()
 	partialDataResponse, err := cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil || len(partialDataResponse.Kvs) < 1 {
-		mut.Unlock()
+		pdMutex.Unlock()
 		return nil, fmt.Errorf("failed to retrieve partialDataMap for requestId: %s", key)
 	}
-	mut.Unlock()
+	pdMutex.Unlock()
 
 	partialDataMap := make(map[DagNodeId][]*PartialData)
 	for _, kv := range partialDataResponse.Kvs {

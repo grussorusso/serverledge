@@ -465,12 +465,14 @@ func DeleteProgress(reqId ReqId) error {
 		return fmt.Errorf("failed to connect to etcd: %v", err)
 	}
 	ctx := context.TODO()
+	progressMutex.Lock()
 	// remove the progress from ETCD
 	dresp, err := cli.Delete(ctx, getProgressEtcdKey(reqId))
 	if err != nil || dresp.Deleted != 1 {
+		progressMutex.Unlock()
 		return fmt.Errorf("failed progress delete: %v", err)
 	}
-
+	progressMutex.Unlock()
 	// Remove the progress from the local cache
 	cache.GetCacheInstance().Delete(string(newProgressId(reqId)))
 
@@ -483,8 +485,6 @@ func getProgressEtcdKey(reqId ReqId) string {
 
 func saveProgressInCache(p *Progress) bool {
 	c := cache.GetCacheInstance()
-	progressMutex.Lock()
-	defer progressMutex.Unlock()
 
 	progressIdType := newProgressId(p.ReqId)
 	progressId := string(progressIdType)
@@ -514,7 +514,10 @@ func saveProgressToEtcd(p *Progress) error {
 		return fmt.Errorf("could not marshal progress: %v", err)
 	}
 	// saves the json object into etcd
-	_, err = cli.Put(ctx, getProgressEtcdKey(p.ReqId), string(payload))
+	key := getProgressEtcdKey(p.ReqId)
+	progressMutex.Lock()
+	defer progressMutex.Unlock()
+	_, err = cli.Put(ctx, key, string(payload))
 	if err != nil {
 		return fmt.Errorf("failed etcd Put: %v", err)
 	}
@@ -540,10 +543,13 @@ func getProgressFromEtcd(requestId ReqId) (*Progress, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	key := getProgressEtcdKey(requestId)
+	progressMutex.Lock()
 	getResponse, err := cli.Get(ctx, key)
 	if err != nil || len(getResponse.Kvs) < 1 {
+		progressMutex.Unlock()
 		return nil, fmt.Errorf("failed to retrieve progress for requestId: %s", key)
 	}
+	progressMutex.Unlock()
 
 	var progress Progress
 	err = json.Unmarshal(getResponse.Kvs[0].Value, &progress)
