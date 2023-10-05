@@ -244,7 +244,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 		return false, err
 	}
 	// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
-	<-types.NodeDoneChan
+	//<-types.NodeDoneChan
 
 	pd = NewPartialData(requestId, simpleNode.GetNext()[0], nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
@@ -375,7 +375,6 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	return nil
 }
 
-// TODO: assicurarsi che si esegua in parallelo
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
 	progress, _ := RetrieveProgress(requestId)

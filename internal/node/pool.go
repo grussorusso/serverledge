@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/types"
 	"log"
 	"time"
 
@@ -196,10 +195,10 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function, isInCo
 	releaseResources(f.CPUDemand, 0)
 	// only in compositions, we send to a channel a message so that the next node can execute
 	if isInComposition {
-		go func() {
-			types.NodeDoneChan <- "ok"
-			fmt.Printf("Released resources. Now: %v\n", &Resources)
-		}()
+		//go func() {
+		//	types.NodeDoneChan <- "ok"
+		//	fmt.Printf("Released resources. Now: %v\n", &Resources)
+		//}()
 	}
 }
 

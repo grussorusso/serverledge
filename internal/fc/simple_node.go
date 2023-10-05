@@ -26,6 +26,7 @@ type SimpleNode struct {
 	OutputTo   DagNodeId
 	Func       string
 	IsParallel bool
+	inputMutex sync.Mutex // this is not marshaled
 	// Request   *function.Request
 	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
@@ -36,6 +37,7 @@ func NewSimpleNode(f string) *SimpleNode {
 		NodeType:   Simple,
 		Func:       f,
 		IsParallel: false,
+		inputMutex: sync.Mutex{},
 	}
 }
 
@@ -66,8 +68,10 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	}
 	// the rest of the code is similar to a single function execution
 	now := time.Now()
+	requestId := fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], now.Nanosecond())
+	s.inputMutex.Lock()
 	r := &function.Request{
-		ReqId:   fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], now.Nanosecond()),
+		ReqId:   requestId,
 		Fun:     funct,
 		Params:  s.input,
 		Arrival: now,
@@ -80,6 +84,7 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		Async:           false,
 		IsInComposition: true,
 	}
+	s.inputMutex.Unlock()
 
 	// executes the function, waiting for the result
 	err := scheduling.SubmitRequest(r)
@@ -197,7 +202,9 @@ func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 			// and replace with the input entry
 			output[def.Name] = val
 			// save the output map in the input of the node
+			s.inputMutex.Lock()
 			s.input = output
+			s.inputMutex.Unlock()
 		} else {
 			// otherwise if no one of the entry typechecks we are doomed
 			return fmt.Errorf("no output entry input-checks with the next function")

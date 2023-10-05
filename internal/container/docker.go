@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"sync"
 	//	"github.com/docker/docker/pkg/stdcopy"
 )
 
@@ -99,14 +100,17 @@ func (cf *DockerFactory) Destroy(contID ContainerID) error {
 	return cf.cli.ContainerRemove(cf.ctx, contID, types.ContainerRemoveOptions{Force: true})
 }
 
-func (cf *DockerFactory) HasImage(image string) bool {
+var mutex = sync.Mutex{}
 
+func (cf *DockerFactory) HasImage(image string) bool {
+	mutex.Lock()
 	list, err := cf.cli.ImageList(context.TODO(), types.ImageListOptions{
 		All:            false,
 		Filters:        filters.Args{},
 		SharedSize:     false,
 		ContainerCount: false,
 	})
+	mutex.Unlock()
 	if err != nil {
 		fmt.Printf("image list error: %v\n", err)
 		return false
