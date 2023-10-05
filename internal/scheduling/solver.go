@@ -160,7 +160,7 @@ func solve(m map[string]*functionInfo) {
 
 	log.Println("Evaluation took: ", response.GetTimeTaken())
 	res := response.GetFResponse()
-	log.Println("response: ", res)
+	// FIXME REMOVE log.Println("response: ", res)
 
 	for _, r := range res {
 		fInfo, prs := m[r.GetName()]

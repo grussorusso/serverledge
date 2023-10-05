@@ -104,12 +104,12 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	servers := make(map[string]string)
 	for _, s := range resp.Kvs {
 		servers[string(s.Key)] = string(s.Value)
-		//audit todo delete the next line
-		if remotes {
+		//TODO AUDIT delete the next line
+		/*if remotes {
 			log.Printf("found remote server at: %s", servers[string(s.Key)])
 		} else {
 			log.Printf("found edge server at: %s", servers[string(s.Key)])
-		}
+		}*/
 	}
 
 	return servers, nil
