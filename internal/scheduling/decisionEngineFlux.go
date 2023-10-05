@@ -75,10 +75,22 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	if !r.CanDoOffloading {
 		// Can be executed only locally or dropped
-		pD = pD / (pD + pL)
-		pL = pL / (pD + pL)
-		pC = 0
-		pE = 0
+		if pL == 0 && pD == 0 && canExecute(r.Fun) {
+			pL = 1
+			pD = 0
+			pC = 0
+			pE = 0
+		} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
+			pL = 0
+			pD = 1
+			pC = 0
+			pE = 0
+		} else {
+			pD = pD / (pD + pL)
+			pL = pL / (pD + pL)
+			pC = 0
+			pE = 0
+		}
 	} else if !canExecute(r.Fun) {
 		// Node can't execute function locally
 		if pD == 0 && pC == 0 && pE == 0 {
