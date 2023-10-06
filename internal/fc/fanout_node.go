@@ -34,7 +34,7 @@ type ScatterMode int
 
 const (
 	RoundRobin                    = iota // copies each map entry in an unordered, round-robin manner, so that more or less all branches have the same number of input
-	SplitEqually                  = iota // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
+	SplitEqually                         // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
 	OneMapEntryForEachBranch             // Given N branch, gives one entry in an unordered manner to one branch. If there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
 	OneMapArrayEntryForEachBranch        // Given N branch, gives each array entry in an ordered manner to one branch. When there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
 )
@@ -95,7 +95,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		output = nil
 		err = fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
 	}
-	respAndDuration := time.Now().Sub(t0).Seconds()
+	respAndDuration := time.Now().Sub(t0).Seconds() // TODO: verifica se usi second o milliseconds altrove
 	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
