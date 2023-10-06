@@ -230,9 +230,9 @@ func (fc *FunctionComposition) Delete() error {
 	ctx := context.TODO()
 	if fc.RemoveFnOnDeletion {
 		for _, f := range fc.Functions {
-			err := f.Delete()
+			err = f.Delete()
 			if err != nil {
-				return fmt.Errorf("failed to delete function %s associated to function composition %s: %v", f.Name, fc.Name, err)
+				fmt.Printf("failed to delete function %s associated to function composition %s: %v", f.Name, fc.Name, err)
 			}
 		}
 	}
