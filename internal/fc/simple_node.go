@@ -147,7 +147,9 @@ func (s *SimpleNode) ReceiveInput(input map[string]interface{}) error {
 	if err != nil {
 		return fmt.Errorf("error while receiving input: %v", err)
 	}
+	s.inputMutex.Lock()
 	s.input = input
+	s.inputMutex.Unlock()
 	return nil
 }
 
