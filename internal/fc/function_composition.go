@@ -212,11 +212,11 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	/*_, err = DeleteAllPartialData(requestId)
+	removed, err := DeleteAllPartialData(requestId)
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	*/
+	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s", removed, requestId)
 	r.ExecReport.Result = result.Data
 	return r.ExecReport, nil
 }
