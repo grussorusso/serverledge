@@ -24,7 +24,7 @@ const PORT = 1323
 const AREA = "ROME"
 
 // use it to avoid running long running tests
-const INTEGRATION_TEST = false
+const INTEGRATION_TEST = true
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
@@ -123,20 +123,13 @@ func startReliably(startScript string, stopScript string, msg string) error {
 // run the bash script to initialize serverledge
 func setupServerledge() (*registration.Registry, *echo.Echo, error) {
 	err1 := startReliably("../../scripts/start-etcd.sh", "../../scripts/stop-etcd.sh", "ETCD")
-	// Optional:
-	//err2 := startReliably("../../scripts/start-influxdb.sh", "../../scripts/stop-influxdb.sh", "Influx")
-	// err3 := startReliably("../../scripts/start-solver.sh", "../../scripts/stop-solver.sh", "Solver")
-
 	registry, echoServer := testStartServerledge(false)
-	return registry, echoServer, u.ReturnNonNilErr(err1) //, err2, err3)
+	return registry, echoServer, u.ReturnNonNilErr(err1)
 }
 
 // run the bash script to stop serverledge
 func teardownServerledge(registry *registration.Registry, e *echo.Echo) error {
-	cmd1 := exec.CommandContext(context.Background(), "/bin/sh", "../../scripts/stop-etcd.sh")
-	// Optional:
-	//cmd2 := exec.CommandContext(context.Background(), "/bin/sh", "../../scripts/stop-influxdb.sh")
-	//cmd3 := exec.CommandContext(context.Background(), "/bin/sh", "../../scripts/stop-solver.sh")
+	cmd1 := exec.CommandContext(context.Background(), "/bin/sh", "../../scripts/remove-etcd.sh")
 
 	node.Resources.Lock()
 	nContainers := len(node.Resources.ContainerPools)
@@ -154,10 +147,6 @@ func teardownServerledge(registry *registration.Registry, e *echo.Echo) error {
 
 	errRegistry := registry.Deregister()
 	err1 := cmd1.Run()
-	fmt.Println("ETCD stopped")
-	//err3 := cmd2.Run()
-	//fmt.Println("Influx stopped")
-	//err4 := cmd3.Run()
-	//fmt.Println("Solver stopped")
-	return u.ReturnNonNilErr(errEcho, errRegistry, err1) // , err2, err3)
+	fmt.Println("ETCD removed")
+	return u.ReturnNonNilErr(errEcho, errRegistry, err1)
 }

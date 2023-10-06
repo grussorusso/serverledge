@@ -249,7 +249,6 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 // TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_BroadcastFanOut(t *testing.T) {
-	t.Skip() // TODO: correggere
 	if !INTEGRATION_TEST {
 		t.Skip()
 	}
@@ -263,18 +262,12 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 		Build())
 	u.AssertNil(t, errF1)
 
-	fInc, errF2 := initializeJsFunction("inc", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	u.AssertNil(t, errF2)
-
 	width := 3
 	dag, errDag := fc.CreateBroadcastDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(fDouble) }, width)
 	u.AssertNil(t, errDag)
 	dag.Print()
 
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -286,13 +279,11 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	u.AssertNil(t, err2)
 
 	// check multiple result
-	output := resultMap.Result[fInc.Signature.GetOutputs()[0].Name]
-	u.AssertNonNil(t, output) // FIXME: fanin output is null!
-	for _, res := range output.(map[string]interface{}) {
+	output := resultMap.Result
+	u.AssertNonNil(t, output)
+	for _, res := range output {
 		u.AssertEquals(t, 2, res.(int))
 	}
-	// u.AssertNil(t, errConv)
-	fmt.Println(resultMap)
 
 	// cleaning up function composition and functions
 	err3 := fcomp.Delete()

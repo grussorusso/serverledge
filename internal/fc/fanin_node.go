@@ -25,8 +25,8 @@ type FanInNode struct {
 	FanInDegree int
 	Timeout     time.Duration
 	Mode        MergeMode
-	input       map[string]interface{}
-	IsReached   bool
+	input       []map[string]interface{}
+	//IsReached   bool
 }
 
 // FanInChannels is needed because we cannot marshal channels, so we need a different struct, that will be created each time a FanIn is used.
@@ -94,7 +94,7 @@ func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nil
 		FanInDegree: fanInDegree,
 		Timeout:     *timeout,
 		Mode:        mergeMode,
-		IsReached:   false,
+		//IsReached:   false,
 	}
 	createChannels(fanIn.Id, fanInDegree, branchNumbers)
 
@@ -111,60 +111,60 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-// Exec waits all output from previous nodes or return an error after a timeout expires
+// Exec already have all inputs when executing, so it simply merges them with the chosen policy
 func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
-	if !f.IsReached {
-		f.IsReached = true
-	} else {
-		return nil, nil // fmt.Errorf("node is already reached, skip me")
-	}
 	t0 := time.Now()
-	okChan := make(chan bool)
-	// getting outputs
-	go func() {
-		outputs := make(map[int]map[DagNodeId]interface{})
-		channels := getChannelsForFanIn(f.Id)
-		for br, ch := range channels {
-			outputs[br] = <-ch // TODO: no one send to this channel!!!
+
+	fanInOutput := make(map[string]interface{})
+	if f.Mode == AddNewMapEntry { // each map entry should have a different name map[i: map[nameI: valueI]]
+		duplicates := make(map[string]int)
+		for _, inputMap := range f.input {
+			for name, value := range inputMap {
+				num, ok := duplicates[name]
+				duplicates[name] += 1
+				if !ok {
+					fanInOutput[name] = value
+				} else {
+					fanInOutput[fmt.Sprintf("%s_%d", name, num)] = value
+				}
+
+			}
 		}
-		fmt.Println("retrieved all inputs")
-		okChan <- true
-		fanInOutput := make(map[string]interface{})
-		if f.Mode == OneMapEntryForEachBranch {
-			for i, outMap := range outputs {
-				for name, value := range outMap {
-					fanInOutput[fmt.Sprintf("%s_%d", name, i)] = value
+	} else if f.Mode == AddToArrayEntry { // all input maps MUST have exactly one entry with the same name
+		valid := true
+		name := ""
+		for _, inputMap := range f.input {
+			if len(inputMap) != 1 {
+				return nil, fmt.Errorf("fanIn input map does not have 1 element")
+			}
+			for k, value := range inputMap {
+				if name == "" {
+					name = k
+					fanInOutput[name] = make([]interface{}, 0)
+				} else if name != k {
+					valid = false
+					break
+				}
+				fanInOutput[name] = append(fanInOutput[name].([]interface{}), value)
+			}
+			if valid == false {
+				return nil, fmt.Errorf("each fanIn input map must have the same name")
+			}
+		}
+	} else if f.Mode == AddToSetEntry {
+		for _, inputMap := range f.input {
+			for name, value := range inputMap {
+				_, found := fanInOutput[name]
+				if !found {
+					fanInOutput[name] = value
 				}
 			}
-		} else if f.Mode == OneMapArrayEntryForEachBranch {
-			fmt.Println("OneMapArrayEntryForEachBranch not implemented")
-			okChan <- false
-			return
 		}
-		fanInOutputChannel := getOutputChannelForFanIn(f.Id)
-		fanInOutputChannel <- fanInOutput
-
-	}()
-	// implementing timeout
-	cancel := time.AfterFunc(f.Timeout, func() {
-		fmt.Println("timeout elapsed")
-		okChan <- false
-	})
-
-	ok := <-okChan
-	var output map[string]interface{} = nil
-	var err error = nil
-	if ok {
-		cancel.Stop() // stopping timer, we're all good
-		// merging outputs with the chosen mergeMode
-		fanInOutputChannel := getOutputChannelForFanIn(f.Id)
-		output = <-fanInOutputChannel
-	} else {
-		err = fmt.Errorf("fan-in merge failed - timeout occurred")
 	}
+
 	respAndDuration := time.Now().Sub(t0).Seconds()
 	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
-		Result:         fmt.Sprintf("%v", output),
+		Result:         fmt.Sprintf("%v", fanInOutput),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
 		InitTime:       0,
@@ -172,21 +172,25 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{
 		Duration:       respAndDuration,
 		SchedAction:    "",
 	}
-	return output, err
+	return fanInOutput, nil
 }
 
 func (f *FanInNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
-	//if f.OutputTo != nil {
-	//	return errors.New("result already present in node")
-	//}
-
 	f.OutputTo = dagNode
 	return nil
 }
 
+// ReceiveInput simply saves the input map of each previous node into an array of them. Can fail if the input array ends having more maps then fanInDegree
 func (f *FanInNode) ReceiveInput(input map[string]interface{}) error {
-	// TODO: devi ricevere gli input separatamente dai nodi precedenti.
-	f.input = input
+	if f.input == nil {
+		f.input = make([]map[string]interface{}, 0)
+	}
+	f.input = append(f.input, input)
+
+	if len(f.input) > f.FanInDegree {
+		return fmt.Errorf("fan in has more input (%d) than its fanInDegree (%d). Terminating workflow", len(f.input), f.FanInDegree)
+	}
+
 	return nil
 }
 
@@ -196,7 +200,6 @@ func (f *FanInNode) PrepareOutput(dag *Dag, output map[string]interface{}) error
 
 func (f *FanInNode) GetNext() []DagNodeId {
 	// we only have one output
-	// TODO: we should wait for function to complete!
 	arr := make([]DagNodeId, 1)
 	if f.OutputTo == "" {
 		panic("you forgot to initialize OutputTo for FanInNode")

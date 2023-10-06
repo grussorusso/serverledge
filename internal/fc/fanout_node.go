@@ -82,20 +82,38 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	t0 := time.Now()
 	// input -> output: map["input":1] -> map["0":map["input":1], "1":map["input":1]]
 	if f.Type == Broadcast {
-		output = f.input // simply returns input, that will be copied to each subsequent node
-	} else if f.Type == Scatter {
-		// get inputs
-		inputToCopy := f.input
-		scatter := make(map[string]interface{})
+		broadcast := make(map[string]interface{})
 		for i := 0; i < f.FanOutDegree; i++ {
-			scatter[fmt.Sprintf("%d", i)] = inputToCopy // TODO: problem is that the fanout degree is fixed
+			broadcast[fmt.Sprintf("%d", i)] = f.input // simply returns input, that will be copied to each subsequent node
 		}
-		output = scatter
+		output = broadcast
+	} else if f.Type == Scatter { // scatter only accepts a single array with exactly fanOutDegree elements
+		// get inputs
+		if len(f.input) != 1 {
+			err = fmt.Errorf("invalid fanout input size, should only accept one array, but has %d different inputs", len(f.input))
+		} else {
+			for inputName, inputToScatter := range f.input {
+				inputArrayToScatter := inputToScatter.([]any)
+
+				if len(inputArrayToScatter) != f.FanOutDegree {
+					err = fmt.Errorf("input array size (%d) must be equal to fanOutDegree (%d). Check the previous node output", len(inputArrayToScatter), f.FanOutDegree)
+					break
+				}
+
+				scatter := make(map[string]interface{})
+				for i := 0; i < f.FanOutDegree; i++ {
+					scatter[fmt.Sprintf("%d", i)] = inputArrayToScatter[i]
+				}
+				output[inputName] = scatter
+				// there is only one element, so we break now for safety
+				break
+			}
+		}
 	} else {
 		output = nil
 		err = fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
 	}
-	respAndDuration := time.Now().Sub(t0).Seconds() // TODO: verifica se usi second o milliseconds altrove
+	respAndDuration := time.Now().Sub(t0).Seconds()
 	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,

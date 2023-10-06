@@ -122,8 +122,10 @@ func (f *Function) Delete() error {
 	ctx := context.TODO()
 
 	dresp, err := cli.Delete(ctx, f.getEtcdKey())
-	if err != nil || dresp.Deleted != 1 {
+	if err != nil {
 		return fmt.Errorf("Failed Delete: %v", err)
+	} else if dresp.Deleted != 1 {
+		fmt.Printf("no function with key '%s' exists", f.getEtcdKey())
 	}
 
 	// Remove the function from the local cache

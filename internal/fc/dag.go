@@ -9,6 +9,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 )
 
 // used to send output from parallel nodes to fan in node or to the next node
@@ -243,8 +244,6 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	if err != nil {
 		return false, err
 	}
-	// this wait is necessary to prevent a data race between the storing of a container in the ready pool and the execution of the next node (with a different function)
-	//<-types.NodeDoneChan
 
 	pd = NewPartialData(requestId, simpleNode.GetNext()[0], nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
@@ -309,6 +308,46 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	return true, nil
 }
 
+func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *CompositionRequest) (bool, error) {
+	// retrieving input
+	var pd *PartialData
+	nodeId := fanOut.GetId()
+	requestId := ReqId(r.ReqId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
+	if err != nil {
+		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
+	}
+	err = fanOut.ReceiveInput(partialData.Data)
+	if err != nil {
+		return false, err
+	}
+	// executing node
+	output, err := fanOut.Exec(r)
+	if err != nil {
+		return false, err
+	}
+
+	for i, nextNode := range fanOut.GetNext() {
+		pd = NewPartialData(requestId, nextNode, nodeId, output)
+		errSend := fanOut.PrepareOutput(dag, output[fmt.Sprintf("%d", i)].(map[string]interface{}))
+		if errSend != nil {
+			return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.ToString(), errSend)
+		}
+		// saving partial data
+		err = SavePartialData(pd)
+		if err != nil {
+			return false, err
+		}
+	}
+	// and updating progress
+	err = progress.CompleteNode(nodeId)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
@@ -328,13 +367,14 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	for i, node := range parallelDagNodes {
 		go func(i int, node DagNode) {
 			output, err := node.Exec(r)
+			// first send on error, then on output channels
 			if err != nil {
-				outputChannels[i] <- nil
 				errorChannels[i] <- err
+				outputChannels[i] <- nil
 				return
 			}
-			outputChannels[i] <- output
 			errorChannels[i] <- nil
+			outputChannels[i] <- output
 		}(i, node)
 	}
 	// checking errors
@@ -343,6 +383,8 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		err := <-errChan
 		if err != nil {
 			parallelErrors = append(parallelErrors, err)
+			// we do not return now, because we want to quit the goroutines
+			// we also need to check the outputs.
 		}
 	}
 	// retrieving outputs (goroutines should end now)
@@ -375,6 +417,60 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	return nil
 }
 
+func (dag *Dag) executeFanInNode(progress *Progress, fanIn *FanInNode, r *CompositionRequest) (bool, error) {
+	nodeId := fanIn.GetId()
+	requestId := ReqId(r.ReqId)
+
+	// TODO: are you sure it is necessary?
+	//err := progress.PutInWait(fanIn)
+	//if err != nil {
+	//	return false, err
+	//}
+
+	timerElapsed := false
+	timer := time.AfterFunc(fanIn.Timeout, func() {
+		fmt.Println("timeout elapsed")
+		timerElapsed = true
+	})
+
+	// retrieving input
+	var partialDatas []*PartialData
+	ok := false
+	for !ok && !timerElapsed {
+		partialDatas, ok = RetrievePartialData(requestId, nodeId)
+	}
+
+	fired := timer.Stop()
+	if !fired {
+		return false, fmt.Errorf("fan in timeout occurred")
+	}
+
+	for _, partialData := range partialDatas {
+		err := fanIn.ReceiveInput(partialData.Data)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// merging input into one output
+	output, err := fanIn.Exec(r)
+	if err != nil {
+		return false, err
+	}
+	// saving merged outputs and updating progress
+	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
+	err = SavePartialData(pd)
+	if err != nil {
+		return false, err
+	}
+	err = progress.CompleteNode(nodeId)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
 	progress, _ := RetrieveProgress(requestId)
@@ -398,9 +494,11 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		case *ChoiceNode:
 			shouldContinue, err = dag.executeChoice(progress, node, r)
 		case *FanInNode:
+			shouldContinue, err = dag.executeFanInNode(progress, node, r)
 		case *StartNode:
 			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
+			shouldContinue, err = dag.executeFanOut(progress, node, r)
 		case *EndNode:
 			r.ExecReport.Reports[node.Id] = &function.ExecutionReport{Result: "end"}
 			shouldContinue = false
