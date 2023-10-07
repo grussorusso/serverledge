@@ -26,63 +26,11 @@ type FanInNode struct {
 	Timeout     time.Duration
 	Mode        MergeMode
 	input       []map[string]interface{}
-	//IsReached   bool
 }
-
-// FanInChannels is needed because we cannot marshal channels, so we need a different struct, that will be created each time a FanIn is used.
-type FanInChannels struct {
-	// Channels: used by simple nodes to send data to a fan in node
-	Channels map[int]chan map[DagNodeId]interface{} // we need this double map because fan in should know which node to wait.
-	// OutputChannel: used by fan in node to send merged output
-	OutputChannel chan map[string]interface{}
-}
-
-// usedChannel is used by fanIn nodes
-var usedChannels = make(map[DagNodeId]FanInChannels)
-
-func createChannels(fanInId DagNodeId, fanInDegree int, branchNumbers []int) {
-	// initializing the channel with branch numbers
-	channels := make(map[int]chan map[DagNodeId]interface{})
-	for i := 0; i < fanInDegree; i++ {
-		channels[branchNumbers[i]] = make(chan map[DagNodeId]interface{})
-	}
-	usedChannels[fanInId] = FanInChannels{
-		Channels:      channels,
-		OutputChannel: make(chan map[string]interface{}),
-	}
-}
-
-func getChannelForParallelBranch(fanInId DagNodeId, branchId int) chan map[DagNodeId]interface{} {
-	return usedChannels[fanInId].Channels[branchId]
-}
-
-func getChannelsForFanIn(fanInId DagNodeId) map[int]chan map[DagNodeId]interface{} {
-	return usedChannels[fanInId].Channels
-}
-
-func getOutputChannelForFanIn(fanInId DagNodeId) chan map[string]interface{} {
-	return usedChannels[fanInId].OutputChannel
-}
-
-func clearChannelForFanIn(fanInId DagNodeId) {
-	delete(usedChannels, fanInId)
-}
-
-/*
-How the fan wait for previous output works:
-- [v] who should hold the channel(s)? Fan-in
-- [v] when initialize the channel(s)? when constructing the fan-in, but we need the branchNumbers
-- [v] how should fan-in pass the channel? Providing a getChannelForParallelBranch(branchId) that return the corresponding channel for that branch
-- [v] when should a node use the getChannelForParallelBranch method and send the result? Only when the next node is a Fan-In node, when passing output.
-- [v] who should send to the channel(s)? The terminal node before the fan in each parallel branch
-- [ ] when should send to the channel(s)? After the execution of the terminal node in each parallel branch
-- [ ] who should receive from the channel(s)? This node, fan in.
-- [ ] when should receive from the channel(s)? In this function, Exec.
-*/
 
 var DefaultTimeout = 60 * time.Second
 
-func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nillableTimeout *time.Duration) *FanInNode {
+func NewFanInNode(mergeMode MergeMode, fanInDegree int, nillableTimeout *time.Duration) *FanInNode {
 	timeout := nillableTimeout
 	if timeout == nil {
 		timeout = &DefaultTimeout
@@ -94,9 +42,7 @@ func NewFanInNode(mergeMode MergeMode, fanInDegree int, branchNumbers []int, nil
 		FanInDegree: fanInDegree,
 		Timeout:     *timeout,
 		Mode:        mergeMode,
-		//IsReached:   false,
 	}
-	createChannels(fanIn.Id, fanInDegree, branchNumbers)
 
 	return &fanIn
 }

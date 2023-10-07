@@ -3,6 +3,7 @@ package fc
 import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/utils"
 )
 
 type Predicate struct {
@@ -10,9 +11,9 @@ type Predicate struct {
 }
 
 type Condition struct {
-	Type CondEnum      `json:"Type"`
-	Op   []interface{} `json:"Op"`
-	Sub  []Condition   `json:"Sub"`
+	Type CondEnum      `json:"Type"` // Type of the condition
+	Op   []interface{} `json:"Op"`   // Op is the list of operand of the condition
+	Sub  []Condition   `json:"Sub"`  // Sub is a SubCondition List. Useful for Type And, Or and Not
 }
 
 type CondEnum int
@@ -282,11 +283,27 @@ func NewEqCondition(val1 interface{}, val2 interface{}) Condition {
 	}
 }
 
+func NewEqParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
+	val1, found := input[param1]
+	if !found {
+		return NewConstCondition(false)
+	}
+	return NewEqCondition(val1, val2)
+}
+
 func NewDiffCondition(val1, val2 interface{}) Condition {
 	return Condition{
 		Type: Diff,
 		Op:   []interface{}{val1, val2},
 	}
+}
+
+func NewDiffParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
+	val1, found := input[param1]
+	if !found {
+		return NewConstCondition(false)
+	}
+	return NewDiffCondition(val1, val2)
 }
 
 func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
@@ -302,6 +319,15 @@ func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
 		Op:   []interface{}{val1, val2},
 	}
 }
+
+func NewGreaterParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
+	val1, found := input[param1]
+	if !found {
+		return NewConstCondition(false)
+	}
+	return NewGreaterCondition(val1, val2)
+}
+
 func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
 	b := function.Float{}
 	err := b.TypeCheck(val1)
@@ -316,11 +342,31 @@ func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
 	}
 }
 
+func NewSmallerParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
+	val1, found := input[param1]
+	if !found {
+		return NewConstCondition(false)
+	}
+	return NewSmallerCondition(val1, val2)
+}
+
 func NewEmptyCondition(collection []interface{}) Condition {
 	return Condition{
 		Type: Empty,
 		Op:   collection,
 	}
+}
+
+func NewEmptyParamCondition(input map[string]interface{}, param1 string) Condition {
+	val1, found := input[param1]
+	if !found {
+		return NewConstCondition(false)
+	}
+	slice, errSlice := utils.ConvertToSlice(val1)
+	if errSlice != nil {
+		return NewConstCondition(false)
+	}
+	return NewEmptyCondition(slice)
 }
 
 type ConditionBuilder struct {
