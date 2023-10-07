@@ -288,8 +288,6 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	// cleaning up function composition and functions
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
-
-	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeFC_Concurrent executes concurrently m times a Sequential Dag of length N, where each node executes a simple increment function.

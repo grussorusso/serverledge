@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
@@ -22,9 +23,15 @@ type FunctionComposition struct {
 	RemoveFnOnDeletion bool
 }
 
+type ExecutionReportId string
+
+func CreateExecutionReportId(dagNode DagNode) ExecutionReportId {
+	return ExecutionReportId(printType(dagNode.GetNodeType()) + "_" + string(dagNode.GetId()))
+}
+
 type CompositionExecutionReport struct {
 	Result       map[string]interface{}
-	Reports      map[DagNodeId]*function.ExecutionReport
+	Reports      *hashmap.Map[ExecutionReportId, *function.ExecutionReport]
 	ResponseTime float64 // time waited by the user to get the output of the entire composition
 	// InitTime       float64 // time spent sleeping before executing the request (the cold start)
 	// OffloadLatency float64 // time spent offloading the requests
@@ -216,7 +223,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s", removed, requestId)
+	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
 	return r.ExecReport, nil
 }

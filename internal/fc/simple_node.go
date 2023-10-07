@@ -121,12 +121,12 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		r.ExecReport.Result = fmt.Sprintf("%v", m)
 	}
 	// saving execution report for this function
-	compRequest.ExecReport.Reports[s.Id] = &r.ExecReport
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(s), &r.ExecReport)
 	cs := ""
 	if !r.ExecReport.IsWarmStart {
 		cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)
 	}
-	fmt.Printf("Request %s - result of simple node %s: %v %s\n", r.ReqId, s.Id, r.ExecReport.Result, cs)
+	fmt.Printf("Function Request %s - result of simple node %s: %v %s\n", r.ReqId, s.Id, r.ExecReport.Result, cs)
 	return m, nil
 }
 
@@ -250,4 +250,8 @@ func (s *SimpleNode) GetBranchId() int {
 
 func (s *SimpleNode) GetId() DagNodeId {
 	return s.Id
+}
+
+func (s *SimpleNode) GetNodeType() DagNodeType {
+	return s.NodeType
 }
