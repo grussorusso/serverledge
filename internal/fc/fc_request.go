@@ -1,6 +1,7 @@
 package fc
 
 import (
+	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/function"
 	"time"
 )
@@ -26,7 +27,7 @@ func NewCompositionRequest(reqId string, composition *FunctionComposition, param
 		Params:  params,
 		Arrival: time.Now(),
 		ExecReport: CompositionExecutionReport{
-			Reports: make(map[DagNodeId]*function.ExecutionReport),
+			Reports: hashmap.New[ExecutionReportId, *function.ExecutionReport](),
 		},
 		RequestQoSMap:   make(map[string]function.RequestQoS),
 		CanDoOffloading: true,

@@ -114,7 +114,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		err = fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
 	}
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(f), &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
@@ -122,7 +122,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		OffloadLatency: 0,
 		Duration:       respAndDuration,
 		SchedAction:    "",
-	}
+	})
 	return output, err
 }
 
@@ -171,17 +171,17 @@ func (f *FanOutNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 func (f *FanOutNode) GetNext() []DagNodeId {
 	// we have multiple outputs
 	if f.FanOutDegree <= 1 {
-		log.Printf("You should have used a SimpleNode or EndNode for fanOutDegree less than 2")
+		log.Printf("You should have used a SimpleNode or EndNode for fanOutDegree less than 2\n")
 		return []DagNodeId{}
 	}
 
 	if f.OutputTo == nil {
-		log.Printf("You forgot to initialize OutputTo for FanOutNode")
+		log.Printf("You forgot to initialize OutputTo for FanOutNode\n")
 		return []DagNodeId{}
 	}
 
 	if f.FanOutDegree != len(f.OutputTo) {
-		log.Printf("The fanOutDegree and number of outputs does not match")
+		log.Printf("The fanOutDegree and number of outputs does not match\n")
 		return []DagNodeId{}
 	}
 
@@ -224,4 +224,7 @@ func (f *FanOutNode) GetBranchId() int {
 
 func (f *FanOutNode) GetId() DagNodeId {
 	return f.Id
+}
+func (f *FanOutNode) GetNodeType() DagNodeType {
+	return f.NodeType
 }

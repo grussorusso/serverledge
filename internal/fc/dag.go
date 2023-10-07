@@ -221,7 +221,7 @@ func (dag *Dag) executeStart(progress *Progress, node *StartNode, r *Composition
 	if err != nil {
 		return false, err
 	}
-	r.ExecReport.Reports[node.Id] = &function.ExecutionReport{Result: "start"}
+	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "start"})
 	return true, nil
 }
 
@@ -375,6 +375,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 			}
 			errorChannels[i] <- nil
 			outputChannels[i] <- output
+			fmt.Printf("goroutine %d for node %s completed\n", i, node.GetId())
 		}(i, node)
 	}
 	// checking errors
@@ -500,7 +501,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		case *FanOutNode:
 			shouldContinue, err = dag.executeFanOut(progress, node, r)
 		case *EndNode:
-			r.ExecReport.Reports[node.Id] = &function.ExecutionReport{Result: "end"}
+			r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
 			shouldContinue = false
 		}
 		if err != nil {

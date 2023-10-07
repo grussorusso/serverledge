@@ -90,3 +90,7 @@ func (e *EndNode) GetBranchId() int {
 func (e *EndNode) GetId() DagNodeId {
 	return e.Id
 }
+
+func (e *EndNode) GetNodeType() DagNodeType {
+	return e.NodeType
+}

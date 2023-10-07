@@ -18,6 +18,7 @@ type DagNode interface {
 	HasNext
 	Width() int
 	HasBranch
+	HasNodeType
 }
 
 // HasBranch is a counter that represent the branch of a node in the dag.
@@ -57,6 +58,10 @@ type ReceivesOutput interface {
 
 type HasNext interface {
 	GetNext() []DagNodeId
+}
+
+type HasNodeType interface {
+	GetNodeType() DagNodeType
 }
 
 func Equals[D DagNode](d1 D, d2 D) bool {

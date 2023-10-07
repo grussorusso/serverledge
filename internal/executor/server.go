@@ -58,7 +58,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		// in the latter case, we find the command in the env
 		customCmd, ok := os.LookupEnv("CUSTOM_CMD")
 		if !ok {
-			log.Printf("Invalid request!")
+			log.Printf("Invalid request!\n")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

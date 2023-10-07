@@ -24,12 +24,12 @@ func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, e
 	if len(codeTar) > 0 {
 		decodedCode, errDecode := base64.StdEncoding.DecodeString(codeTar)
 		if errDecode != nil {
-			log.Printf("Failed code decode")
+			log.Printf("Failed code decode\n")
 			return "", errDecode
 		}
 		err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 		if err != nil {
-			log.Printf("Failed code copy")
+			log.Printf("Failed code copy\n")
 			return "", err
 		}
 	}

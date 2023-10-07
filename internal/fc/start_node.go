@@ -96,3 +96,7 @@ func (s *StartNode) GetBranchId() int {
 func (s *StartNode) GetId() DagNodeId {
 	return s.Id
 }
+
+func (s *StartNode) GetNodeType() DagNodeType {
+	return s.NodeType
+}

@@ -163,7 +163,7 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{
 	}
 
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	compRequest.ExecReport.Reports[f.Id] = &function.ExecutionReport{
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(f), &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", fanInOutput),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
@@ -171,7 +171,7 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{
 		OffloadLatency: 0,
 		Duration:       respAndDuration,
 		SchedAction:    "",
-	}
+	})
 	return fanInOutput, nil
 }
 
@@ -229,4 +229,8 @@ func (f *FanInNode) GetBranchId() int {
 
 func (f *FanInNode) GetId() DagNodeId {
 	return f.Id
+}
+
+func (f *FanInNode) GetNodeType() DagNodeType {
+	return f.NodeType
 }

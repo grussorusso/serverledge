@@ -98,7 +98,7 @@ func SubmitRequest(r *function.Request) error {
 		//log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+		//log.Printf("Offloading request\n")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return err
@@ -130,7 +130,7 @@ func SubmitAsyncRequest(r *function.Request) {
 	if schedDecision.action == DROP {
 		PublishAsyncResponse(r.ReqId, function.Response{Success: false})
 	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+		//log.Printf("Offloading request\n")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
 			PublishAsyncResponse(r.ReqId, function.Response{Success: false})

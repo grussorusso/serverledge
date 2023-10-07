@@ -208,7 +208,7 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function, isInCo
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
-		//log.Printf("Not enough resources for the new container.")
+		//log.Printf("Not enough resources for the new container.\n")
 		Resources.Unlock()
 		return "", OutOfResourcesErr
 	}
