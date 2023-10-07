@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	"log"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -92,8 +94,13 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		if len(f.input) != 1 {
 			err = fmt.Errorf("invalid fanout input size, should only accept one array, but has %d different inputs", len(f.input))
 		} else {
+			output = make(map[string]interface{})
 			for inputName, inputToScatter := range f.input {
-				inputArrayToScatter := inputToScatter.([]any)
+				inputArrayToScatter, errNotSlice := utils.ConvertToSlice(inputToScatter)
+				if errNotSlice != nil {
+					err = errNotSlice
+					break
+				}
 
 				if len(inputArrayToScatter) != f.FanOutDegree {
 					err = fmt.Errorf("input array size (%d) must be equal to fanOutDegree (%d). Check the previous node output", len(inputArrayToScatter), f.FanOutDegree)
@@ -147,20 +154,37 @@ func (f *FanOutNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 			return fmt.Errorf("FanoutNode.PrepareOutput: cannot find node")
 		}
 		if f.Type == Broadcast {
-			err := outputNode.ReceiveInput(output)
+			err := outputNode.ReceiveInput(output[fmt.Sprintf("%d", i)].(map[string]interface{}))
 			if err != nil {
 				return err
 			}
-		} else if f.Type == Scatter {
-			mapForBranch, ok := output[fmt.Sprintf("%d", i)].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("FanOutNode.PrepareOutput: failed to convert output interface{} to map[string]interface{}")
+		} else if f.Type == Scatter { // there must be exactly one entry with a map[string]interface{} as value
+			if len(output) != 1 {
+				return fmt.Errorf("for scatter fanout, there must be exactly one entry with a map[string]interface{} as value, but there are %d", len(output))
 			}
-			err := outputNode.ReceiveInput(mapForBranch)
+			entryName := ""
+			for name := range output {
+				entryName = name
+				break
+			}
+			valueMap, castOk := output[entryName].(map[string]interface{})
+			if !castOk {
+				return fmt.Errorf("for scatter fanout, the entry must have a map[string]interface{} as value, but is %v", reflect.TypeOf(castOk).Kind())
+			}
+			if len(valueMap) != f.FanOutDegree {
+				return fmt.Errorf("for scatter fanout, the map value should be of size equal to FanOutDegree, but there are %d", len(valueMap))
+			}
+
+			inputMap := make(map[string]interface{})
+			val, found := valueMap[fmt.Sprintf("%d", i)]
+			if !found {
+				return fmt.Errorf("scatter fanout: value map should have integer as keys and needed type as value")
+			}
+			inputMap[entryName] = val
+			err := outputNode.ReceiveInput(inputMap)
 			if err != nil {
 				return err
 			}
-			return nil
 		} else {
 			return fmt.Errorf("invalid argument")
 		}

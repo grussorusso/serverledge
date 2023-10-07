@@ -371,3 +371,51 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 
 	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
+
+// TestInvokeFC_ScatterFanOut executes a Parallel Dag with N parallel branches
+func TestInvokeFC_ScatterFanOut(t *testing.T) {
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+	//for i := 0; i < 1; i++ {
+
+	fcName := "test"
+	// CREATE - we create a test function composition
+	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF1)
+
+	width := 3
+	dag, errDag := fc.CreateScatterSingleFunctionDag(fDouble, width)
+	u.AssertNil(t, errDag)
+	dag.Print()
+
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[fDouble.Signature.GetInputs()[0].Name] = []int{1, 2, 3}
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
+	u.AssertNil(t, err2)
+
+	// check multiple result
+	output := resultMap.Result
+	u.AssertNonNil(t, output)
+	for key, res := range output {
+		fmt.Printf("%s : %v\n", key, res)
+		genericSlice, ok := res.([]interface{})
+		u.AssertTrue(t, ok)
+		specificSlice, err := u.ConvertToSpecificSlice[int](genericSlice)
+		u.AssertNil(t, err)
+		u.AssertSliceEquals[int](t, []int{2, 4, 6}, specificSlice)
+	}
+
+	// cleaning up function composition and functions
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+}
