@@ -2,6 +2,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/utils"
 	"math"
 	"reflect"
 	"strconv"
@@ -125,12 +126,9 @@ func (a Array[D]) TypeCheck(val interface{}) error {
 	switch reflect.TypeOf(val).Kind() {
 	case reflect.Slice:
 		// convert interface{} to []interface{}
-		var genericSlice []interface{}
-		rv := reflect.ValueOf(val)
-		if rv.Kind() == reflect.Slice {
-			for i := 0; i < rv.Len(); i++ {
-				genericSlice = append(genericSlice, rv.Index(i).Interface())
-			}
+		genericSlice, errNotSlice := utils.ConvertToSlice(val)
+		if errNotSlice != nil {
+			return errNotSlice
 		}
 
 		typeError := ""

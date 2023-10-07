@@ -30,7 +30,7 @@ func (i InputDef) CheckInput(inputMap map[string]interface{}) error {
 
 	val, exists := inputMap[i.Name]
 	if !exists {
-		return fmt.Errorf("no input parameter with name '%s' and type '%s' exists", i.Name, reflect.TypeOf(i.Type).Name())
+		return fmt.Errorf("no input parameter with name '%s' and type '%s' exists", i.Name, i.Type)
 	}
 
 	t := stringToDataType(i.Type)

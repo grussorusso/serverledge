@@ -326,13 +326,14 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	if err != nil {
 		return false, err
 	}
+	// sends output to each next node
+	errSend := fanOut.PrepareOutput(dag, output)
+	if errSend != nil {
+		return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.ToString(), errSend)
+	}
 
-	for i, nextNode := range fanOut.GetNext() {
+	for _, nextNode := range fanOut.GetNext() {
 		pd = NewPartialData(requestId, nextNode, nodeId, output)
-		errSend := fanOut.PrepareOutput(dag, output[fmt.Sprintf("%d", i)].(map[string]interface{}))
-		if errSend != nil {
-			return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.ToString(), errSend)
-		}
 		// saving partial data
 		err = SavePartialData(pd)
 		if err != nil {
