@@ -372,6 +372,55 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
+// TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.
+func TestInvokeFC_DifferentBranches(t *testing.T) {
+	if !INTEGRATION_TEST {
+		t.Skip()
+	}
+	//for i := 0; i < 1; i++ {
+
+	fcName := "test"
+	// CREATE - we create a test function composition
+	f, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	u.AssertNil(t, errF1)
+
+	dag, errDag := fc.CreateBroadcastMultiFunctionDag(
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f) },
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) },
+		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f, f) },
+	)
+	u.AssertNil(t, errDag)
+	dag.Print()
+
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{f}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[f.Signature.GetInputs()[0].Name] = 1
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
+	u.AssertNil(t, err2) // we should check that is a timeout error
+
+	output := resultMap.Result
+	u.AssertNonNil(t, output)
+
+	expectedMap := make(map[string]int)
+	expectedMap["result"] = 2
+	expectedMap["result_1"] = 4
+	expectedMap["result_2"] = 8
+
+	u.AssertMapEquals[string, int](t, expectedMap, output)
+
+	// cleaning up function composition and functions
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+}
+
 // TestInvokeFC_ScatterFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_ScatterFanOut(t *testing.T) {
 	if !INTEGRATION_TEST {

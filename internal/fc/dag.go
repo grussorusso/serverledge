@@ -363,11 +363,31 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 			outputChannels = append(outputChannels, make(chan map[string]interface{}))
 			errorChannels = append(errorChannels, make(chan error))
 		}
+		// for simple node we also retrieve the partial data and receive input, if necessary
+		if simple, isSimple := node.(*SimpleNode); isSimple && simple.input == nil {
+			partialData, err := RetrieveSinglePartialData(requestId, simple.Id)
+			if err != nil {
+				return err
+			}
+			errInput := simple.ReceiveInput(partialData.Data)
+			if errInput != nil {
+				return errInput
+			}
+		}
 	}
 	// executing all nodes in parallel
 	for i, node := range parallelDagNodes {
 		go func(i int, node DagNode) {
 			output, err := node.Exec(r)
+			// for simple node, we also prepare output
+			if simpleNode, isSimple := node.(*SimpleNode); isSimple {
+				errSend := simpleNode.PrepareOutput(dag, output)
+				if errSend != nil {
+					errorChannels[i] <- err
+					outputChannels[i] <- nil
+					return
+				}
+			}
 			// first send on error, then on output channels
 			if err != nil {
 				errorChannels[i] <- err
