@@ -431,9 +431,7 @@ func (p *ParallelScatterBranchBuilder) ForEachParallelBranch(dagger func() (*Dag
 func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBuilder {
 	fmt.Println("Added fan in node after fanout in Dag")
 	dag := &p.dagBuilder.dag
-	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers(dag)
-
-	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
+	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), nil)
 	p.dagBuilder.BranchNumber++
 	fanInNode.setBranchId(p.dagBuilder.BranchNumber)
 	// TODO: set fanin inside fanout, so that we know which fanin are dealing with
@@ -460,8 +458,7 @@ func (p *ParallelScatterBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBui
 func (p *ParallelBroadcastBranchBuilder) AddFanInNode(mergeMode MergeMode) *DagBuilder {
 	fmt.Println("Added fan in node after fanout in Dag")
 	dag := &p.dagBuilder.dag
-	branchNumbers := p.dagBuilder.prevNode.(*FanOutNode).getBranchNumbers(dag)
-	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), branchNumbers, nil)
+	fanInNode := NewFanInNode(mergeMode, p.dagBuilder.prevNode.Width(), nil)
 	p.dagBuilder.BranchNumber++
 	fanInNode.setBranchId(p.dagBuilder.BranchNumber)
 	for _, n := range p.terminalNodes {

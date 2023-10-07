@@ -62,7 +62,6 @@ const (
 	Executed
 	Skipped // if a node is skipped, all its children nodes should also be skipped
 	Failed
-	Waiting // only fan in node should wait (in a goroutine!!). When invoking a fanIn, if it is already waiting, we do not to nothing and free the serverledge node execution
 )
 
 func printStatus(s DagNodeStatus) string {
@@ -189,16 +188,6 @@ func (p *Progress) SkipAll(nodes []DagNode) error {
 		}
 	}
 	return nil
-}
-
-func (p *Progress) PutInWait(in *FanInNode) error {
-	for _, node := range p.DagNodes {
-		if node.Id == in.Id {
-			node.Status = Waiting
-			return nil
-		}
-	}
-	return fmt.Errorf("no node to put in wait with id %s exists in the dag for request %s", in.Id, p.ReqId)
 }
 
 func (p *Progress) FailNode(id DagNodeId) error {

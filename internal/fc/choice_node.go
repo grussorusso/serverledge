@@ -92,11 +92,6 @@ func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	return output, err
 }
 
-// TODO: thats a bit useless
-func (c *ChoiceNode) AddCondition(condition Condition) {
-	c.Conditions = append(c.Conditions, condition)
-}
-
 func (c *ChoiceNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 
 	if len(c.Alternatives) > len(c.Conditions) {
