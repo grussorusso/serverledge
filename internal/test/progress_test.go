@@ -101,7 +101,7 @@ func TestProgressMarshaling(t *testing.T) {
 
 func TestProgressCache(t *testing.T) {
 	// it's an integration test because it needs etcd
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 
