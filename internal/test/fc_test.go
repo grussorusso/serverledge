@@ -313,7 +313,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
-	concurrencyLevel := 4
+	concurrencyLevel := 10
 	start := make(chan int)
 	results := make(map[int]chan interface{})
 	errors := make(map[int]chan error)
@@ -332,7 +332,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 			params := make(map[string]interface{})
 			params[f.Signature.GetInputs()[0].Name] = i
 
-			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine %d", i), &fcomp, params)
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d", i), &fcomp, params)
 			// wait until all goroutines are ready
 			<-start
 			fmt.Printf("goroutine %d started invoking\n", i)

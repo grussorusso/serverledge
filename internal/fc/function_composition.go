@@ -195,7 +195,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save partial data %v", err)
 	}
-	err = SaveProgress(progress)
+	err = SaveProgress(progress, false)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
@@ -209,17 +209,17 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		}
 	}
 	// retrieving output of  execution
-	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId())
+	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), false)
 	if err != nil {
 		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
 	// deleting progresses and partial datas from cache and etcd
-	err = DeleteProgress(requestId)
+	err = DeleteProgress(requestId, false)
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	removed, err := DeleteAllPartialData(requestId)
+	removed, err := DeleteAllPartialData(requestId, false)
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
