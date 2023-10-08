@@ -11,6 +11,7 @@ import (
 
 var etcdClient *clientv3.Client = nil
 var clientMutex sync.Mutex
+var StoreOnEtcd = true // default value used to test progress/partial datas. If false, they are only saved in local cache
 
 func GetEtcdClient() (*clientv3.Client, error) {
 	clientMutex.Lock()
