@@ -55,16 +55,14 @@ func TestPartialDataCache(t *testing.T) {
 		err := fc.SavePartialData(partialData, false)
 		u.AssertNilMsg(t, err, "failed to save partialData")
 
-		retrievedPartialData, err := fc.RetrievePartialData(partialData.ReqId, partialData.ForNode)
+		retrievedPartialData, err := fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, false)
 		u.AssertNilMsg(t, err, "partialData not found")
 		u.AssertTrueMsg(t, partialData.Equals(retrievedPartialData[0]), "progresses don't match")
 
-		_, err = fc.DeleteAllPartialData(partialData.ReqId)
+		_, err = fc.DeleteAllPartialData(partialData.ReqId, false)
 		u.AssertNilMsg(t, err, "failed to delete partialData")
 
-		time.Sleep(200 * time.Millisecond)
-
-		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode)
+		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, false)
 		u.AssertNonNilMsg(t, err, "partialData should have been deleted")
 	}
 
@@ -93,12 +91,12 @@ func TestPartialDataCache(t *testing.T) {
 		})
 		u.AssertEqualsMsg(t, len(partialDataList), count, "number of partial data for request  differs")
 
-		_, err = fc.DeleteAllPartialData(request)
+		_, err = fc.DeleteAllPartialData(request, false)
 		u.AssertNilMsg(t, err, "failed to delete all partialData")
 
 		time.Sleep(200 * time.Millisecond)
 
-		numPartialData := fc.NumberOfPartialDataFor(request)
+		numPartialData := fc.NumberOfPartialDataFor(request, false)
 		u.AssertEqualsMsg(t, 0, numPartialData, "retrieved partialData should have been 0")
 	}
 }

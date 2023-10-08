@@ -230,7 +230,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, false)
 
 	if err != nil {
 		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
@@ -269,7 +269,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	var pd *PartialData
 	nodeId := choice.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, false)
 	if err != nil {
 		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
 	}
@@ -313,7 +313,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	var pd *PartialData
 	nodeId := fanOut.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, false)
 	if err != nil {
 		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
 	}
@@ -365,7 +365,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		}
 		// for simple node we also retrieve the partial data and receive input, if necessary
 		if simple, isSimple := node.(*SimpleNode); isSimple && simple.input == nil {
-			partialData, err := RetrieveSinglePartialData(requestId, simple.Id)
+			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, false)
 			if err != nil {
 				return err
 			}
@@ -459,7 +459,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	var partialDatas []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId)
+		partialDatas, err = RetrievePartialData(requestId, nodeId, false)
 		if err != nil {
 			return false, err
 		}
@@ -510,7 +510,7 @@ func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequ
 
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
-	progress, found := RetrieveProgress(requestId)
+	progress, found := RetrieveProgress(requestId, false)
 	if !found {
 		return false, fmt.Errorf("progress not found")
 	}
@@ -550,7 +550,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		}
 	}
 
-	err = SaveProgress(progress)
+	err = SaveProgress(progress, false)
 	if err != nil {
 		return true, err
 	}

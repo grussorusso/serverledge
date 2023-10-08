@@ -119,10 +119,10 @@ func TestProgressCache(t *testing.T) {
 	for i := 0; i < len(dags); i++ {
 		progress := progresses[i]
 		dag := dags[i]
-		err := fc.SaveProgress(progress)
+		err := fc.SaveProgress(progress, false)
 		u.AssertNilMsg(t, err, "failed to save progress")
 
-		retrievedProgress, found := fc.RetrieveProgress(progress.ReqId)
+		retrievedProgress, found := fc.RetrieveProgress(progress.ReqId, false)
 		u.AssertTrueMsg(t, found, "progress not found")
 		u.AssertTrueMsg(t, progress.Equals(retrievedProgress), "progresses don't match")
 
@@ -131,19 +131,19 @@ func TestProgressCache(t *testing.T) {
 		err = progress.CompleteNode(dag.Start.Next)
 		u.AssertNilMsg(t, err, "failed to update progress")
 
-		err = fc.SaveProgress(progress)
+		err = fc.SaveProgress(progress, false)
 		u.AssertNilMsg(t, err, "failed to save after update")
 
-		retrievedProgress, found = fc.RetrieveProgress(progress.ReqId)
+		retrievedProgress, found = fc.RetrieveProgress(progress.ReqId, false)
 		u.AssertTrueMsg(t, found, "progress not found after update")
 		u.AssertTrueMsg(t, progress.Equals(retrievedProgress), "progresses don't match after update")
 
-		err = fc.DeleteProgress(progress.ReqId)
+		err = fc.DeleteProgress(progress.ReqId, false)
 		u.AssertNilMsg(t, err, "failed to delete progress")
 
 		time.Sleep(200 * time.Millisecond)
 
-		_, found = fc.RetrieveProgress(progress.ReqId)
+		_, found = fc.RetrieveProgress(progress.ReqId, false)
 		u.AssertFalseMsg(t, found, "progress should have been deleted")
 	}
 }
