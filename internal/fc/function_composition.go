@@ -191,11 +191,11 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	pd := NewPartialData(requestId, fc.Workflow.Start.Next, "nil", input)
 	pd.Data = input
 	// saving partial data and progress to cache
-	err := SavePartialData(pd, true)
+	err := SavePartialData(pd, utils.StoreOnEtcd)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save partial data %v", err)
 	}
-	err = SaveProgress(progress, false)
+	err = SaveProgress(progress, utils.StoreOnEtcd)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save progress: %v", err)
 	}
@@ -209,17 +209,17 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		}
 	}
 	// retrieving output of  execution
-	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), false)
+	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), utils.StoreOnEtcd)
 	if err != nil {
 		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
 	// deleting progresses and partial datas from cache and etcd
-	err = DeleteProgress(requestId, false)
+	err = DeleteProgress(requestId, utils.StoreOnEtcd)
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	removed, err := DeleteAllPartialData(requestId, true)
+	removed, err := DeleteAllPartialData(requestId, utils.StoreOnEtcd)
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
