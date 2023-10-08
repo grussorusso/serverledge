@@ -158,9 +158,8 @@ func (c *ChoiceNode) GetNext() []DagNodeId {
 	if c.FirstMatch < 0 {
 		panic("first match cannot be less then 0. You should call Exec() before GetNext()")
 	}
-	next := make([]DagNodeId, 1)
-	next[0] = c.Alternatives[c.FirstMatch]
-	return next
+
+	return []DagNodeId{c.Alternatives[c.FirstMatch]}
 }
 
 func (c *ChoiceNode) Width() int {

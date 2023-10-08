@@ -67,12 +67,7 @@ func (s *StartNode) PrepareOutput(dag *Dag, output map[string]interface{}) error
 
 func (s *StartNode) GetNext() []DagNodeId {
 	// we only have one output
-	arr := make([]DagNodeId, 1)
-	if s.Next != "" {
-		arr[0] = s.Next
-		return arr
-	}
-	panic("you forgot to initialize next for StartNode")
+	return []DagNodeId{s.Next}
 }
 
 func (s *StartNode) Width() int {

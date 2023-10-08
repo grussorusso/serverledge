@@ -13,7 +13,7 @@ import (
 
 // TestContainerPool executes repeatedly different functions (**not compositions**) to verify the container pool
 func TestContainerPool(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	// creating inc and double functions
@@ -60,7 +60,7 @@ func TestContainerPool(t *testing.T) {
 
 // TestCreateComposition tests the compose REST API that creates a new function composition
 func TestCreateComposition(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	fcName := "sequence"
@@ -93,7 +93,7 @@ func TestCreateComposition(t *testing.T) {
 
 // TestInvokeComposition tests the REST API that executes a given function composition
 func TestInvokeComposition(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	fcName := "sequence"
@@ -132,7 +132,7 @@ func TestInvokeComposition(t *testing.T) {
 
 // TestInvokeComposition tests the REST API that executes a given function composition
 func TestInvokeComposition_DifferentFunctions(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	fcName := "sequence"
@@ -176,7 +176,7 @@ func TestInvokeComposition_DifferentFunctions(t *testing.T) {
 
 // TestDeleteComposition tests the compose REST API that deletes a function composition
 func TestDeleteComposition(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	fcName := "sequence"
@@ -230,7 +230,7 @@ func TestDeleteComposition(t *testing.T) {
 
 // TestAsyncInvokeComposition tests the REST API that executes a given function composition
 func TestAsyncInvokeComposition(t *testing.T) {
-	if !INTEGRATION_TEST {
+	if !IntegrationTest {
 		t.Skip()
 	}
 	fcName := "sequence"

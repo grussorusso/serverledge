@@ -222,12 +222,7 @@ func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 
 func (s *SimpleNode) GetNext() []DagNodeId {
 	// we only have one output
-	arr := make([]DagNodeId, 1)
-	if s.OutputTo != "" {
-		arr[0] = s.OutputTo
-		return arr
-	}
-	panic("you forgot to initialize next for StartNode")
+	return []DagNodeId{s.OutputTo}
 }
 
 func (s *SimpleNode) Width() int {

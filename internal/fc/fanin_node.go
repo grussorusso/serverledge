@@ -146,12 +146,7 @@ func (f *FanInNode) PrepareOutput(dag *Dag, output map[string]interface{}) error
 
 func (f *FanInNode) GetNext() []DagNodeId {
 	// we only have one output
-	arr := make([]DagNodeId, 1)
-	if f.OutputTo == "" {
-		panic("you forgot to initialize OutputTo for FanInNode")
-	}
-	arr[0] = f.OutputTo
-	return arr
+	return []DagNodeId{f.OutputTo}
 }
 
 func (f *FanInNode) Width() int {

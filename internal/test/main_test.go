@@ -23,11 +23,9 @@ const HOST = "127.0.0.1"
 const PORT = 1323
 const AREA = "ROME"
 
-// use it to avoid running long running tests
-const INTEGRATION_TEST = false
+var IntegrationTest bool
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
-
 	//setting up cache parameters
 	api.CacheSetup()
 	schedulingPolicy := &scheduling.DefaultLocalPolicy{}
@@ -77,8 +75,9 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
 // current dir is ./serverledge/internal/fc
 func TestMain(m *testing.M) {
+	_, IntegrationTest = os.LookupEnv("INTEGRATION")
 	// spin up container with serverledge infrastructure
-	if INTEGRATION_TEST {
+	if IntegrationTest {
 
 		registry, echoServer, ok := setupServerledge()
 		if ok != nil {
