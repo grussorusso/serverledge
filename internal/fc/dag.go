@@ -252,7 +252,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, false)
+	err = SavePartialData(pd, true)
 	if err != nil {
 		return false, err
 	}
@@ -296,7 +296,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, false)
+	err = SavePartialData(pd, true)
 	if err != nil {
 		return false, err
 	}
@@ -335,7 +335,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	for _, nextNode := range fanOut.GetNext() {
 		pd = NewPartialData(requestId, nextNode, nodeId, output)
 		// saving partial data
-		err = SavePartialData(pd, false)
+		err = SavePartialData(pd, true)
 		if err != nil {
 			return false, err
 		}
@@ -427,7 +427,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
 		partialDatas = append(partialDatas, pd)
 		pd.Data = output
-		err := SavePartialData(pd, false)
+		err := SavePartialData(pd, true)
 		if err != nil {
 			return err
 		}
@@ -459,7 +459,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	var partialDatas []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId, false)
+		partialDatas, err = RetrievePartialData(requestId, nodeId, true)
 		if err != nil {
 			return false, err
 		}
@@ -489,7 +489,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	}
 	// saving merged outputs and updating progress
 	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
-	err = SavePartialData(pd, false)
+	err = SavePartialData(pd, true)
 	if err != nil {
 		return false, err
 	}

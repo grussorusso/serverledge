@@ -52,17 +52,17 @@ func TestPartialDataCache(t *testing.T) {
 	// saving and retrieving partial datas one by one
 	for i := 0; i < len(partialDatas); i++ {
 		partialData := partialDatas[i]
-		err := fc.SavePartialData(partialData, false)
+		err := fc.SavePartialData(partialData, true)
 		u.AssertNilMsg(t, err, "failed to save partialData")
 
 		retrievedPartialData, err := fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, false)
 		u.AssertNilMsg(t, err, "partialData not found")
 		u.AssertTrueMsg(t, partialData.Equals(retrievedPartialData[0]), "progresses don't match")
 
-		_, err = fc.DeleteAllPartialData(partialData.ReqId, false)
+		_, err = fc.DeleteAllPartialData(partialData.ReqId, true)
 		u.AssertNilMsg(t, err, "failed to delete partialData")
 
-		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, false)
+		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, true)
 		u.AssertNonNilMsg(t, err, "partialData should have been deleted")
 	}
 
@@ -78,11 +78,11 @@ func TestPartialDataCache(t *testing.T) {
 		request := requests[i]
 		partialDataList := partialDataMap[request]
 		for _, partialData := range partialDataList {
-			err := fc.SavePartialData(partialData, false)
+			err := fc.SavePartialData(partialData, true)
 			u.AssertNilMsg(t, err, "failed to save partialData")
 		}
 
-		retrievedPartialData, err := fc.RetrieveAllPartialData(request, false)
+		retrievedPartialData, err := fc.RetrieveAllPartialData(request, true)
 		u.AssertNil(t, err)
 		count := 0
 		retrievedPartialData.Range(func(key, value any) bool {
@@ -91,12 +91,12 @@ func TestPartialDataCache(t *testing.T) {
 		})
 		u.AssertEqualsMsg(t, len(partialDataList), count, "number of partial data for request  differs")
 
-		_, err = fc.DeleteAllPartialData(request, false)
+		_, err = fc.DeleteAllPartialData(request, true)
 		u.AssertNilMsg(t, err, "failed to delete all partialData")
 
 		time.Sleep(200 * time.Millisecond)
 
-		numPartialData := fc.NumberOfPartialDataFor(request, false)
+		numPartialData := fc.NumberOfPartialDataFor(request, true)
 		u.AssertEqualsMsg(t, 0, numPartialData, "retrieved partialData should have been 0")
 	}
 }
