@@ -86,7 +86,7 @@ func TestPartialDataCache(t *testing.T) {
 
 		retrievedPartialData, err := fc.RetrieveAllPartialData(request, false)
 		u.AssertNil(t, err)
-		u.AssertEqualsMsg(t, len(partialDataList), retrievedPartialData.Len(), "number of partial data for request  differs")
+		u.AssertEqualsMsg(t, len(partialDataList), len(retrievedPartialData), "number of partial data for request  differs")
 
 		_, err = fc.DeleteAllPartialData(request)
 		u.AssertNilMsg(t, err, "failed to delete all partialData")
