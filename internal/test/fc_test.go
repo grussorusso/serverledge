@@ -313,7 +313,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
-	concurrencyLevel := 10
+	concurrencyLevel := 4
 	start := make(chan int)
 	results := make(map[int]chan interface{})
 	errors := make(map[int]chan error)

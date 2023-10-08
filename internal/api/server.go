@@ -47,7 +47,7 @@ func CacheSetup() {
 	//todo fix default values
 
 	// setup cache space
-	cache.Size = config.GetInt(config.CACHE_SIZE, 10)
+	cache.Size = config.GetInt(config.CACHE_SIZE, 100)
 
 	//setup cleanup interval
 	d := config.GetInt(config.CACHE_CLEANUP, 60)

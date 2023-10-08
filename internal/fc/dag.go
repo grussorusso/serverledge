@@ -252,7 +252,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd)
+	err = SavePartialData(pd, false)
 	if err != nil {
 		return false, err
 	}
@@ -296,7 +296,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd)
+	err = SavePartialData(pd, false)
 	if err != nil {
 		return false, err
 	}
@@ -335,7 +335,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	for _, nextNode := range fanOut.GetNext() {
 		pd = NewPartialData(requestId, nextNode, nodeId, output)
 		// saving partial data
-		err = SavePartialData(pd)
+		err = SavePartialData(pd, false)
 		if err != nil {
 			return false, err
 		}
@@ -427,7 +427,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
 		partialDatas = append(partialDatas, pd)
 		pd.Data = output
-		err := SavePartialData(pd)
+		err := SavePartialData(pd, false)
 		if err != nil {
 			return err
 		}
@@ -439,7 +439,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	return nil
 }
 
-func (dag *Dag) executeFanInNode(progress *Progress, fanIn *FanInNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *CompositionRequest) (bool, error) {
 	nodeId := fanIn.GetId()
 	requestId := ReqId(r.ReqId)
 
@@ -455,11 +455,19 @@ func (dag *Dag) executeFanInNode(progress *Progress, fanIn *FanInNode, r *Compos
 		timerElapsed = true
 	})
 
-	// retrieving input
+	// retrieving input before timeout
 	var partialDatas []*PartialData
-	ok := false
-	for !ok && !timerElapsed {
-		partialDatas, ok = RetrievePartialData(requestId, nodeId)
+	var err error
+	for !timerElapsed {
+		partialDatas, err = RetrievePartialData(requestId, nodeId)
+		if err != nil {
+			return false, err
+		}
+		if len(partialDatas) == fanIn.FanInDegree {
+			break
+		}
+		fmt.Printf("fanin waiting partial datas: %d/%d\n", len(partialDatas), fanIn.FanInDegree)
+		time.Sleep(fanIn.Timeout / 100)
 	}
 
 	fired := timer.Stop()
@@ -481,7 +489,7 @@ func (dag *Dag) executeFanInNode(progress *Progress, fanIn *FanInNode, r *Compos
 	}
 	// saving merged outputs and updating progress
 	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
-	err = SavePartialData(pd)
+	err = SavePartialData(pd, false)
 	if err != nil {
 		return false, err
 	}
@@ -493,10 +501,23 @@ func (dag *Dag) executeFanInNode(progress *Progress, fanIn *FanInNode, r *Compos
 	return true, nil
 }
 
+func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequest) (bool, error) {
+	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
+	//pd := NewPartialData(ReqId(r.ReqId), node.Id, "nil", nil)
+	//SavePartialData(pd, false)
+	return false, nil // false because we want to stop when reaching the end
+}
+
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
-	progress, _ := RetrieveProgress(requestId)
+	progress, found := RetrieveProgress(requestId)
+	if !found {
+		return false, fmt.Errorf("progress not found")
+	}
 	nextNodes, err := progress.NextNodes()
+	if err != nil {
+		return false, fmt.Errorf("failed to get next nodes from progress: %v", err)
+	}
 	shouldContinue := true
 	// TODO: impostare lo stato del dagNode a Failed in caso di errore. Salvare il messaggio di errore nel progress
 	if len(nextNodes) > 1 {
@@ -516,14 +537,13 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		case *ChoiceNode:
 			shouldContinue, err = dag.executeChoice(progress, node, r)
 		case *FanInNode:
-			shouldContinue, err = dag.executeFanInNode(progress, node, r)
+			shouldContinue, err = dag.executeFanIn(progress, node, r)
 		case *StartNode:
 			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
 			shouldContinue, err = dag.executeFanOut(progress, node, r)
 		case *EndNode:
-			r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
-			shouldContinue = false
+			shouldContinue, err = dag.executeEnd(progress, node, r)
 		}
 		if err != nil {
 			return true, err
