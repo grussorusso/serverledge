@@ -191,7 +191,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	pd := NewPartialData(requestId, fc.Workflow.Start.Next, "nil", input)
 	pd.Data = input
 	// saving partial data and progress to cache
-	err := SavePartialData(pd)
+	err := SavePartialData(pd, false)
 	if err != nil {
 		return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed to save partial data %v", err)
 	}
