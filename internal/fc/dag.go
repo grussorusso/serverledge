@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
-	"github.com/grussorusso/serverledge/utils"
 	"math"
 	"sort"
 	"strings"
@@ -231,7 +231,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, utils.StoreOnEtcd)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
 
 	if err != nil {
 		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
@@ -253,7 +253,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, utils.StoreOnEtcd)
+	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
 		return false, err
 	}
@@ -270,7 +270,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	var pd *PartialData
 	nodeId := choice.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, utils.StoreOnEtcd)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
 	if err != nil {
 		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
 	}
@@ -297,7 +297,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, utils.StoreOnEtcd)
+	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
 		return false, err
 	}
@@ -314,7 +314,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	var pd *PartialData
 	nodeId := fanOut.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, utils.StoreOnEtcd)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
 	if err != nil {
 		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
 	}
@@ -336,7 +336,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	for _, nextNode := range fanOut.GetNext() {
 		pd = NewPartialData(requestId, nextNode, nodeId, output)
 		// saving partial data
-		err = SavePartialData(pd, utils.StoreOnEtcd)
+		err = SavePartialData(pd, cache.Persist)
 		if err != nil {
 			return false, err
 		}
@@ -366,7 +366,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		}
 		// for simple node we also retrieve the partial data and receive input, if necessary
 		if simple, isSimple := node.(*SimpleNode); isSimple && simple.input == nil {
-			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, utils.StoreOnEtcd)
+			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, cache.Persist)
 			if err != nil {
 				return err
 			}
@@ -428,7 +428,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
 		partialDatas = append(partialDatas, pd)
 		pd.Data = output
-		err := SavePartialData(pd, utils.StoreOnEtcd)
+		err := SavePartialData(pd, cache.Persist)
 		if err != nil {
 			return err
 		}
@@ -460,7 +460,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	var partialDatas []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId, utils.StoreOnEtcd)
+		partialDatas, err = RetrievePartialData(requestId, nodeId, cache.Persist)
 		if err != nil {
 			return false, err
 		}
@@ -490,7 +490,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	}
 	// saving merged outputs and updating progress
 	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
-	err = SavePartialData(pd, utils.StoreOnEtcd)
+	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
 		return false, err
 	}
@@ -511,7 +511,7 @@ func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequ
 
 func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 	requestId := ReqId(r.ReqId)
-	progress, found := RetrieveProgress(requestId, utils.StoreOnEtcd)
+	progress, found := RetrieveProgress(requestId, cache.Persist)
 	if !found {
 		return false, fmt.Errorf("progress not found")
 	}
@@ -551,7 +551,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		}
 	}
 
-	err = SaveProgress(progress, utils.StoreOnEtcd)
+	err = SaveProgress(progress, cache.Persist)
 	if err != nil {
 		return true, err
 	}
