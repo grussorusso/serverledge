@@ -34,13 +34,6 @@ const (
 
 type ScatterMode int
 
-const (
-	RoundRobin                    = iota // copies each map entry in an unordered, round-robin manner, so that more or less all branches have the same number of input
-	SplitEqually                         // gets the length of the map, divides by the number of parallel branches and sends balances input to each branch. If the division is not integer-based, the last branches receive less input
-	OneMapEntryForEachBranch             // Given N branch, gives one entry in an unordered manner to one branch. If there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
-	OneMapArrayEntryForEachBranch        // Given N branch, gives each array entry in an ordered manner to one branch. When there are more entries than branches, the remaining entries are discarded. When there are too many branches, some of them receive an empty input map
-)
-
 func NewFanOutNode(fanOutDegree int, fanOutType FanOutType) *FanOutNode {
 	return &FanOutNode{
 		Id:           DagNodeId(shortuuid.New()),

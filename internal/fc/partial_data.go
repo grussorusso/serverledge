@@ -124,12 +124,12 @@ func RetrieveSinglePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool)
 func RetrieveAllPartialData(reqId ReqId, alsoFromEtcd bool) (*sync.Map, error) {
 	partialDataMap := &sync.Map{}
 	partialDataFromCache := getAllPartialDataFromCache(newPartialDataId(reqId))
-	pdCacheMutex.Lock()
+	// pdCacheMutex.Lock()
 	partialDataFromCache.Range(func(dagNodeId, slice any) bool {
 		partialDataMap.Store(dagNodeId, slice)
 		return true
 	})
-	pdCacheMutex.Unlock()
+	// pdCacheMutex.Unlock()
 	if alsoFromEtcd {
 		partialDataFromEtcd, err := getAllPartialDataFromEtcd(reqId)
 		if err == nil {
@@ -195,11 +195,11 @@ func DeleteAllPartialData(reqId ReqId, alsoFromEtcd bool) (int64, error) {
 
 // savePartialDataInCache appends in cache a partial data related to a specific request and dagNode in a Dag
 func savePartialDataInCache(pds ...*PartialData) bool {
-	ok := true
+	var partialDataIdType PartialDataId
 	pdCacheMutex.Lock()
 	defer pdCacheMutex.Unlock()
 	for _, pd := range pds {
-		partialDataIdType := newPartialDataId(pd.ReqId)
+		partialDataIdType = newPartialDataId(pd.ReqId)
 
 		partialDataMap, _ := pdCache.LoadOrStore(partialDataIdType, &sync.Map{})
 		partialDataMapTyped, convErr := partialDataMap.(*sync.Map)
@@ -214,18 +214,8 @@ func savePartialDataInCache(pds ...*PartialData) bool {
 		sliceTyped = append(sliceTyped, pd)
 		partialDataMapTyped.Store(pd.ForNode, sliceTyped)
 		pdCache.Store(partialDataIdType, partialDataMapTyped)
-		ok1 := false
-		for !ok1 {
-			_, ok1 = pdCache.Load(partialDataIdType)
-			if ok1 {
-
-				break
-			}
-		}
-		ok = ok && ok1
 	}
-
-	return ok
+	return true
 }
 
 func savePartialDataToEtcd(pd *PartialData) error {
