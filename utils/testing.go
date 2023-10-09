@@ -22,7 +22,14 @@ func AssertEqualsMsg[T comparable](t *testing.T, expected T, result T, msg strin
 
 func AssertSliceEquals[T comparable](t *testing.T, expected []T, result []T) {
 	if equal := slices.Equal(expected, result); !equal {
-		t.Logf("%s is failed. Got '%v', expected '%v'", t.Name(), result, expected)
+		t.Logf("%s is failed Got '%v', expected '%v'", t.Name(), result, expected)
+		t.FailNow()
+	}
+}
+
+func AssertSliceEqualsMsg[T comparable](t *testing.T, expected []T, result []T, msg string) {
+	if equal := slices.Equal(expected, result); !equal {
+		t.Logf("%s is failed; %s - Got '%v', expected '%v'", t.Name(), msg, result, expected)
 		t.FailNow()
 	}
 }

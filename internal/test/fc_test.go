@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	u "github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	"log"
@@ -363,7 +364,11 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 
-	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
+	// removing functions container to release resources
+	for _, fun := range fcomp.Functions {
+		// Delete local warm containers
+		node.ShutdownWarmContainersFor(fun)
+	}
 }
 
 // TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.
@@ -510,9 +515,16 @@ func TestInvokeSieveChoice(t *testing.T) {
 	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
-	// checking the result, should be input + 1
-	_ = resultMap.Result[sieveJs.Signature.GetOutputs()[0].Name]
-	// u.AssertEquals(t, input*2, output.(int))
+
+	// checking the result
+	output := resultMap.Result[sieveJs.Signature.GetOutputs()[1].Name]
+	slice, err := u.ConvertToSlice(output)
+	u.AssertNil(t, err)
+
+	res, err := u.ConvertInterfaceToSpecificSlice[float64](slice)
+	u.AssertNil(t, err)
+
+	u.AssertSliceEqualsMsg[float64](t, []float64{2, 3, 5, 7, 11, 13}, res, "output is wrong")
 	fmt.Printf("%+v\n", resultMap)
 
 	// cleaning up function composition and function
