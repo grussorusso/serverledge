@@ -113,6 +113,9 @@ func (p Predicate) Print() {
 
 func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, error) {
 	ops := make([]interface{}, 0)
+	if input == nil {
+		return c.Op, nil
+	}
 	if len(c.Op) != len(c.Find) {
 		return nil, fmt.Errorf("size of operand (%d) is different from size of searchable operands array (%d)", len(c.Op), len(c.Find))
 	}

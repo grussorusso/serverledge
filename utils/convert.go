@@ -30,3 +30,15 @@ func ConvertToSpecificSlice[T any](slice []interface{}) ([]T, error) {
 
 	return out, nil
 }
+
+func ConvertInterfaceToSpecificSlice[T any](val interface{}) ([]T, error) {
+	slice, err := ConvertToSlice(val)
+	if err != nil {
+		return nil, err
+	}
+	specificSlice, err := ConvertToSpecificSlice[T](slice)
+	if err != nil {
+		return nil, err
+	}
+	return specificSlice, nil
+}
