@@ -1,0 +1,14 @@
+[
+  {
+    "name": "default",
+    "utility": 1,
+    "MaximumResponseTime": -1,
+    "CompletionPercentage": 0
+  },
+  {
+    "name": "premium",
+    "utility": 10,
+    "MaximumResponseTime": 4,
+    "CompletedPercentage": 0.9
+  }
+]
