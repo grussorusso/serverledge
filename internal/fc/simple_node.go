@@ -1,6 +1,7 @@
 package fc
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
@@ -103,17 +104,28 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		if i == 0 {
 			firstOutputName = o.Name
 		}
-		// if the output is a simple type (e.g. int, bool, string, array) we simply add it to the map
-		m[o.Name] = r.ExecReport.Result
-		err1 := o.CheckOutput(m)
-		if err1 != nil {
-			return nil, fmt.Errorf("output type checking failed: %v", err1)
+		var result map[string]interface{}
+		//if the output is a struct/map, we should return a map with struct field and values
+		errNotUnmarshable := json.Unmarshal([]byte(r.ExecReport.Result), &result)
+		if errNotUnmarshable != nil {
+			// if the output is a simple type (e.g. int, bool, string, array) we simply add it to the map
+			m[o.Name] = r.ExecReport.Result
+			err1 := o.CheckOutput(m)
+			if err1 != nil {
+				return nil, fmt.Errorf("output type checking failed: %v", err1)
+			}
+			m[o.Name], err1 = o.TryParse(r.ExecReport.Result)
+			if err1 != nil {
+				return nil, fmt.Errorf("failed to parse intermediate output: %v", err1)
+			}
+		} else {
+			val, found := result[o.Name]
+			if !found {
+				return nil, fmt.Errorf("failed to find result with name %s", o.Name)
+			}
+			m[o.Name] = val
 		}
-		m[o.Name], err1 = o.TryParse(r.ExecReport.Result)
-		if err1 != nil {
-			return nil, fmt.Errorf("failed to parse intermediate output: %v", err1)
-		}
-		// TODO: else if the output is a struct/map, we should return a map with struct field and values
+
 	}
 	if len(m) == 1 {
 		r.ExecReport.Result = fmt.Sprintf("%v", m[firstOutputName])
@@ -168,16 +180,11 @@ func (s *SimpleNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 	}
 	// get signature of next nodes, if present and maps the output there
 	for _, n := range s.GetNext() {
-		// TODO: this mapping should only be done with SimpleNode(s)? Yes, but this method must be implemented for all nodes
 		// we have only one output node
 		dagNode, _ := dag.Find(n)
 		switch nodeType := dagNode.(type) {
 		case *SimpleNode:
 			return nodeType.MapOutput(output) // needed to convert type of data from one node to the next so that its signature type-checks
-			//case *FanInNode:
-			//	fanInChannel := nodeType.getChannelForParallelBranch(s.BranchId) // TODO: MapOutput is needed?
-			//	fanInChannel <- output
-			//	return nil
 		}
 	}
 

@@ -30,16 +30,16 @@ func TestPredicateMarshal(t *testing.T) {
 }
 
 func TestPredicate(t *testing.T) {
-	ok := predicate1.Test()
+	ok := predicate1.Test(nil)
 	utils.AssertTrue(t, ok)
 
-	ok2 := predicate2.Test()
+	ok2 := predicate2.Test(nil)
 	utils.AssertTrue(t, ok2)
 
-	ok3 := predicate3.Test()
+	ok3 := predicate3.Test(nil)
 	utils.AssertTrue(t, ok3)
 
-	ok4 := predicate4.Test()
+	ok4 := predicate4.Test(nil)
 	utils.AssertTrue(t, ok4)
 }
 

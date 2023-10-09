@@ -245,8 +245,8 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	if err != nil {
 		return false, err
 	}
-
-	pd = NewPartialData(requestId, simpleNode.GetNext()[0], nodeId, output)
+	forNode := simpleNode.GetNext()[0]
+	pd = NewPartialData(requestId, forNode, nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
 	if errSend != nil {
 		return false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.ToString(), errSend)

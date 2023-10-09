@@ -12,6 +12,7 @@ type Predicate struct {
 
 type Condition struct {
 	Type CondEnum      `json:"Type"` // Type of the condition
+	Find []bool        `json:"Find"` // Find if true, the corresponding Op value should be read from parameters
 	Op   []interface{} `json:"Op"`   // Op is the list of operand of the condition
 	Sub  []Condition   `json:"Sub"`  // Sub is a SubCondition List. Useful for Type And, Or and Not
 }
@@ -30,8 +31,8 @@ const (
 	Empty // for collections
 )
 
-func (p Predicate) Test() bool {
-	ok, err := p.Root.Test()
+func (p Predicate) Test(input map[string]interface{}) bool {
+	ok, err := p.Root.Test(input)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 	}
@@ -110,12 +111,35 @@ func (p Predicate) Print() {
 	fmt.Println(p.LogicString())
 }
 
-func (c Condition) Test() (bool, error) {
+func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, error) {
+	ops := make([]interface{}, 0)
+	if len(c.Op) != len(c.Find) {
+		return nil, fmt.Errorf("size of operand (%d) is different from size of searchable operands array (%d)", len(c.Op), len(c.Find))
+	}
+	for i := 0; i < len(c.Op); i++ {
+		if !c.Find[i] {
+			ops = append(ops, c.Op[i])
+		} else {
+			opStr, ok := c.Op[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("input name is not a string")
+			}
+			value, found := input[opStr]
+			if !found {
+				return nil, fmt.Errorf("input %v not found for equal condition", value)
+			}
+			ops = append(ops, value)
+		}
+	}
+	return ops, nil
+}
+
+func (c Condition) Test(input map[string]interface{}) (bool, error) {
 	switch c.Type {
 	case And:
 		and := true
 		for _, condition := range c.Sub {
-			ok, err := condition.Test()
+			ok, err := condition.Test(input)
 			if err != nil {
 				return false, err
 			}
@@ -125,7 +149,7 @@ func (c Condition) Test() (bool, error) {
 	case Or:
 		or := false
 		for _, condition := range c.Sub {
-			ok, err := condition.Test()
+			ok, err := condition.Test(input)
 			if err != nil {
 				return false, err
 			}
@@ -137,20 +161,28 @@ func (c Condition) Test() (bool, error) {
 			return false, fmt.Errorf("you need exactly one condition to check if it is Not satisfied")
 		}
 
-		test, err := c.Sub[0].Test()
+		test, err := c.Sub[0].Test(input)
 		return !test, err
 	case Const:
 		if len(c.Op) == 0 {
 			return false, fmt.Errorf("you need at least one const operand")
 		}
 		dataType := function.Bool{}
-		return dataType.Convert(c.Op[0])
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		return dataType.Convert(ops[0])
 	case Eq:
 		if len(c.Op) <= 1 {
 			return false, fmt.Errorf("you need at least two operands to check equality")
 		}
-		for i := 0; i < len(c.Op)-1; i++ {
-			if c.Op[i] != c.Op[i+1] {
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		for i := 0; i < len(ops)-1; i++ {
+			if ops[i] != ops[i+1] {
 				return false, nil
 			}
 		}
@@ -159,8 +191,12 @@ func (c Condition) Test() (bool, error) {
 		if len(c.Op) <= 1 {
 			return false, fmt.Errorf("you need at least two operands to check equality")
 		}
-		for i := 0; i < len(c.Op)-1; i++ {
-			if c.Op[i] == c.Op[i+1] {
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		for i := 0; i < len(ops)-1; i++ {
+			if ops[i] == ops[i+1] {
 				return false, nil
 			}
 		}
@@ -170,8 +206,12 @@ func (c Condition) Test() (bool, error) {
 			return false, fmt.Errorf("you need exactly two numbers to check which is greater")
 		}
 		f := function.Float{}
-		float1, err1 := f.Convert(c.Op[0])
-		float2, err2 := f.Convert(c.Op[1])
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		float1, err1 := f.Convert(ops[0])
+		float2, err2 := f.Convert(ops[1])
 		if err1 != nil || err2 != nil {
 			return false, fmt.Errorf("not all operands %v can be converted to float64", c.Op)
 		}
@@ -181,14 +221,26 @@ func (c Condition) Test() (bool, error) {
 			return false, fmt.Errorf("you need exactly two numbers to check which is greater")
 		}
 		f := function.Float{}
-		float1, err1 := f.Convert(c.Op[0])
-		float2, err2 := f.Convert(c.Op[1])
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		float1, err1 := f.Convert(ops[0])
+		float2, err2 := f.Convert(ops[1])
 		if err1 != nil || err2 != nil {
 			return false, fmt.Errorf("not all operands %v can be converted to float64", c.Op)
 		}
 		return float1 < float2, nil
 	case Empty:
-		return len(c.Op) == 0, nil
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		slice, err := utils.ConvertToSlice(ops[0])
+		if err != nil {
+			return false, err
+		}
+		return len(slice) == 0, nil
 	default:
 		return false, fmt.Errorf("invalid operation condition")
 	}
@@ -206,6 +258,7 @@ func (c Condition) Equals(o Condition) bool {
 	if !lenOpOk {
 		fmt.Printf("operand size is not the same: %d vs %d\n", len(c.Op), len(o.Op))
 	}
+	lenFindOk := len(c.Find) == len(o.Find)
 	if len(c.Op) > 0 && len(o.Op) > 0 && lenOpOk {
 		for i := range c.Op {
 			f := function.Float{}
@@ -237,7 +290,7 @@ func (c Condition) Equals(o Condition) bool {
 		}
 	}
 
-	return typeOk && lenOpOk && lenSubCondOk && subOk
+	return typeOk && lenOpOk && lenSubCondOk && lenFindOk && subOk
 }
 
 func NewConstCondition(val interface{}) Condition {
@@ -251,6 +304,7 @@ func NewConstCondition(val interface{}) Condition {
 	return Condition{
 		Type: Const,
 		Op:   []interface{}{val},
+		Find: []bool{false},
 	}
 }
 
@@ -258,6 +312,7 @@ func NewAnd(conditions ...Condition) Condition {
 	return Condition{
 		Type: And,
 		Sub:  conditions,
+		Find: make([]bool, len(conditions)), // all false
 	}
 }
 
@@ -265,6 +320,7 @@ func NewOr(conditions ...Condition) Condition {
 	return Condition{
 		Type: Or,
 		Sub:  conditions,
+		Find: make([]bool, len(conditions)), // all false
 	}
 }
 
@@ -272,6 +328,7 @@ func NewNot(condition Condition) Condition {
 	return Condition{
 		Type: Not,
 		Sub:  []Condition{condition},
+		Find: make([]bool, 1), // all false
 	}
 }
 
@@ -280,30 +337,76 @@ func NewEqCondition(val1 interface{}, val2 interface{}) Condition {
 	return Condition{
 		Type: Eq,
 		Op:   []interface{}{val1, val2},
+		Find: make([]bool, 2), // all false
 	}
 }
 
-func NewEqParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
-	val1, found := input[param1]
-	if !found {
-		return NewConstCondition(false)
+type ParamOrValue struct {
+	IsParam bool
+	name    string
+	value   interface{}
+}
+
+func NewParam(name string) *ParamOrValue {
+	return &ParamOrValue{
+		IsParam: true,
+		name:    name,
+		value:   nil,
 	}
-	return NewEqCondition(val1, val2)
+}
+
+func NewValue(val interface{}) *ParamOrValue {
+	return &ParamOrValue{
+		IsParam: false,
+		name:    "",
+		value:   val,
+	}
+}
+
+func NewEqParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
+	ops := make([]interface{}, 0, 2)
+	finds := make([]bool, 0, 2)
+	params := []*ParamOrValue{param1, param2}
+	for _, param := range params {
+		finds = append(finds, param.IsParam)
+		if param.IsParam {
+			ops = append(ops, param.name)
+		} else {
+			ops = append(ops, param.value)
+		}
+	}
+	return Condition{
+		Type: Eq,
+		Op:   ops,
+		Find: finds,
+	}
 }
 
 func NewDiffCondition(val1, val2 interface{}) Condition {
 	return Condition{
 		Type: Diff,
 		Op:   []interface{}{val1, val2},
+		Find: make([]bool, 2), // all false
 	}
 }
 
-func NewDiffParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
-	val1, found := input[param1]
-	if !found {
-		return NewConstCondition(false)
+func NewDiffParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
+	ops := make([]interface{}, 0, 2)
+	finds := make([]bool, 0, 2)
+	params := []*ParamOrValue{param1, param2}
+	for _, param := range params {
+		finds = append(finds, param.IsParam)
+		if param.IsParam {
+			ops = append(ops, param.name)
+		} else {
+			ops = append(ops, param.value)
+		}
 	}
-	return NewDiffCondition(val1, val2)
+	return Condition{
+		Type: Diff,
+		Op:   ops,
+		Find: finds,
+	}
 }
 
 func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
@@ -317,15 +420,27 @@ func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
 	return Condition{
 		Type: Greater,
 		Op:   []interface{}{val1, val2},
+		Find: make([]bool, 2), // all false
 	}
 }
 
-func NewGreaterParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
-	val1, found := input[param1]
-	if !found {
-		return NewConstCondition(false)
+func NewGreaterParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
+	ops := make([]interface{}, 0, 2)
+	finds := make([]bool, 0, 2)
+	params := []*ParamOrValue{param1, param2}
+	for _, param := range params {
+		finds = append(finds, param.IsParam)
+		if param.IsParam {
+			ops = append(ops, param.name)
+		} else {
+			ops = append(ops, param.value)
+		}
 	}
-	return NewGreaterCondition(val1, val2)
+	return Condition{
+		Type: Greater,
+		Op:   ops,
+		Find: finds,
+	}
 }
 
 func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
@@ -339,35 +454,48 @@ func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
 	return Condition{
 		Type: Smaller,
 		Op:   []interface{}{val1, val2},
+		Find: make([]bool, 2), // all false
 	}
 }
 
-func NewSmallerParamCondition(input map[string]interface{}, param1 string, val2 interface{}) Condition {
-	val1, found := input[param1]
-	if !found {
-		return NewConstCondition(false)
+func NewSmallerParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
+	ops := make([]interface{}, 0, 2)
+	finds := make([]bool, 0, 2)
+	params := []*ParamOrValue{param1, param2}
+	for _, param := range params {
+		finds = append(finds, param.IsParam)
+		if param.IsParam {
+			ops = append(ops, param.name)
+		} else {
+			ops = append(ops, param.value)
+		}
 	}
-	return NewSmallerCondition(val1, val2)
+	return Condition{
+		Type: Smaller,
+		Op:   ops,
+		Find: finds,
+	}
 }
 
 func NewEmptyCondition(collection []interface{}) Condition {
 	return Condition{
 		Type: Empty,
 		Op:   collection,
+		Find: make([]bool, 1), // all false,
 	}
 }
 
-func NewEmptyParamCondition(input map[string]interface{}, param1 string) Condition {
-	val1, found := input[param1]
-	if !found {
-		return NewConstCondition(false)
-	}
-	slice, errSlice := utils.ConvertToSlice(val1)
-	if errSlice != nil {
-		return NewConstCondition(false)
-	}
-	return NewEmptyCondition(slice)
-}
+//func NewEmptyParamCondition(input map[string]interface{}, param1 string) Condition {
+//	val1, found := input[param1]
+//	if !found {
+//		return NewConstCondition(false)
+//	}
+//	slice, errSlice := utils.ConvertToSlice(val1)
+//	if errSlice != nil {
+//		return NewConstCondition(false)
+//	}
+//	return NewEmptyCondition(slice)
+//}
 
 type ConditionBuilder struct {
 	p      *Predicate
