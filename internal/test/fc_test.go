@@ -131,8 +131,6 @@ func TestInvokeChoiceFC(t *testing.T) {
 	if !IntegrationTest {
 		t.Skip()
 	}
-	//repeat := 3
-	//for i := 0; i < repeat; i++ {
 	fcName := "test"
 	// CREATE - we create a test function composition
 	input := 1
@@ -156,7 +154,6 @@ func TestInvokeChoiceFC(t *testing.T) {
 		NextBranch(fc.CreateSequenceDag(doublePy)).
 		EndChoiceAndBuild()
 
-	// dag, errDag := fc.CreateChoiceDag(conds, func() (*fc.Dag, error) { return fc.CreateSequenceDag(fArr) })
 	u.AssertNil(t, errDag)
 	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incJs, incPy, doublePy}, true)
 	err1 := fcomp.SaveToEtcd()
@@ -180,9 +177,6 @@ func TestInvokeChoiceFC(t *testing.T) {
 	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
-	//}
-
-	//u.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }
 
 // TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions (in different languages)
@@ -465,6 +459,63 @@ func TestInvokeFC_ScatterFanOut(t *testing.T) {
 	}
 
 	// cleaning up function composition and functions
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+}
+
+func TestInvokeSieveChoice(t *testing.T) {
+	if !IntegrationTest {
+		t.Skip()
+	}
+	fcName := "test"
+	input := 13
+	sieveJs, errJs := initializeJsFunction("sieve", function.NewSignature().
+		AddInput("n", function.Int{}).
+		AddOutput("N", function.Int{}).
+		AddOutput("Primes", function.Array[function.Int]{}).
+		Build())
+	u.AssertNil(t, errJs)
+
+	isPrimePy, errPy := initializePyFunction("isprimeWithNumber", "handler", function.NewSignature().
+		AddInput("n", function.Int{}).
+		AddOutput("IsPrime", function.Bool{}).
+		AddOutput("n", function.Int{}).
+		Build())
+	u.AssertNil(t, errPy)
+
+	incPy, errDp := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
+
+	dag, errDag := fc.NewDagBuilder().
+		AddSimpleNode(isPrimePy).
+		AddChoiceNode(
+			fc.NewEqParamCondition(fc.NewParam("IsPrime"), fc.NewValue(true)),
+			fc.NewEqParamCondition(fc.NewParam("IsPrime"), fc.NewValue(false)),
+		).
+		NextBranch(fc.CreateSequenceDag(sieveJs)).
+		NextBranch(fc.CreateSequenceDag(incPy)).
+		EndChoiceAndBuild()
+
+	u.AssertNil(t, errDag)
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{isPrimePy, sieveJs, incPy}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[isPrimePy.Signature.GetInputs()[0].Name] = input
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, err2 := fcomp.Invoke(request)
+	u.AssertNil(t, err2)
+	// checking the result, should be input + 1
+	_ = resultMap.Result[sieveJs.Signature.GetOutputs()[0].Name]
+	// u.AssertEquals(t, input*2, output.(int))
+	fmt.Printf("%+v\n", resultMap)
+
+	// cleaning up function composition and function
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 }

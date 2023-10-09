@@ -64,7 +64,7 @@ func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	var err error = nil
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
-		ok, err := condition.Test()
+		ok, err := condition.Test(c.input)
 		if err != nil {
 			return nil, fmt.Errorf("error while testing condition: %v", err)
 		}
