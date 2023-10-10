@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/utils"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -253,21 +251,6 @@ func getPartialDataFromCache(pdId PartialDataId, nodeId DagNodeId) ([]*PartialDa
 		return nil, fmt.Errorf("cannot find slice of partial data for request id %s and dag node %s\n", pdId, nodeId)
 	}
 	sliceTyped := slice.([]*PartialData)
-	// TODO: debug
-	if strings.Contains(string(pdId), "goroutine") {
-		output := sliceTyped[0].Data["result"]
-		id := strings.Split(string(pdId), "_")[2]
-		atoi, err := strconv.Atoi(id)
-		if err != nil {
-			return nil, err
-		}
-		expectedOutput := atoi + 5
-		if sliceTyped[0].FromNode == "simple 4" && expectedOutput != output.(int) {
-			contents := GetCacheContents()
-			fmt.Println(contents)
-			_ = fmt.Sprintf("%v - %d\n", output, expectedOutput)
-		}
-	}
 	// end debug
 	return sliceTyped, nil
 }

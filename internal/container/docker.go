@@ -49,7 +49,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 			refreshedImages[image] = true
 		}
 	} else {
-		log.Printf("We already have the image: %s", image)
+		//log.Printf("We already have the image: %s", image)
 	}
 
 	contResources := container.Resources{Memory: opts.MemoryMB * 1048576} // convert to bytes

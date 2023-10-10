@@ -327,13 +327,13 @@ func DeleteExpiredContainer() {
 			if now > warmed.Expiration {
 				temp := elem
 				elem = elem.Next()
-				log.Printf("cleaner: Removing container %s\n", warmed.contID)
+				//log.Printf("cleaner: Removing container %s\n", warmed.contID)
 				pool.ready.Remove(temp) // remove the expired element
 
 				memory, _ := container.GetMemoryMB(warmed.contID)
 				releaseResources(0, memory)
 				container.Destroy(warmed.contID)
-				log.Printf("Released resources. Now: %v", Resources)
+				//log.Printf("Released resources. Now: %v", Resources)
 			} else {
 				elem = elem.Next()
 			}

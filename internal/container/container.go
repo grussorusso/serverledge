@@ -111,7 +111,7 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 		} else if attempts > 3 {
 			// It is common to have a failure after a cold start, so
 			// we avoid logging failures on the first attempt(s)
-			log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
+			//log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
 		}
 
 		time.Sleep(time.Duration(backoffMillis * int(time.Millisecond)))
