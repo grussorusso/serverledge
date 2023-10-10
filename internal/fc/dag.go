@@ -9,6 +9,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -245,6 +246,13 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	if err != nil {
 		return false, err
 	}
+
+	// Todo: uncomment when running TestInvokeFC_Concurrent to debug concurrency errors
+	// errDbg := Debug(r, string(simpleNode.Id), output)
+	// if errDbg != nil {
+	// 	return false, errDbg
+	// }
+
 	forNode := simpleNode.GetNext()[0]
 	pd = NewPartialData(requestId, forNode, nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
@@ -744,4 +752,38 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 	}
 
 	return fmt.Errorf("failed to decode node")
+}
+
+// Debug can be used to find if expected output of test TestInvokeFC_Concurrent is correct based on requestId of format "goroutine_#" and simple node ids of format "simple #"
+func Debug(r *CompositionRequest, nodeId string, output map[string]interface{}) error {
+	if strings.Contains(r.ReqId, "goroutine") {
+		// getting number of goroutine, to get the starting input of the sequence
+		startingInput := strings.Split(r.ReqId, "_")[1]
+		atoi, errAtoi1 := strconv.Atoi(startingInput)
+		if errAtoi1 != nil {
+			return errAtoi1
+		}
+		// getting the number of simple node, to get the increment value up to this node in the sequence
+		currentIncrementMinusOne := strings.Split(nodeId, " ")[1]
+		atoiInc, errAtoi2 := strconv.Atoi(currentIncrementMinusOne)
+		if errAtoi2 != nil {
+			return errAtoi2
+		}
+		expectedOutput := atoi + atoiInc + 1
+
+		// getting the key of the single map entry
+		key := ""
+		for name := range output {
+			key = name
+			break
+		}
+		// assertEquals
+		actualOutput := output[key]
+		if expectedOutput != actualOutput {
+			contents := GetCacheContents()
+			fmt.Println(contents)
+			return fmt.Errorf("expected: %d - actual: %v\n", expectedOutput, output)
+		}
+	}
+	return nil
 }

@@ -263,7 +263,7 @@ func getPartialDataFromCache(pdId PartialDataId, nodeId DagNodeId) ([]*PartialDa
 		}
 		expectedOutput := atoi + 5
 		if sliceTyped[0].FromNode == "simple 4" && expectedOutput != output.(int) {
-			contents := getCacheContents()
+			contents := GetCacheContents()
 			fmt.Println(contents)
 			_ = fmt.Sprintf("%v - %d\n", output, expectedOutput)
 		}
@@ -343,7 +343,7 @@ func getAllPartialDataFromCache(requestId PartialDataId) *sync.Map {
 	return partialDataMapTyped
 }
 
-func getCacheContents() map[PartialDataId]map[DagNodeId][]*PartialData {
+func GetCacheContents() map[PartialDataId]map[DagNodeId][]*PartialData {
 	res := make(map[PartialDataId]map[DagNodeId][]*PartialData)
 	pdCache.Range(func(key, value any) bool {
 		typedKey := key.(PartialDataId)
