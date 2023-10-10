@@ -7,8 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/types"
-
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -329,7 +327,7 @@ func DeleteExpiredContainer() {
 			if now > warmed.Expiration {
 				temp := elem
 				elem = elem.Next()
-				log.Printf("cleaner: Removing container %s\n", warmed.contID)
+				//log.Printf("cleaner: Removing container %s\n", warmed.contID)
 				pool.ready.Remove(temp) // remove the expired element
 
 				memory, _ := container.GetMemoryMB(warmed.contID)
@@ -338,7 +336,7 @@ func DeleteExpiredContainer() {
 				if err != nil {
 					log.Printf("Error while destroying container %s: %s\n", warmed.contID, err)
 				}
-				log.Printf("Released resources. Now: %v\n", &Resources)
+				// log.Printf("Released resources. Now: %v\n", &Resources)
 			} else {
 				elem = elem.Next()
 			}

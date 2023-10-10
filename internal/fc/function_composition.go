@@ -209,8 +209,6 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		}
 	}
 	// retrieving output of  execution
-	contents := GetCacheContents()
-	fmt.Printf("%+v\n", contents)
 	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), cache.Persist)
 	if err != nil {
 		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
