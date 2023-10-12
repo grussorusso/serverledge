@@ -512,8 +512,10 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 
 func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequest) (bool, error) {
 	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
-	//pd := NewPartialData(ReqId(r.ReqId), node.Id, "nil", nil)
-	//SavePartialData(pd, false)
+	err := progress.CompleteNode(node.Id)
+	if err != nil {
+		return false, err
+	}
 	return false, nil // false because we want to stop when reaching the end
 }
 
@@ -555,6 +557,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		}
 		if err != nil {
 			_ = progress.FailNode(n.GetId())
+			r.ExecReport.Progress = progress
 			return true, err
 		}
 	}

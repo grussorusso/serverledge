@@ -24,7 +24,7 @@ func (b *DagBuilder) appendError(err error) {
 
 type ChoiceBranchBuilder struct {
 	dagBuilder *DagBuilder
-	completed  int
+	completed  int // counter of branches that reach the end node
 }
 
 // ParallelScatterBranchBuilder can only hold the same dag executed in parallel in each branch
@@ -253,7 +253,14 @@ func (c *ChoiceBranchBuilder) EndNextBranch() *ChoiceBranchBuilder {
 		c.dagBuilder.BranchNumber++ // we only increase the branch number, but we do not use in any node
 		//fmt.Printf("Ending branch %d for Dag\n", c.dagBuilder.BranchNumber)
 		// chain the alternative of the choice node to the end node of the building dag
-		alternative, _ := dag.Find(c.dagBuilder.prevNode.(*ChoiceNode).Alternatives[c.completed])
+		choice := c.dagBuilder.prevNode.(*ChoiceNode)
+		var alternative DagNode
+		if c.completed < len(choice.Alternatives) {
+			x := choice.Alternatives[c.completed]
+			alternative, _ = dag.Find(x)
+		} else {
+			alternative = choice // this is when a choice branch directly goes to end node
+		}
 		err := c.dagBuilder.dag.ChainToEndNode(alternative)
 		if err != nil {
 			c.dagBuilder.appendError(err)

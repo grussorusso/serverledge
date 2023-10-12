@@ -410,7 +410,10 @@ func invokeFunctionComposition(cmd *cobra.Command, args []string) {
 	url := fmt.Sprintf("http://%s:%d/play/%s", ServerConfig.Host, ServerConfig.Port, compName)
 	resp, err := utils.PostJson(url, invocationBody)
 	if err != nil {
-		fmt.Printf("Invocation failed: %v", err)
+		fmt.Println(err)
+		if resp != nil {
+			utils.PrintErrorResponse(resp.Body)
+		}
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
