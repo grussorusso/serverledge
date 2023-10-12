@@ -32,7 +32,8 @@ func CreateExecutionReportId(dagNode DagNode) ExecutionReportId {
 type CompositionExecutionReport struct {
 	Result       map[string]interface{}
 	Reports      *hashmap.Map[ExecutionReportId, *function.ExecutionReport]
-	ResponseTime float64 // time waited by the user to get the output of the entire composition
+	ResponseTime float64   // time waited by the user to get the output of the entire composition
+	Progress     *Progress `json:"-"` // skipped in Json marshaling
 	// InitTime       float64 // time spent sleeping before executing the request (the cold start)
 	// OffloadLatency float64 // time spent offloading the requests
 	// Duration       float64 // time spent executing the requests
@@ -205,13 +206,14 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		// executing dag
 		shouldContinue, err = fc.Workflow.Execute(r)
 		if err != nil {
-			return CompositionExecutionReport{Result: nil}, fmt.Errorf("failed dag execution: %v", err)
+			progress.Print()
+			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed dag execution: %v", err)
 		}
 	}
 	// retrieving output of  execution
 	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), cache.Persist)
 	if err != nil {
-		return CompositionExecutionReport{}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
+		return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
 	// deleting progresses and partial datas from cache and etcd
@@ -225,6 +227,8 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	}
 	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
+	//progress.NextGroup = -1
+	//r.ExecReport.Progress = progress
 	return r.ExecReport, nil
 }
 

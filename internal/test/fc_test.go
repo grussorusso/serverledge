@@ -531,3 +531,37 @@ func TestInvokeSieveChoice(t *testing.T) {
 	err3 := fcomp.Delete()
 	u.AssertNil(t, err3)
 }
+
+func TestInvokeCompositionError(t *testing.T) {
+	if !IntegrationTest {
+		t.Skip()
+	}
+	fcName := "error"
+
+	incPy, errDp := initializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
+
+	dag, errDag := fc.NewDagBuilder().
+		AddChoiceNode(
+			fc.NewEqParamCondition(fc.NewParam("NonExistentParam"), fc.NewValue(true)),
+			fc.NewEqCondition(2, 3),
+		).
+		NextBranch(fc.CreateSequenceDag(incPy)).
+		EndChoiceAndBuild()
+	u.AssertNil(t, errDag)
+	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incPy}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params[incPy.Signature.GetInputs()[0].Name] = 1
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	_, err2 := fcomp.Invoke(request)
+	u.AssertNonNil(t, err2)
+
+	request.ExecReport.Progress.Print()
+}

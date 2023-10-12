@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func PostJson(url string, body []byte) (*http.Response, error) {
@@ -41,6 +42,28 @@ func PrintJsonResponse(resp io.ReadCloser) {
 		fmt.Printf("Error while writing indented JSON to stdout: %s\n", err)
 		return
 	}
+}
+
+func PrintErrorResponse(resp io.ReadCloser) {
+	defer resp.Close()
+	body, err := io.ReadAll(resp)
+	if err != nil {
+		fmt.Println("Error reading response:", err)
+		return
+	}
+
+	// Convert the []byte to a string
+	bodyStr := string(body)
+	if bodyStr == "" {
+		return
+	}
+	// Replace "\n" with actual newline characters
+	formatted := strings.ReplaceAll(bodyStr, "\\n", "\n")
+	formatted2 := strings.ReplaceAll(formatted, "\"", "")
+	formatted3 := strings.ReplaceAll(formatted2, "{", "\n")
+	formatted4 := strings.ReplaceAll(formatted3, "}", "")
+
+	fmt.Print(formatted4)
 }
 
 func GetJsonResponse(resp io.ReadCloser) string {

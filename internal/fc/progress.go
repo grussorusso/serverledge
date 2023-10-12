@@ -387,13 +387,17 @@ func extractNodeInfo(dag *Dag, node DagNode, group int, infos []*DagNodeInfo) []
 }
 
 func (p *Progress) Print() {
-	str := fmt.Sprintf("Progress for composition request %s - G = node group, B = node branch\n", p.ReqId)
+	fmt.Printf("%s", p.PrettyString())
+}
+
+func (p *Progress) PrettyString() string {
+	str := fmt.Sprintf("\nProgress for composition request %s - G = node group, B = node branch\n", p.ReqId)
 	str += fmt.Sprintln("G. |B| Type   (        NodeID        ) - Status")
 	str += fmt.Sprintln("-------------------------------------------------")
 	for _, info := range p.DagNodes {
 		str += fmt.Sprintf("%d. |%d| %-6s (%-22s) - %s\n", info.Group, info.Branch, printType(info.Type), info.Id, printStatus(info.Status))
 	}
-	fmt.Printf("%s", str)
+	return str
 }
 
 func (p *Progress) String() string {

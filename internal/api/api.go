@@ -324,7 +324,7 @@ func InvokeFunctionComposition(e echo.Context) error {
 	funComp, ok := fc.GetFC(fcName)
 	if !ok {
 		log.Printf("Dropping request for unknown FC '%s'", fcName)
-		return e.JSON(http.StatusNotFound, "")
+		return e.JSON(http.StatusNotFound, "function composition '"+fcName+"' does not exist")
 	}
 
 	// we use invocation request that is specific to function compositions
@@ -332,7 +332,7 @@ func InvokeFunctionComposition(e echo.Context) error {
 	err := json.NewDecoder(e.Request().Body).Decode(&fcInvocationRequest)
 	if err != nil && err != io.EOF {
 		log.Printf("Could not parse request: %v", err)
-		return fmt.Errorf("could not parse request: %v", err)
+		return e.JSON(http.StatusInternalServerError, "failed to parse composition invocation request. Check parameters and composition definition")
 	}
 	// gets a fc.CompositionRequest from the pool goroutine-safe cache.
 	fcReq := compositionRequestsPool.Get().(*fc.CompositionRequest) // A pointer *function.CompositionRequest will be created if does not exists, otherwise removed from the pool
@@ -370,7 +370,14 @@ func InvokeFunctionComposition(e echo.Context) error {
 		return e.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
 		log.Printf("Invocation failed: %v", err)
-		return e.String(http.StatusInternalServerError, "Node has not enough resources")
+		v := struct {
+			Error    string
+			Progress string
+		}{
+			Error:    err.Error(),
+			Progress: fcReq.ExecReport.Progress.PrettyString(),
+		}
+		return e.JSON(http.StatusInternalServerError, v)
 	} else {
 		return e.JSON(http.StatusOK, fc.CompositionResponse{Success: true, CompositionExecutionReport: fcReq.ExecReport})
 	}
