@@ -24,38 +24,44 @@
           src: ../../bin/
           dest: ~/serverledge-deploy/serverledge-bin/
           mode: "0755"
-#      - name: Copy the serverledge binary to the remote directory
-#        copy:
-#          src: ../../bin/serverledge
-#          dest: ~/serverledge-deploy/serverledge-bin
-#          mode: '0777'
-#      - name: Copy the serverledge-cli binary to the remote directory
-#        copy:
-#          src: ../../bin/serverledge-cli
-#          dest: ~/serverledge-deploy/serverledge-bin
-#          mode: '0777'
-#      - name: Copy the serverledge-cli binary to the remote directory
-#        copy:
-#          src: ../../bin/serverledge-cli
-#          dest: ~/serverledge-deploy/serverledge-bin
-#          mode: '0777'
+      # files for experiment 2
+      - name: Copy grep.py
+        copy:
+          src: ../grep.py
+          dest: ~/serverledge-deploy/files
+          mode: '0777'
+      - name: Copy grepInput.json
+        copy:
+          src: ../grepInput.json
+          dest: ~/serverledge-deploy/files
+          mode: '0666'
+      - name: Copy summarize.py
+        copy:
+          src: ../summarize.py
+          dest: ~/serverledge-deploy/files
+          mode: '0777'
+      - name: Copy summarizeInput.json
+        copy:
+          src: ../summarizeInput.json
+          dest: ~/serverledge-deploy/files
+          mode: '0666'
+      - name: Copy wordCount.js
+        copy:
+          src: ../wordCount.js
+          dest: ~/serverledge-deploy/files
+          mode: '0777'
+      - name: Copy wordCountInput.json
+        copy:
+          src: ../wordCountInput.json
+          dest: ~/serverledge-deploy/files
+          mode: '0666'
       - name: Create the inventory directory if it doesn't exist
         file:
           path: ~/serverledge-deploy/inventory
           state: directory
           mode: '0755'
-      - name: Create inventory.ini file
+      - name: Copy the inventory.ini file to the remote directory
         copy:
-          content: |
-            [sedge_Edge]
-            192.168.122.27
-            192.168.122.70
-  
-            [sedge_Cloud]
-            192.168.122.167
+          src: inventory.ini
           dest: ~/serverledge-deploy/inventory/inventory.ini
           mode: '0644'
-      - name: Deploy serverledge
-        command: ansible-playbook ~/serverledge-deploy/deploy_serverledge.yml
-        environment:
-          ANSIBLE_INVENTORY: ~/serverledge-deploy/inventory/inventory.ini
