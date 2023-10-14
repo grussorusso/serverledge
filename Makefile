@@ -9,7 +9,7 @@ lb:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/main.go
 
 serverledge-cli:
-	$(GO) build -o $(BIN)/$@ cmd/cli/main.go # can't use CGO_ENABLED=0 because it cannot find libraries
+	$(GO) build -ldflags="-w -s -linkmode external -extldflags '-static'" -o $(BIN)/$@ cmd/cli/main.go # can't use CGO_ENABLED=0 because it cannot find libraries. But without ldflags I would get error GLIBC not found on the server. This emits warnings but works.
 
 executor:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/executor.go
