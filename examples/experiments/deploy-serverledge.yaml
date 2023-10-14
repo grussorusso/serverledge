@@ -7,14 +7,15 @@
         file:
           path: ~/serverledge-deploy
           state: directory
-          mode: '0555'
+          mode: '0755'
       - name: Update the local git repository
         git:
             repo: https://github.com/grussorusso/serverledge-deploy.git
             dest: ~/serverledge-deploy
+            version: pmc23
             clone: yes
       - name: Copy the local file to the remote directory
         copy:
-            src: ./bin/serverledge
+            src: ../../bin/serverledge
             dest: ~/serverledge-deploy/
             mode: '0777'
