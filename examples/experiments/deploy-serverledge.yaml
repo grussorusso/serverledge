@@ -3,12 +3,12 @@
   user: giacomo
 
   tasks:
-      - name: Create the target directory if it doesn't exist
+      - name: Create the repo directory if it doesn't exist
         file:
           path: ~/serverledge-deploy
           state: directory
           mode: '0755'
-      - name: Create the target directory if it doesn't exist
+      - name: Create the bin directory if it doesn't exist
         file:
           path: ~/serverledge-deploy/serverledge-bin
           state: directory
@@ -19,16 +19,26 @@
           dest: ~/serverledge-deploy
           version: pmc23
           clone: yes
-      - name: Copy the serverledge binary to the remote directory
+      - name: Copy the bin folder
         copy:
-          src: ../../bin/serverledge
-          dest: ~/serverledge-deploy/serverledge-bin
-          mode: '0777'
-      - name: Copy the serverledge-cli binary to the remote directory
-        copy:
-          src: ../../bin/serverledge-cli
-          dest: ~/serverledge-deploy/serverledge-bin
-          mode: '0777'
+          src: ../../bin/
+          dest: ~/serverledge-deploy/serverledge-bin/
+          mode: "0755"
+#      - name: Copy the serverledge binary to the remote directory
+#        copy:
+#          src: ../../bin/serverledge
+#          dest: ~/serverledge-deploy/serverledge-bin
+#          mode: '0777'
+#      - name: Copy the serverledge-cli binary to the remote directory
+#        copy:
+#          src: ../../bin/serverledge-cli
+#          dest: ~/serverledge-deploy/serverledge-bin
+#          mode: '0777'
+#      - name: Copy the serverledge-cli binary to the remote directory
+#        copy:
+#          src: ../../bin/serverledge-cli
+#          dest: ~/serverledge-deploy/serverledge-bin
+#          mode: '0777'
       - name: Create the inventory directory if it doesn't exist
         file:
           path: ~/serverledge-deploy/inventory
