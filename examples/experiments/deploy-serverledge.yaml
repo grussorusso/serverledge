@@ -1,0 +1,20 @@
+- name: Deploy ServerLedge
+  hosts: all
+  user: giacomo
+
+  tasks:
+      - name: Create the target directory if it doesn't exist
+        file:
+          path: ~/serverledge-deploy
+          state: directory
+          mode: '0555'
+      - name: Update the local git repository
+        git:
+            repo: https://github.com/grussorusso/serverledge-deploy.git
+            dest: ~/serverledge-deploy
+            clone: yes
+      - name: Copy the local file to the remote directory
+        copy:
+            src: ./bin/serverledge
+            dest: ~/serverledge-deploy/
+            mode: '0777'
