@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
@@ -31,12 +30,9 @@ func CreateExecutionReportId(dagNode DagNode) ExecutionReportId {
 
 type CompositionExecutionReport struct {
 	Result       map[string]interface{}
-	Reports      *hashmap.Map[ExecutionReportId, *function.ExecutionReport]
+	Reports      map[ExecutionReportId]*function.ExecutionReport
 	ResponseTime float64   // time waited by the user to get the output of the entire composition
 	Progress     *Progress `json:"-"` // skipped in Json marshaling
-	// InitTime       float64 // time spent sleeping before executing the request (the cold start)
-	// OffloadLatency float64 // time spent offloading the requests
-	// Duration       float64 // time spent executing the requests
 }
 
 func (cer *CompositionExecutionReport) GetSingleResult() string {
@@ -140,8 +136,6 @@ func GetFC(name string) (*FunctionComposition, bool) {
 
 // SaveToEtcd creates and register the function composition in Serverledge
 // It is like SaveToEtcd for a simple function
-// TODO: maybe we should merge with *function.SaveToEtcd and use a Deployable as argument
-// TODO: maybe we should register all function defined in the DAG
 func (fc *FunctionComposition) SaveToEtcd() error {
 	cli, err := utils.GetEtcdClient()
 	if err != nil {
@@ -221,11 +215,11 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if err != nil {
 		return CompositionExecutionReport{}, err
 	}
-	removed, err := DeleteAllPartialData(requestId, cache.Persist)
-	if err != nil {
-		return CompositionExecutionReport{}, err
+	_, errDel := DeleteAllPartialData(requestId, cache.Persist)
+	if errDel != nil {
+		return CompositionExecutionReport{}, errDel
 	}
-	fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
+	// fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
 	//progress.NextGroup = -1
 	//r.ExecReport.Progress = progress

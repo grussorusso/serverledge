@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/cli"
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/fc"
@@ -242,7 +241,7 @@ func newCompositionRequestTest() *fc.CompositionRequest {
 	return &fc.CompositionRequest{
 		ReqId: "test",
 		ExecReport: fc.CompositionExecutionReport{
-			Reports: hashmap.New[fc.ExecutionReportId, *function.ExecutionReport](),
+			Reports: make(map[fc.ExecutionReportId]*function.ExecutionReport),
 		},
 	}
 }

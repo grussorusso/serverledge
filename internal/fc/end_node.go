@@ -6,6 +6,7 @@ import (
 	"github.com/lithammer/shortuuid"
 )
 
+// Reason can be used to parse the success or failure state of AWS State Language
 type Reason int
 
 const (
@@ -17,8 +18,7 @@ const (
 type EndNode struct {
 	Id       DagNodeId
 	NodeType DagNodeType
-	Result   map[string]interface{} // TODO: maybe useless
-	// Reason Reason                 // TODO: maybe useless
+	Result   map[string]interface{}
 }
 
 func NewEndNode() *EndNode {
@@ -31,11 +31,6 @@ func NewEndNode() *EndNode {
 func (e *EndNode) Equals(cmp types.Comparable) bool {
 	switch cmp.(type) {
 	case *EndNode:
-		//for i := 0; i < len(e.InputFrom); i++ {
-		//	if !e.InputFrom[i].Equals(cmp.(*EndNode).InputFrom[i]) {
-		//		return false
-		//	}
-		//}
 		return true
 	default:
 		return false
@@ -47,21 +42,16 @@ func (e *EndNode) Exec(*CompositionRequest) (map[string]interface{}, error) {
 }
 
 func (e *EndNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
-	//TODO implement me
-	panic("implement me")
+	return nil // should not do anything. End node cannot be chained to anything
 }
 
 func (e *EndNode) ReceiveInput(input map[string]interface{}) error {
-	//if e.result != nil {
-	//	return errors.New("input already received")
-	//}
 	e.Result = input
 	return nil
 }
 
 // PrepareOutput doesn't need to do nothing for EndNode
 func (e *EndNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
-	// TODO: dovrebbe inviare il risultato o forse va bene che non fa nulla
 	return nil
 }
 

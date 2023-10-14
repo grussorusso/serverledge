@@ -26,10 +26,7 @@ type SimpleNode struct {
 	input      map[string]interface{}
 	OutputTo   DagNodeId
 	Func       string
-	IsParallel bool
 	inputMutex sync.Mutex // this is not marshaled
-	// Request   *function.Request
-	// outputMappingPolicy OutMapPolicy  // this policy should be needed to decide how to map outputs to the next node
 }
 
 func NewSimpleNode(f string) *SimpleNode {
@@ -37,7 +34,6 @@ func NewSimpleNode(f string) *SimpleNode {
 		Id:         DagNodeId(shortuuid.New()),
 		NodeType:   Simple,
 		Func:       f,
-		IsParallel: false,
 		inputMutex: sync.Mutex{},
 	}
 }
@@ -62,6 +58,7 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
 	}
 	/*
+		// this is for debug
 		s.inputMutex.Lock()
 		fmt.Printf("executing simple node %s for request %s with input %v\n", s.Id, compRequest.ReqId, s.input)
 		s.inputMutex.Unlock()
@@ -133,12 +130,14 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		r.ExecReport.Result = fmt.Sprintf("%v", m)
 	}
 	// saving execution report for this function
-	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(s), &r.ExecReport)
-	cs := ""
-	if !r.ExecReport.IsWarmStart {
-		cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)
-	}
-	fmt.Printf("Function Request %s - result of simple node %s: %v %s\n", r.ReqId, s.Id, r.ExecReport.Result, cs)
+	compRequest.ExecReport.Reports[CreateExecutionReportId(s)] = &r.ExecReport
+	/*
+		cs := ""
+		if !r.ExecReport.IsWarmStart {
+			cs = fmt.Sprintf("- cold start: %v", !r.ExecReport.IsWarmStart)
+		}
+		fmt.Printf("Function Request %s - result of simple node %s: %v %s\n", r.ReqId, s.Id, r.ExecReport.Result, cs)
+	*/
 	return m, nil
 }
 
