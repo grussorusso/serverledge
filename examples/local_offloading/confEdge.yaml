@@ -1,5 +1,5 @@
 api.port: 1323
 registry.udp.port: 9876
-scheduler.policy: QoSAware
+scheduler.policy: QoSAwareCloud
 #cloud.server.url: http://192.168.0.131:1326
 

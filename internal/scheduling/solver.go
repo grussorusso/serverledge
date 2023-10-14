@@ -132,8 +132,15 @@ func solve(m map[string]*functionInfo) {
 			})
 		}
 	}
+	log.Println("class list: ", classList)
 
-	aggregatedEdgeMemory := calculateAggregatedMem()
+	var aggregatedEdgeMemory float32
+	if policyFlag == "cloudOnly" {
+		// Force aggregated memory to be zero, so that Edge offloading will be excluded
+		aggregatedEdgeMemory = 0
+	} else {
+		aggregatedEdgeMemory = calculateAggregatedMem()
+	}
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
 	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
@@ -160,7 +167,7 @@ func solve(m map[string]*functionInfo) {
 
 	log.Println("Evaluation took: ", response.GetTimeTaken())
 	res := response.GetFResponse()
-	// FIXME REMOVE log.Println("response: ", res)
+	log.Println("response: ", res)
 
 	for _, r := range res {
 		fInfo, prs := m[r.GetName()]

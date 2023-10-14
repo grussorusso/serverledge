@@ -8,9 +8,12 @@ import (
 
 // EdgePolicy supports only Edge-Edge offloading
 
-type QoSAwareOffloadPolicy struct{}
+type QoSAwareOffloadPolicy struct {
+	CloudOnly bool `default:"false"`
+}
 
 var engine decisionEngine
+var policyFlag string
 
 func (p *QoSAwareOffloadPolicy) Init() {
 	// initialize decision engine
@@ -20,7 +23,14 @@ func (p *QoSAwareOffloadPolicy) Init() {
 	} else {
 		engine = &decisionEngineFlux{}
 	}
-	log.Println("Policy version:", version)
+
+	if p.CloudOnly {
+		policyFlag = "cloudOnly"
+	} else {
+		policyFlag = "edgeCloud"
+	}
+
+	log.Println("Scheduler version:", version)
 	engine.InitDecisionEngine()
 }
 

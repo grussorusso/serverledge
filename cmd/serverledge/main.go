@@ -170,8 +170,14 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.Custom1Policy{}
 	} else if policyConf == "customCloudOffload" {
 		return &scheduling.CustomCloudOffloadPolicy{}
-	} else if policyConf == "QoSAware" {
-		return &scheduling.QoSAwareOffloadPolicy{}
+	} else if policyConf == "QoSAwareEdgeCloud" {
+		return &scheduling.QoSAwareOffloadPolicy{
+			CloudOnly: false,
+		}
+	} else if policyConf == "QoSAwareCloud" {
+		return &scheduling.QoSAwareOffloadPolicy{
+			CloudOnly: true,
+		}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}
