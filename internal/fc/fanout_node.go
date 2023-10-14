@@ -82,32 +82,32 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 			broadcast[fmt.Sprintf("%d", i)] = f.input // simply returns input, that will be copied to each subsequent node
 		}
 		output = broadcast
-	} else if f.Type == Scatter { // scatter only accepts a single array with exactly fanOutDegree elements
+	} else if f.Type == Scatter { // scatter only accepts an array with exactly fanOutDegree elements. However, multiple input values are allowed
 		// get inputs
-		if len(f.input) != 1 {
-			err = fmt.Errorf("invalid fanout input size, should only accept one array, but has %d different inputs", len(f.input))
-		} else {
-			output = make(map[string]interface{})
-			for inputName, inputToScatter := range f.input {
-				inputArrayToScatter, errNotSlice := utils.ConvertToSlice(inputToScatter)
-				if errNotSlice != nil {
-					err = errNotSlice
-					break
-				}
 
-				if len(inputArrayToScatter) != f.FanOutDegree {
-					err = fmt.Errorf("input array size (%d) must be equal to fanOutDegree (%d). Check the previous node output", len(inputArrayToScatter), f.FanOutDegree)
-					break
-				}
+		output = make(map[string]interface{})
+		for inputName, inputToScatter := range f.input {
+			inputArrayToScatter, errNotSlice := utils.ConvertToSlice(inputToScatter)
+			if errNotSlice != nil {
+				continue
+			}
 
-				scatter := make(map[string]interface{})
-				for i := 0; i < f.FanOutDegree; i++ {
-					scatter[fmt.Sprintf("%d", i)] = inputArrayToScatter[i]
-				}
-				output[inputName] = scatter
-				// there is only one element, so we break now for safety
+			if len(inputArrayToScatter) != f.FanOutDegree {
+				err = fmt.Errorf("input array size (%d) must be equal to fanOutDegree (%d). Check the previous node output", len(inputArrayToScatter), f.FanOutDegree)
 				break
 			}
+
+			scatter := make(map[string]interface{})
+			for i := 0; i < f.FanOutDegree; i++ {
+				scatter[fmt.Sprintf("%d", i)] = inputArrayToScatter[i]
+			}
+			output[inputName] = scatter
+			// there is only one element, so we break now for safety
+			break
+		}
+
+		if output == nil {
+			err = fmt.Errorf("invalid fanout input, should accept one array with %d elements, but it's length is %d", f.FanOutDegree, len(f.input))
 		}
 	} else {
 		output = nil

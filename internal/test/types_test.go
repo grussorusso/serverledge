@@ -91,4 +91,6 @@ func TestArray(t *testing.T) {
 	err4 := a.TypeCheck([]string{"a", "b", "c"})
 	u.AssertNonNil(t, err4)
 
+	err5 := a.TypeCheck(999)
+	u.AssertNil(t, err5)
 }

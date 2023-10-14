@@ -129,7 +129,7 @@ func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, erro
 			}
 			value, found := input[opStr]
 			if !found {
-				return nil, fmt.Errorf("input %v not found for equal condition", value)
+				ops = append(ops, false)
 			}
 			ops = append(ops, value)
 		}
