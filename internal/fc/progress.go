@@ -22,7 +22,6 @@ func newProgressId(reqId ReqId) ProgressId {
 	return ProgressId("progress_" + reqId)
 }
 
-// TODO: add progress to FunctionComposition CompositionRequest (maybe doesn't exists)
 // Progress tracks the progress of a Dag, i.e. which nodes are executed, and what is the next node to run. Dag progress is saved in ETCD and retrieved by the next node
 type Progress struct {
 	ReqId     ReqId // requestId, used to distinguish different dag's progresses

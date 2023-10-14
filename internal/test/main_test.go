@@ -75,6 +75,7 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 
 // current dir is ./serverledge/internal/fc
 func TestMain(m *testing.M) {
+	_, Experiment = os.LookupEnv("EXPERIMENT")
 	_, IntegrationTest = os.LookupEnv("INTEGRATION")
 	// spin up container with serverledge infrastructure
 	if IntegrationTest {

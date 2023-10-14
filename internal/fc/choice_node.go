@@ -80,7 +80,7 @@ func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		output["error"] = fmt.Sprintf("failed choice node %s - no condition is met", c.Id)
 	}
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(c), &function.ExecutionReport{
+	compRequest.ExecReport.Reports[CreateExecutionReportId(c)] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
@@ -88,7 +88,7 @@ func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		OffloadLatency: 0,
 		Duration:       respAndDuration,
 		SchedAction:    "",
-	})
+	}
 	return output, err
 }
 

@@ -20,7 +20,7 @@ type CompositionInvocationRequest struct {
 	QosMaxRespT     float64
 	CanDoOffloading bool
 	Async           bool
-	NextNodes       []string // DagNodeId
+	// NextNodes       []string // DagNodeId
 	// we do not add Progress here, only the next group of node that should execute
 	// in case of choice node, we retrieve the progress for each dagNodeId and execute only the one that is not in Skipped State
 	// in case of fan out node, we retrieve all the progress and execute concurrently all the dagNodes in the group.

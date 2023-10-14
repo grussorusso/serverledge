@@ -22,7 +22,7 @@ const (
 // InputDef can be used to represent and check an input type with its name in the map
 type InputDef struct {
 	Name string // the name of the input parameter, also in the map key
-	Type string // the type of the input parameter TODO: trasformare in stringa e poi creare un metodo per leggere la stringa in quel data type
+	Type string // the type of the input parameter
 }
 
 // CheckInput evaluates all given inputs and if there is no input that type-checks, with the given name and the current type, returns an error

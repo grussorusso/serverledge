@@ -114,7 +114,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		err = fmt.Errorf("invalid fanout mode, valid values are 0=Broadcast and 1=Scatter")
 	}
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(f), &function.ExecutionReport{
+	compRequest.ExecReport.Reports[CreateExecutionReportId(f)] = &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", output),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
@@ -122,7 +122,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		OffloadLatency: 0,
 		Duration:       respAndDuration,
 		SchedAction:    "",
-	})
+	}
 	return output, err
 }
 
