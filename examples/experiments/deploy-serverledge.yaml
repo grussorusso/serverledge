@@ -24,42 +24,57 @@
           src: ../../bin/
           dest: ~/serverledge-deploy/serverledge-bin/
           mode: "0755"
-      # files for experiment 2
-      - name: Copy grep.py
+      - name: Copy the examples folder
         copy:
-          src: ../grep.py
-          dest: ~/serverledge-deploy/files
-          mode: '0777'
-      - name: Copy grepInput.json
-        copy:
-          src: ../grepInput.json
-          dest: ~/serverledge-deploy/files
-          mode: '0666'
-      - name: Copy summarize.py
-        copy:
-          src: ../summarize.py
-          dest: ~/serverledge-deploy/files
-          mode: '0777'
-      - name: Copy summarizeInput.json
-        copy:
-          src: ../summarizeInput.json
-          dest: ~/serverledge-deploy/files
-          mode: '0666'
-      - name: Copy wordCount.js
-        copy:
-          src: ../wordCount.js
-          dest: ~/serverledge-deploy/files
-          mode: '0777'
-      - name: Copy wordCountInput.json
-        copy:
-          src: ../wordCountInput.json
-          dest: ~/serverledge-deploy/files
-          mode: '0666'
-      - name: Create the inventory directory if it doesn't exist
-        file:
-          path: ~/serverledge-deploy/inventory
-          state: directory
-          mode: '0755'
+          src: ../
+          dest: ~/serverledge-deploy/examples/
+          mode: "0755"
+#      - name: Copy inc.py
+#        copy:
+#          src: ../inc.py
+#          dest: ~/serverledge-deploy/files
+#          mode: '0755'
+#      - name: Copy inc.js
+#        copy:
+#          src: ../inc.js
+#          dest: ~/serverledge-deploy/files
+#          mode: '0755'
+#      # files for experiment 2
+#      - name: Copy grep.py
+#        copy:
+#          src: ../grep.py
+#          dest: ~/serverledge-deploy/files
+#          mode: '0755'
+#      - name: Copy grepInput.json
+#        copy:
+#          src: ../grepInput.json
+#          dest: ~/serverledge-deploy/files
+#          mode: '0666'
+#      - name: Copy summarize.py
+#        copy:
+#          src: ../summarize.py
+#          dest: ~/serverledge-deploy/files
+#          mode: '0755'
+#      - name: Copy summarizeInput.json
+#        copy:
+#          src: ../summarizeInput.json
+#          dest: ~/serverledge-deploy/files
+#          mode: '0666'
+#      - name: Copy wordCount.js
+#        copy:
+#          src: ../wordCount.js
+#          dest: ~/serverledge-deploy/files
+#          mode: '0755'
+#      - name: Copy wordCountInput.json
+#        copy:
+#          src: ../wordCountInput.json
+#          dest: ~/serverledge-deploy/files
+#          mode: '0666'
+#      - name: Create the inventory directory if it doesn't exist
+#        file:
+#          path: ~/serverledge-deploy/inventory
+#          state: directory
+#          mode: '0755'
       - name: Copy the inventory.ini file to the remote directory
         copy:
           src: inventory.ini
