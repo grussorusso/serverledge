@@ -25,17 +25,46 @@ func exampleParsing(str string) (*fc.Dag, []*function.Function, error) {
 		dag, errParallel := fc.CreateBroadcastDag(fc.LambdaSequenceDag(py, py), 3)
 		return dag, []*function.Function{py}, errParallel
 	case "complex":
+		fnGrep, err1 := InitializePyFunction("grep", "handler", function.NewSignature().
+			AddInput("InputText", function.Text{}).
+			AddOutput("Rows", function.Array[function.Text]{}).
+			Build())
+		if err1 != nil {
+			return nil, nil, err1
+		}
+
+		fnWordCount, err2 := InitializeJsFunction("wordCount", function.NewSignature().
+			AddInput("InputText", function.Text{}).
+			AddInput("Task", function.Bool{}). // should be true
+			AddOutput("NumberOfWords", function.Int{}).
+			Build())
+		if err2 != nil {
+			return nil, nil, err2
+		}
+
+		fnSummarize, err3 := InitializePyFunction("summarize", "handler", function.NewSignature().
+			AddInput("InputText", function.Text{}).
+			AddInput("Task", function.Bool{}). // should be false
+			AddOutput("Summary", function.Text{}).
+			Build())
+		if err3 != nil {
+			return nil, nil, err3
+		}
 		dag, errComplex := fc.NewDagBuilder().
-			AddSimpleNode(py).
-			AddChoiceNode(fc.NewEqCondition(1, 4), fc.NewDiffCondition(1, 4)).
-			NextBranch(fc.CreateSequenceDag(py)).
+			AddChoiceNode(
+				fc.NewEqParamCondition(fc.NewParam("Task"), fc.NewValue(true)),
+				fc.NewEqParamCondition(fc.NewParam("Task"), fc.NewValue(false)),
+				fc.NewConstCondition(true),
+			).
+			NextBranch(fc.CreateSequenceDag(fnWordCount)).
+			NextBranch(fc.CreateSequenceDag(fnSummarize)).
 			NextBranch(fc.NewDagBuilder().
-				AddScatterFanOutNode(3).
-				ForEachParallelBranch(fc.LambdaSequenceDag(py)).
+				AddScatterFanOutNode(2).
+				ForEachParallelBranch(fc.LambdaSequenceDag(fnGrep)).
 				AddFanInNode(fc.AddToArrayEntry).
 				Build()).
 			EndChoiceAndBuild()
-		return dag, []*function.Function{py}, errComplex
+		return dag, []*function.Function{fnGrep, fnWordCount, fnSummarize}, errComplex
 	default:
 		return nil, nil, fmt.Errorf("failed to parse dag - use a default dag like 'sequence', 'choice', 'parallel' or 'complex'")
 	}

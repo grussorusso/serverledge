@@ -145,7 +145,7 @@ func (a Array[D]) TypeCheck(val interface{}) error {
 		return nil
 	default: // if we have only a single type, we type check that it is of the same type of Array's type parameter
 		typeElem := reflect.TypeOf(val).Name()
-		fmt.Printf("name of type: %s\n", typeElem)
+		// fmt.Printf("name of type: %s\n", typeElem)
 		err := a.DataType.TypeCheck(val)
 		if err != nil {
 			return fmt.Errorf("val should be a slice, but is %v of type %s\n", val, typeElem)
