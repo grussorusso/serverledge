@@ -132,7 +132,7 @@ func solve(m map[string]*functionInfo) {
 			})
 		}
 	}
-	log.Println("class list: ", classList)
+	// FIXME REMOVE log.Println("class list: ", classList)
 
 	var aggregatedEdgeMemory float32
 	if policyFlag == "cloudOnly" {

@@ -42,7 +42,6 @@ func UDPStatusServer() {
 
 func handleUDPConnection(conn *net.UDPConn) {
 	buffer := make([]byte, 1024)
-	log.Println(conn.LocalAddr())
 
 	_, addr, err := conn.ReadFromUDP(buffer)
 	if err != nil {
