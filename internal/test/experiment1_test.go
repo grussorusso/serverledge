@@ -15,7 +15,7 @@ func TestExperiment1(t *testing.T) {
 	if !Experiment {
 		t.Skip()
 	}
-	lengths := []int{1, 2, 4, 8, 16}
+	lengths := []int{1, 2, 4, 8, 16, 32}
 	for _, length := range lengths {
 		_, err := CreateNoopCompositionSequence(t, fmt.Sprintf("sequence_%d", length), "localhost", 1323, length)
 		utils.AssertNilMsg(t, err, "failed to create composition")

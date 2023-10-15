@@ -3,7 +3,6 @@ import random
 import time
 
 import locust.stats
-
 from locust import HttpUser, task, events, constant_throughput
 
 locust.stats.PERCENTILES_TO_REPORT = [0.25, 0.50, 0.75, 0.80, 0.90, 0.95, 0.98, 0.99, 1.0]
@@ -15,24 +14,27 @@ def _(parser):
                         help="Lenght of sequence")
 
 
+class ResponseTimeLogger:
+
+    def __init__(self, sequence_length: int):
+        self.out_file = open(f"exp_1_resptimes_sequence_{sequence_length}.csv", "w")
+        self.log(f"response_time,timestamp,duration")
+
+    def log(self, rt):
+        print(f"{rt}", file=self.out_file)
+
+    def flush(self):
+        self.out_file.flush()
+
+
+logger: ResponseTimeLogger
+
+
 @events.test_start.add_listener
 def _(environment, **kw):
     print("Custom argument supplied: %s" % environment.parsed_options.sequence_length)
     global logger
     logger = ResponseTimeLogger(environment.parsed_options.sequence_length)
-
-
-class ResponseTimeLogger:
-
-    def __init__(self, sequence_length: int):
-        self.outf = open(f"exp_1_resptimes_sequence_{sequence_length}.csv", "w")
-        self.log(f"response_time,timestamp,duration")
-
-    def log(self, rt):
-        print(f"{rt}", file=self.outf)
-
-    def flush(self):
-        self.outf.flush()
 
 
 class ServerledgeUser(HttpUser):
@@ -63,3 +65,5 @@ def composition_request_handler(request_type, name, response_time, response_leng
         duration = resp["ResponseTime"]
         timestamp = time.time()
         logger.log(f"{response_time},{timestamp},{duration:.5f}")
+    else:
+        print(exception)
