@@ -11,7 +11,7 @@ func TestExperiment2(t *testing.T) {
 	if !Experiment {
 		t.Skip()
 	}
-	err := createComplexComposition(t)
+	_, err := createComplexComposition(t)
 	utils.AssertNilMsg(t, err, "failed to create composition")
 
 	// err2 := comp.Delete()
@@ -33,7 +33,7 @@ func TestExperiment2(t *testing.T) {
  *    |            |           |
  *    ------------End-----------
  */
-func createComplexComposition(t *testing.T) error {
+func createComplexComposition(t *testing.T) (*fc.FunctionComposition, error) {
 	fnGrep, err := initializePyFunction("grep", "handler", function.NewSignature().
 		AddInput("InputText", function.Text{}).
 		AddOutput("Rows", function.Array[function.Text]{}).
@@ -69,5 +69,5 @@ func createComplexComposition(t *testing.T) error {
 
 	composition := fc.NewFC("complex", *dag, []*function.Function{fnWordCount, fnSummarize, fnGrep}, true)
 	createCompositionApiTest(t, &composition, "127.0.0.1", 1323)
-	return nil
+	return &composition, nil
 }

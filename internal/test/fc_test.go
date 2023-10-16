@@ -371,6 +371,98 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	}
 }
 
+// TestInvokeFC_Complex_Concurrent executes concurrently m times a complex Dag of length N, where each node executes a different function
+func TestInvokeFC_Complex_Concurrent(t *testing.T) {
+
+	if !IntegrationTest {
+		t.Skip()
+	}
+
+	// CREATE - we create a test function composition
+	fcomp, err := createComplexComposition(t)
+	u.AssertNil(t, err)
+
+	concurrencyLevel := 6
+	start := make(chan int)
+	results := make(map[int]chan interface{})
+	errors := make(map[int]chan error)
+	// initialize channels
+	for i := 0; i < concurrencyLevel; i++ {
+		results[i] = make(chan interface{})
+		errors[i] = make(chan error)
+	}
+
+	fmt.Println("initializing goroutines...")
+	for i := 0; i < concurrencyLevel; i++ {
+		resultChan := results[i]
+		errChan := errors[i]
+		// INVOKE - we call the function composition concurrently m times
+		go func(i int, resultChan chan interface{}, errChan chan error, start chan int) {
+			params := make(map[string]interface{})
+			go_name := ""
+			out_name := ""
+			if i%3 == 0 { // word_count
+				params["InputText"] = "Word counting is a useful technique for analyzing text data. It helps in various natural language processing tasks. In this example, we are testing the wordCount function in JavaScript. It should accurately count the number of words in this text. Counting words can be a fundamental step in text analysis."
+				params["Task"] = true
+				go_name = "word_count"
+				out_name = "NumberOfWords"
+			} else if i%3 == 1 { // summarize
+				params["InputText"] = "The Solar System consists of the Sun and all the celestial objects bound to it by gravity, including the eight major planets and their moons, asteroids, comets, and more. The Sun is a star located at the center of the Solar System. It provides light, heat, and energy, making life possible on Earth.\n\nThe eight major planets in our Solar System are Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune. Each planet has unique characteristics, and some have moons of their own. For example, Earth has one natural satellite, the Moon.\n\nAsteroids are rocky objects that orbit the Sun, mainly found in the asteroid belt between the orbits of Mars and Jupiter. Comets are icy bodies that develop tails when they approach the Sun.\n\nStudying the Solar System provides insights into the formation and evolution of celestial bodies, as well as the potential for extraterrestrial life. Scientists use various tools and telescopes to explore and learn more about the mysteries of our Solar System.\n"
+				params["Task"] = false
+				go_name = "summarize"
+				out_name = "Summary"
+			} else { // 2 parallel grep
+				params["InputText"] = []string{
+					"This is an example text for testing the grep function.\nYou can use the grep function to search for specific words or patterns in text.\nThe function is a powerful tool for text processing.\n",
+					"It allows you to filter and extract lines that match a given pattern.\nYou can customize the pattern using regular expressions.\nFeel free to test the grep function with different patterns and texts.",
+				}
+				go_name = "grep"
+				out_name = "Rows"
+			}
+
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d_branch_%s", i, go_name), fcomp, params)
+			// wait until all goroutines are ready
+			<-start
+			fmt.Printf("goroutine %d started invoking\n", i)
+			// return error
+			resultMap, err2 := fcomp.Invoke(request)
+			errChan <- err2
+			// return result
+			output := resultMap.Result[out_name]
+			fmt.Printf("goroutine %d branch %s - result %s: %v\n", i, go_name, out_name, output)
+			resultChan <- output
+		}(i, resultChan, errChan, start)
+	}
+	// let's start all the goroutines at the same time
+	for i := 0; i < concurrencyLevel; i++ {
+		start <- 1
+	}
+
+	// and wait for errors (hopefully not) and results
+	for i, e := range errors {
+		fmt.Printf("waiting for errors for goroutine %d...\n", i)
+		maybeError := <-e
+		u.AssertNilMsg(t, maybeError, "error in goroutine")
+	}
+
+	for i, r := range results {
+		fmt.Printf("waiting for result for goroutine %d...\n", i)
+		output := <-r
+		fmt.Printf("result of goroutine %d = %v\n", i, output)
+	}
+
+	fmt.Println("deleting all composition and functions...")
+	// cleaning up function composition and function
+	err3 := fcomp.Delete()
+	u.AssertNil(t, err3)
+
+	// removing functions container to release resources
+	for _, fun := range fcomp.Functions {
+		// Delete local warm containers
+		node.ShutdownWarmContainersFor(fun)
+	}
+}
+
 // TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.
 func TestInvokeFC_DifferentBranches(t *testing.T) {
 	if !IntegrationTest {
