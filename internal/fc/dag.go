@@ -653,16 +653,16 @@ func (dag *Dag) String() string {
 
 // MarshalJSON is needed because DagNode is an interface
 func (dag *Dag) MarshalJSON() ([]byte, error) {
-	// Create a map to hold the JSON representation of the Wrapper
+	// Create a map to hold the JSON representation of the Dag
 	data := make(map[string]interface{})
 
-	// Add the "wrappo" field to the map
+	// Add the field to the map
 	data["Start"] = dag.Start
 	data["End"] = dag.End
 	data["Width"] = dag.Width
 	nodes := make(map[DagNodeId]interface{})
 
-	// Marshal the Simpatica interface and store it as "simpy" in the map
+	// Marshal the interface and store it as concrete node value in the map
 	for nodeId, node := range dag.Nodes {
 		switch concreteNode := node.(type) {
 		case *StartNode:
