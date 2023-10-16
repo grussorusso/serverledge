@@ -58,20 +58,24 @@ func (c *ChoiceNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec for choice node evaluates the condition
-func (c *ChoiceNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
+func (c *ChoiceNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
 	t0 := time.Now()
 	output := make(map[string]interface{})
 	var err error = nil
+
+	if len(params) != 1 {
+		return nil, fmt.Errorf("failed to get one input for choice node: received %d inputs", len(params))
+	}
 	// simply evalutes the Conditions and set the matching one
 	for i, condition := range c.Conditions {
-		ok, err := condition.Test(c.input)
+		ok, err := condition.Test(params[0])
 		if err != nil {
 			return nil, fmt.Errorf("error while testing condition: %v", err)
 		}
 		if ok {
 			c.FirstMatch = i
 			// the output map should be like the input map!
-			output = c.input
+			output = params[0]
 			break
 		}
 	}
@@ -104,8 +108,7 @@ func (c *ChoiceNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	return nil
 }
 
-func (c *ChoiceNode) ReceiveInput(input map[string]interface{}) error {
-	c.input = input
+func (c *ChoiceNode) CheckInput(input map[string]interface{}) error {
 	return nil
 }
 

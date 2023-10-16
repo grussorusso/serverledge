@@ -362,7 +362,7 @@ func checkAndCompleteChoice(t *testing.T, progress *fc.Progress, choice *fc.Choi
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[0]))
 	u.AssertEquals(t, progress.NextGroup, progress.GetGroup(nextNode[1]))
 
-	_, _ = choice.Exec(newCompositionRequestTest())
+	_, _ = choice.Exec(newCompositionRequestTest(), make(map[string]interface{}))
 	err = progress.CompleteNode(nextNode[choice.FirstMatch])
 	u.AssertNil(t, err)
 	nodeToSkip := choice.GetNodesToSkip(dag)

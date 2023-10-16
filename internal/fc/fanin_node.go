@@ -25,7 +25,7 @@ type FanInNode struct {
 	FanInDegree int
 	Timeout     time.Duration
 	Mode        MergeMode
-	input       []map[string]interface{}
+	// input       []map[string]interface{}
 }
 
 var DefaultTimeout = 60 * time.Second
@@ -58,13 +58,13 @@ func (f *FanInNode) Equals(cmp types.Comparable) bool {
 }
 
 // Exec already have all inputs when executing, so it simply merges them with the chosen policy
-func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
+func (f *FanInNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
 	t0 := time.Now()
 
 	fanInOutput := make(map[string]interface{})
 	if f.Mode == AddNewMapEntry { // each map entry should have a different name map[i: map[nameI: valueI]]
 		duplicates := make(map[string]int)
-		for _, inputMap := range f.input {
+		for _, inputMap := range params {
 			for name, value := range inputMap {
 				num, ok := duplicates[name]
 				duplicates[name] += 1
@@ -79,7 +79,7 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{
 	} else if f.Mode == AddToArrayEntry { // all input maps MUST have exactly one entry with the same name
 		valid := true
 		name := ""
-		for _, inputMap := range f.input {
+		for _, inputMap := range params {
 			if len(inputMap) != 1 {
 				return nil, fmt.Errorf("fanIn input map does not have 1 element")
 			}
@@ -98,7 +98,7 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest) (map[string]interface{
 			}
 		}
 	} else if f.Mode == AddToSetEntry {
-		for _, inputMap := range f.input {
+		for _, inputMap := range params {
 			for name, value := range inputMap {
 				_, found := fanInOutput[name]
 				if !found {
@@ -126,17 +126,8 @@ func (f *FanInNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	return nil
 }
 
-// ReceiveInput simply saves the input map of each previous node into an array of them. Can fail if the input array ends having more maps then fanInDegree
-func (f *FanInNode) ReceiveInput(input map[string]interface{}) error {
-	if f.input == nil {
-		f.input = make([]map[string]interface{}, 0)
-	}
-	f.input = append(f.input, input)
-
-	if len(f.input) > f.FanInDegree {
-		return fmt.Errorf("fan in has more input (%d) than its fanInDegree (%d). Terminating workflow", len(f.input), f.FanInDegree)
-	}
-
+// CheckInput doesn't do anything for fan in node
+func (f *FanInNode) CheckInput(input map[string]interface{}) error {
 	return nil
 }
 

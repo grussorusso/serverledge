@@ -20,10 +20,10 @@ var compositionRequestsPool = sync.Pool{
 
 // SimpleNode is a DagNode that receives one input and sends one result
 type SimpleNode struct {
-	Id         DagNodeId
-	NodeType   DagNodeType
-	BranchId   int
-	input      map[string]interface{}
+	Id       DagNodeId
+	NodeType DagNodeType
+	BranchId int
+	// input      map[string]interface{}
 	OutputTo   DagNodeId
 	Func       string
 	inputMutex sync.Mutex // this is not marshaled
@@ -52,7 +52,7 @@ func (s *SimpleNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
+func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
 		return nil, fmt.Errorf("SimpleNode.function is null: you must initialize SimpleNode's function to execute it")
@@ -75,7 +75,7 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 	r := &function.Request{
 		ReqId:   requestId,
 		Fun:     funct,
-		Params:  s.input,
+		Params:  params[0],
 		Arrival: now,
 		ExecReport: function.ExecutionReport{
 			SchedAction:    "",
@@ -130,7 +130,9 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		r.ExecReport.Result = fmt.Sprintf("%v", m)
 	}
 	// saving execution report for this function
+	s.inputMutex.Lock()
 	compRequest.ExecReport.Reports[CreateExecutionReportId(s)] = &r.ExecReport
+	s.inputMutex.Unlock()
 	/*
 		cs := ""
 		if !r.ExecReport.IsWarmStart {
@@ -147,7 +149,7 @@ func (s *SimpleNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	return nil
 }
 
-func (s *SimpleNode) ReceiveInput(input map[string]interface{}) error {
+func (s *SimpleNode) CheckInput(input map[string]interface{}) error {
 	// TODO: must communicate and receive input from other node, if on another machine
 	funct, exists := function.GetFunction(s.Func) // we are getting the function from cache if not already downloaded
 	if !exists {
@@ -162,9 +164,9 @@ func (s *SimpleNode) ReceiveInput(input map[string]interface{}) error {
 	if err != nil {
 		return fmt.Errorf("error while receiving input: %v", err)
 	}
-	s.inputMutex.Lock()
-	s.input = input
-	s.inputMutex.Unlock()
+	//s.inputMutex.Lock()
+	//s.input = input
+	//s.inputMutex.Unlock()
 	return nil
 }
 
@@ -214,9 +216,9 @@ func (s *SimpleNode) MapOutput(output map[string]interface{}) error {
 			// and replace with the input entry
 			output[def.Name] = val
 			// save the output map in the input of the node
-			s.inputMutex.Lock()
-			s.input = output
-			s.inputMutex.Unlock()
+			//s.inputMutex.Lock()
+			//s.input = output
+			//s.inputMutex.Unlock()
 		} else {
 			// otherwise if no one of the entry typechecks we are doomed
 			return fmt.Errorf("no output entry input-checks with the next function")
@@ -239,7 +241,7 @@ func (s *SimpleNode) Name() string {
 }
 
 func (s *SimpleNode) ToString() string {
-	return fmt.Sprintf("[SimpleNode (%s) func %s(%v)]->%s", s.Id, s.Func, s.input, s.OutputTo)
+	return fmt.Sprintf("[SimpleNode (%s) func %s()]->%s", s.Id, s.Func, s.OutputTo)
 }
 
 func (s *SimpleNode) setBranchId(number int) {
