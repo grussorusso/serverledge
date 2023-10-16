@@ -109,7 +109,7 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest, params ...map[string]i
 	}
 
 	respAndDuration := time.Now().Sub(t0).Seconds()
-	compRequest.ExecReport.Reports[CreateExecutionReportId(f)] = &function.ExecutionReport{
+	execReport := &function.ExecutionReport{
 		Result:         fmt.Sprintf("%v", fanInOutput),
 		ResponseTime:   respAndDuration,
 		IsWarmStart:    true, // not in a container
@@ -118,6 +118,8 @@ func (f *FanInNode) Exec(compRequest *CompositionRequest, params ...map[string]i
 		Duration:       respAndDuration,
 		SchedAction:    "",
 	}
+	//compRequest.ExecReport.Reports[CreateExecutionReportId(f)] = execReport
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(f), execReport)
 	return fanInOutput, nil
 }
 
