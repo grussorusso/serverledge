@@ -45,13 +45,13 @@ func (s *StartNode) AddOutput(dag *Dag, nodeId DagNodeId) error {
 	return nil
 }
 
-func (s *StartNode) Exec(*CompositionRequest) (map[string]interface{}, error) {
+func (s *StartNode) Exec(*CompositionRequest, ...map[string]interface{}) (map[string]interface{}, error) {
 	panic("you can't exec a start node")
 }
 
-func (s *StartNode) ReceiveInput(input map[string]interface{}) error {
-	panic("it's useless to receive input from a startNode. Just send it in output")
-	// TODO: are you sure?
+// CheckInput does nothing for StartNode
+func (s *StartNode) CheckInput(input map[string]interface{}) error {
+	return nil
 }
 
 // PrepareOutput for StartNode just send to the next node what it receives
@@ -60,7 +60,7 @@ func (s *StartNode) PrepareOutput(dag *Dag, output map[string]interface{}) error
 	if !ok {
 		return fmt.Errorf("node %s not found", s.Next)
 	}
-	err := nextNode.ReceiveInput(output)
+	err := nextNode.CheckInput(output)
 	return err
 }
 

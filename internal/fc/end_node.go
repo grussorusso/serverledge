@@ -37,7 +37,7 @@ func (e *EndNode) Equals(cmp types.Comparable) bool {
 	}
 }
 
-func (e *EndNode) Exec(*CompositionRequest) (map[string]interface{}, error) {
+func (e *EndNode) Exec(*CompositionRequest, ...map[string]interface{}) (map[string]interface{}, error) {
 	return e.Result, nil
 }
 
@@ -45,7 +45,7 @@ func (e *EndNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	return nil // should not do anything. End node cannot be chained to anything
 }
 
-func (e *EndNode) ReceiveInput(input map[string]interface{}) error {
+func (e *EndNode) CheckInput(input map[string]interface{}) error {
 	e.Result = input
 	return nil
 }

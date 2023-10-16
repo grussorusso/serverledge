@@ -16,10 +16,10 @@ import (
 
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
-	Id              DagNodeId
-	NodeType        DagNodeType
-	BranchId        int
-	input           map[string]interface{}
+	Id       DagNodeId
+	NodeType DagNodeType
+	BranchId int
+	// input           map[string]interface{}
 	OutputTo        []DagNodeId
 	FanOutDegree    int
 	Type            FanOutType
@@ -71,22 +71,27 @@ func (f *FanOutNode) Equals(cmp types.Comparable) bool {
 // Exec splits the output for the next parallel dags
 // Scatter mode can only be used if the value held in the map is of type slice. Subdivides each map entry to a different node
 // Broadcast mode can always be used. Copies the entire map to each of the subsequent nodes
-func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface{}, error) {
+func (f *FanOutNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
 	var output map[string]interface{} = nil
 	var err error = nil
 	t0 := time.Now()
+
+	if len(params) != 1 {
+		return nil, fmt.Errorf("failed to get one input for choice node: received %d inputs", len(params))
+	}
+
 	// input -> output: map["input":1] -> map["0":map["input":1], "1":map["input":1]]
 	if f.Type == Broadcast {
 		broadcast := make(map[string]interface{})
 		for i := 0; i < f.FanOutDegree; i++ {
-			broadcast[fmt.Sprintf("%d", i)] = f.input // simply returns input, that will be copied to each subsequent node
+			broadcast[fmt.Sprintf("%d", i)] = params[0] // simply returns input, that will be copied to each subsequent node
 		}
 		output = broadcast
 	} else if f.Type == Scatter { // scatter only accepts an array with exactly fanOutDegree elements. However, multiple input values are allowed
 		// get inputs
 
 		output = make(map[string]interface{})
-		for inputName, inputToScatter := range f.input {
+		for inputName, inputToScatter := range params[0] {
 			inputArrayToScatter, errNotSlice := utils.ConvertToSlice(inputToScatter)
 			if errNotSlice != nil {
 				continue
@@ -107,7 +112,7 @@ func (f *FanOutNode) Exec(compRequest *CompositionRequest) (map[string]interface
 		}
 
 		if output == nil {
-			err = fmt.Errorf("invalid fanout input, should accept one array with %d elements, but it's length is %d", f.FanOutDegree, len(f.input))
+			err = fmt.Errorf("invalid fanout input, should accept one array with %d elements, but it's length is %d", f.FanOutDegree, len(params[0]))
 		}
 	} else {
 		output = nil
@@ -134,8 +139,8 @@ func (f *FanOutNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	return nil
 }
 
-func (f *FanOutNode) ReceiveInput(input map[string]interface{}) error {
-	f.input = input
+// CheckInput doesn't do anything for fanout node
+func (f *FanOutNode) CheckInput(input map[string]interface{}) error {
 	return nil
 }
 
@@ -147,7 +152,7 @@ func (f *FanOutNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 			return fmt.Errorf("FanoutNode.PrepareOutput: cannot find node")
 		}
 		if f.Type == Broadcast {
-			err := outputNode.ReceiveInput(output[fmt.Sprintf("%d", i)].(map[string]interface{}))
+			err := outputNode.CheckInput(output[fmt.Sprintf("%d", i)].(map[string]interface{}))
 			if err != nil {
 				return err
 			}
@@ -174,7 +179,7 @@ func (f *FanOutNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 				return fmt.Errorf("scatter fanout: value map should have integer as keys and needed type as value")
 			}
 			inputMap[entryName] = val
-			err := outputNode.ReceiveInput(inputMap)
+			err := outputNode.CheckInput(inputMap)
 			if err != nil {
 				return err
 			}

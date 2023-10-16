@@ -13,7 +13,7 @@ type DagNode interface {
 	Display
 	Executable
 	HasOutput
-	ReceivesInput
+	ChecksInput
 	ReceivesOutput
 	HasNext
 	Width() int
@@ -38,7 +38,7 @@ type Display interface {
 
 type Executable interface {
 	// Exec defines how the DagNode is executed. If successful, returns the output of the execution
-	Exec(compRequest *CompositionRequest) (map[string]interface{}, error)
+	Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error)
 }
 
 type HasOutput interface {
@@ -46,9 +46,9 @@ type HasOutput interface {
 	AddOutput(dag *Dag, dagNode DagNodeId) error
 }
 
-type ReceivesInput interface {
-	// ReceiveInput gets the input and if necessary tries to convert into a suitable representation for the executing function
-	ReceiveInput(input map[string]interface{}) error
+type ChecksInput interface {
+	// CheckInput checks the input and if necessary tries to convert into a suitable representation for the executing function
+	CheckInput(input map[string]interface{}) error
 }
 
 type ReceivesOutput interface {

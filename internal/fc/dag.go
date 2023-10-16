@@ -237,12 +237,12 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	if err != nil {
 		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
 	}
-	err = simpleNode.ReceiveInput(partialData.Data)
+	err = simpleNode.CheckInput(partialData.Data)
 	if err != nil {
 		return false, err
 	}
 	// executing node
-	output, err := simpleNode.Exec(r)
+	output, err := simpleNode.Exec(r, partialData.Data)
 	if err != nil {
 		return false, err
 	}
@@ -282,12 +282,12 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	if err != nil {
 		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
 	}
-	err = choice.ReceiveInput(partialData.Data)
+	err = choice.CheckInput(partialData.Data)
 	if err != nil {
 		return false, err
 	}
 	// executing node
-	output, err := choice.Exec(r)
+	output, err := choice.Exec(r, partialData.Data)
 	if err != nil {
 		return false, err
 	}
@@ -326,12 +326,12 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	if err != nil {
 		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
 	}
-	err = fanOut.ReceiveInput(partialData.Data)
-	if err != nil {
-		return false, err
-	}
+	// err = fanOut.CheckInput(partialData.Data)
+	// if err != nil {
+	//	return false, err
+	//}
 	// executing node
-	output, err := fanOut.Exec(r)
+	output, err := fanOut.Exec(r, partialData.Data)
 	if err != nil {
 		return false, err
 	}
@@ -341,13 +341,45 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 		return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.ToString(), errSend)
 	}
 
-	for _, nextNode := range fanOut.GetNext() {
-		pd = NewPartialData(requestId, nextNode, nodeId, output)
+	for i, nextNode := range fanOut.GetNext() {
+		//inputForNode := make(map[string]interface{})
+		//nextDagNode, found := dag.Find(nextNode)
+		//if found && nextDagNode.GetNodeType() == Simple {
+		//	// get the node signature, to get parameter name
+		//	nextFunction, foundFn := function.GetFunction(nextDagNode.(*SimpleNode).Func)
+		//	if !foundFn {
+		//		return false, fmt.Errorf("cannot find next function to execute")
+		//	}
+		//	signatureInputs := nextFunction.Signature.GetInputs()
+		//	for j, inputDef := range signatureInputs {
+		//		if i == j {
+		//			inputForNode[inputDef.Name] = output[fmt.Sprintf("%d", i)]
+		//		}
+		//	}
+		if fanOut.Type == Broadcast {
+			pd = NewPartialData(requestId, nextNode, nodeId, output[fmt.Sprintf("%d", i)].(map[string]interface{}))
+		} else if fanOut.Type == Scatter {
+			firstName := ""
+			for name := range output {
+				firstName = name
+				break
+			}
+			inputForNode := make(map[string]interface{})
+			subMap, found := output[firstName].(map[string]interface{})
+			if !found {
+				return false, fmt.Errorf("cannot find parameter for nextNode %s", nextNode)
+			}
+			inputForNode[firstName] = subMap[fmt.Sprintf("%d", i)]
+			pd = NewPartialData(requestId, nextNode, nodeId, inputForNode)
+		} else {
+			return false, fmt.Errorf("invalid fanout type %d", fanOut.Type)
+		}
 		// saving partial data
 		err = SavePartialData(pd, cache.Persist)
 		if err != nil {
 			return false, err
 		}
+		//}
 	}
 	// and updating progress
 	err = progress.CompleteNode(nodeId)
@@ -361,6 +393,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
+	inputs := make([]map[string]interface{}, 0)
 	outputChannels := make([]chan map[string]interface{}, 0)
 	errorChannels := make([]chan error, 0)
 	partialDatas := make([]*PartialData, 0)
@@ -372,22 +405,23 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 			outputChannels = append(outputChannels, make(chan map[string]interface{}))
 			errorChannels = append(errorChannels, make(chan error))
 		}
-		// for simple node we also retrieve the partial data and receive input, if necessary
-		if simple, isSimple := node.(*SimpleNode); isSimple && simple.input == nil {
+		// for simple node we also retrieve the partial data and receive input
+		if simple, isSimple := node.(*SimpleNode); isSimple {
 			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, cache.Persist)
 			if err != nil {
 				return err
 			}
-			errInput := simple.ReceiveInput(partialData.Data)
+			errInput := simple.CheckInput(partialData.Data)
 			if errInput != nil {
 				return errInput
 			}
+			inputs = append(inputs, partialData.Data)
 		}
 	}
 	// executing all nodes in parallel
 	for i, node := range parallelDagNodes {
-		go func(i int, node DagNode) {
-			output, err := node.Exec(r)
+		go func(i int, params map[string]interface{}, node DagNode) {
+			output, err := node.Exec(r, params)
 			// for simple node, we also prepare output
 			if simpleNode, isSimple := node.(*SimpleNode); isSimple {
 				errSend := simpleNode.PrepareOutput(dag, output)
@@ -406,7 +440,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 			errorChannels[i] <- nil
 			outputChannels[i] <- output
 			fmt.Printf("goroutine %d for node %s completed\n", i, node.GetId())
-		}(i, node)
+		}(i, inputs[i], node)
 	}
 	// checking errors
 	parallelErrors := make([]error, 0)
@@ -483,16 +517,17 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	if !fired {
 		return false, fmt.Errorf("fan in timeout occurred")
 	}
-
+	faninInputs := make([]map[string]interface{}, 0)
 	for _, partialData := range partialDatas {
-		err := fanIn.ReceiveInput(partialData.Data)
-		if err != nil {
-			return false, err
-		}
+		// err := fanIn.CheckInput(partialData.Data)
+		//if err != nil {
+		//	return false, err
+		//}
+		faninInputs = append(faninInputs, partialData.Data)
 	}
 
 	// merging input into one output
-	output, err := fanIn.Exec(r)
+	output, err := fanIn.Exec(r, faninInputs...)
 	if err != nil {
 		return false, err
 	}
