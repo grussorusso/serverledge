@@ -282,6 +282,11 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	utils.AssertTrueMsg(t, composition.Equals(getFC), "composition comparison failed")
 	err = composition.Delete()
 	utils.AssertNilMsg(t, err, "failed to delete composition")
+	// removing functions container to release resources
 
+	for _, fun := range composition.Functions {
+		// Delete local warm containers
+		node.ShutdownWarmContainersFor(fun)
+	}
 	//utils.AssertTrueMsg(t, fc.IsEmptyPartialDataCache(), "partial data cache is not empty")
 }

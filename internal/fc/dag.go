@@ -223,7 +223,8 @@ func (dag *Dag) executeStart(progress *Progress, node *StartNode, r *Composition
 	if err != nil {
 		return false, err
 	}
-	r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "start"}
+	//r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "start"}
+	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "start"})
 	return true, nil
 }
 
@@ -546,7 +547,8 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 }
 
 func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequest) (bool, error) {
-	r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "end"}
+	// r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "end"}
+	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
 	err := progress.CompleteNode(node.Id)
 	if err != nil {
 		return false, err

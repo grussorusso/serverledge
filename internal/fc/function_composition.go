@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
@@ -30,7 +31,7 @@ func CreateExecutionReportId(dagNode DagNode) ExecutionReportId {
 
 type CompositionExecutionReport struct {
 	Result       map[string]interface{}
-	Reports      map[ExecutionReportId]*function.ExecutionReport
+	Reports      *hashmap.Map[ExecutionReportId, *function.ExecutionReport]
 	ResponseTime float64   // time waited by the user to get the output of the entire composition
 	Progress     *Progress `json:"-"` // skipped in Json marshaling
 }

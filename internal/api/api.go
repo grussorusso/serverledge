@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cornelk/hashmap"
 	"github.com/grussorusso/serverledge/internal/fc_scheduling"
 	"io"
 	"log"
@@ -347,14 +348,19 @@ func InvokeFunctionComposition(e echo.Context) error {
 	fcReq.Async = fcInvocationRequest.Async
 	fcReq.ReqId = fmt.Sprintf("%v-%s%d", funComp.Name, node.NodeIdentifier[len(node.NodeIdentifier)-5:], fcReq.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
-	fcReq.ExecReport.Reports = make(map[fc.ExecutionReportId]*function.ExecutionReport)
+	fcReq.ExecReport.Reports = hashmap.New[fc.ExecutionReportId, *function.ExecutionReport]() // make(map[fc.ExecutionReportId]*function.ExecutionReport)
 	for nodeId := range funComp.Workflow.Nodes {
 		dagNode := funComp.Workflow.Nodes[nodeId]
 		execReportId := fc.CreateExecutionReportId(dagNode)
-		fcReq.ExecReport.Reports[execReportId] = &function.ExecutionReport{
+		fcReq.ExecReport.Reports.Set(execReportId, &function.ExecutionReport{
+			OffloadLatency: 0,
 			SchedAction:    "",
-			OffloadLatency: 0.0,
-		}
+		})
+
+		//fcReq.ExecReport.Reports[execReportId] = &function.ExecutionReport{
+		//	SchedAction:    "",
+		//	OffloadLatency: 0.0,
+		//}
 	}
 
 	if fcReq.Async {
