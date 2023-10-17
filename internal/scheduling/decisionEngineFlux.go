@@ -73,36 +73,71 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		"\t pE: %f "+
 		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
 
-	if !r.CanDoOffloading {
-		// Can be executed only locally or dropped
-		if pL == 0 && pD == 0 && canExecute(r.Fun) {
-			pL = 1
-			pD = 0
-			pC = 0
-			pE = 0
-		} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
-			pL = 0
-			pD = 1
-			pC = 0
-			pE = 0
-		} else {
-			pD = pD / (pD + pL)
-			pL = pL / (pD + pL)
-			pC = 0
-			pE = 0
+	if policyFlag == "edgeCloud" {
+		if !r.CanDoOffloading {
+			// Can be executed only locally or dropped
+			if pL == 0 && pD == 0 && canExecute(r.Fun) {
+				pL = 1
+				pD = 0
+				pC = 0
+				pE = 0
+			} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
+				pL = 0
+				pD = 1
+				pC = 0
+				pE = 0
+			} else {
+				pD = pD / (pD + pL)
+				pL = pL / (pD + pL)
+				pC = 0
+				pE = 0
+			}
+		} else if !canExecute(r.Fun) {
+			// Node can't execute function locally
+			if pD == 0 && pC == 0 && pE == 0 {
+				pD = 0
+				pC = 0.5
+				pE = 0.5
+				pL = 0
+			} else {
+				pD = pD / (pD + pC + pE)
+				pC = pC / (pD + pC + pE)
+				pE = pE / (pD + pC + pE)
+				pL = 0
+			}
 		}
-	} else if !canExecute(r.Fun) {
-		// Node can't execute function locally
-		if pD == 0 && pC == 0 && pE == 0 {
-			pD = 0
-			pC = 0.5
-			pE = 0.5
-			pL = 0
-		} else {
-			pD = pD / (pD + pC + pE)
-			pC = pC / (pD + pC + pE)
-			pE = pE / (pD + pC + pE)
-			pL = 0
+	} else {
+		if !r.CanDoOffloading {
+			// Can be executed only locally or dropped
+			if pL == 0 && pD == 0 && canExecute(r.Fun) {
+				pL = 1
+				pD = 0
+				pC = 0
+				pE = 0
+			} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
+				pL = 0
+				pD = 1
+				pC = 0
+				pE = 0
+			} else {
+				pD = pD / (pD + pL)
+				pL = pL / (pD + pL)
+				pC = 0
+				pE = 0
+			}
+		} else if !canExecute(r.Fun) {
+			// Node can't execute function locally
+			if pD == 0 && pC == 0 && pE == 0 {
+				pD = 0
+				pC = 1
+				pE = 0
+				pL = 0
+			} else {
+				pD = pD / (pD + pC)
+				pC = pC / (pD + pC)
+				pE = 0
+				pL = 0
+			}
 		}
 	}
 

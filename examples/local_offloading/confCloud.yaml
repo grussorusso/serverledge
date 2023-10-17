@@ -1,4 +1,4 @@
 api.port: 1326
 cloud: true
-container.pool.memory: 2048
+container.pool.memory: 6072
 scheduler.policy: localonly
