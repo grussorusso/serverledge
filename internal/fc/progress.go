@@ -173,7 +173,7 @@ func (p *Progress) SkipNode(id DagNodeId) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {
 			node.Status = Skipped
-			fmt.Printf("skipped node %s\n", id)
+			// fmt.Printf("skipped node %s\n", id)
 			return nil
 		}
 	}

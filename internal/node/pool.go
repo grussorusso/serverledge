@@ -172,7 +172,7 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
-func ReleaseContainer(contID container.ContainerID, f *function.Function, isInComposition bool) { // TODO: questa funzione andrebbe eseguita prima di eseguire SubmitRequest
+func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	// setup Expiration as time duration from now
 	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
 	expTime := time.Now().Add(d).UnixNano()
@@ -190,16 +190,9 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function, isInCo
 		elem = elem.Next()
 	}
 
-	fp.putReadyContainer(contID, elem.Value.(busyContainer), expTime) // FIXME: passare la funzione giusta, l'ultima che è stata eseguita
+	fp.putReadyContainer(contID, elem.Value.(busyContainer), expTime) // FIXME: here there is a nil pointer dereference with high number of users
 
 	releaseResources(f.CPUDemand, 0)
-	// only in compositions, we send to a channel a message so that the next node can execute
-	if isInComposition {
-		//go func() {
-		//	types.NodeDoneChan <- "ok"
-		//	fmt.Printf("Released resources. Now: %v\n", &Resources)
-		//}()
-	}
 }
 
 // NewContainer creates and starts a new container for the given function.

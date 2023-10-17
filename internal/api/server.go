@@ -105,7 +105,7 @@ func CreateSchedulingPolicy() scheduling.Policy {
 		return &scheduling.EdgePolicy{}
 	} else if policyConf == "custom1" {
 		return &scheduling.Custom1Policy{}
-	} else {
+	} else { // default, localonly
 		return &scheduling.DefaultLocalPolicy{}
 	}
 }

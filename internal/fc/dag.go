@@ -440,7 +440,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 			}
 			errorChannels[i] <- nil
 			outputChannels[i] <- output
-			fmt.Printf("goroutine %d for node %s completed\n", i, node.GetId())
+			// fmt.Printf("goroutine %d for node %s completed\n", i, node.GetId())
 		}(i, inputs[i], node)
 	}
 	// checking errors

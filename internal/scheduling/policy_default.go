@@ -8,6 +8,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 )
 
+// DefaultLocalPolicy can be used on single node deployments. Directly executes the function locally, or drops the request if there aren't enough resources.
 type DefaultLocalPolicy struct {
 	queue queue
 }
