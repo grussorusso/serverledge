@@ -15,7 +15,7 @@ type Request struct {
 	RequestQoS
 	CanDoOffloading bool
 	Async           bool
-	IsInComposition bool
+	IsInComposition bool // not currently used
 }
 
 type RequestQoS struct {
