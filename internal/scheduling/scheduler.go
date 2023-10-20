@@ -38,7 +38,7 @@ func Run(p Policy) {
 	node.Resources.MaxMemMB = node.Resources.AvailableMemMB
 	node.Resources.MaxCPUs = node.Resources.AvailableCPUs
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	// FIXME AUDIT log.Printf("Current resources: %v", node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -106,14 +106,14 @@ func SubmitRequest(r *function.Request) error {
 	if !ok {
 		return fmt.Errorf("could not schedule the request")
 	}
-	// log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+	// FIXME AUDIT log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var err error
 	if schedDecision.action == DROP {
-		log.Printf("[%s] Dropping request", r)
+		// FIXME AUDIT log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
-		log.Printf("Offloading request")
+		// FIXME AUDIT log.Printf("Offloading request")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return err
@@ -145,7 +145,7 @@ func SubmitAsyncRequest(r *function.Request) {
 	if schedDecision.action == DROP {
 		publishAsyncResponse(r.ReqId, function.Response{Success: false})
 	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
-		//log.Printf("Offloading request")
+		// FIXME AUDIT log.Printf("Offloading request")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
@@ -162,7 +162,7 @@ func SubmitAsyncRequest(r *function.Request) {
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	newContainer, err := node.NewContainer(r.Fun)
 	if errors.Is(err, node.OutOfResourcesErr) || err != nil {
-		log.Printf("Cold start failed: %v", err)
+		// FIXME AUDIT log.Printf("Cold start failed: %v", err)
 		return false
 	} else {
 		execLocally(r, newContainer, false)
@@ -195,11 +195,11 @@ func handleOffload(r *scheduledRequest, serverHost string, act action) {
 func handleCloudOffload(r *scheduledRequest) {
 	// FIXME MAYBE USELESS cloudAddress := config.GetString(config.CLOUD_URL, "")
 	cloudAddress := pickCloudNodeForOffloading()
-	log.Printf("Handling offload to cloud address %s", cloudAddress)
+	// FIXME AUDIT log.Printf("Handling offload to cloud address %s", cloudAddress)
 	handleOffload(r, cloudAddress, EXEC_REMOTE)
 }
 
 func handleEdgeOffload(r *scheduledRequest, serverHost string) {
-	log.Printf("Handling offload to nearby host %s", serverHost)
+	// FIXME AUDIT log.Printf("Handling offload to nearby host %s", serverHost)
 	handleOffload(r, serverHost, EXEC_NEIGHBOUR)
 }

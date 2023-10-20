@@ -50,8 +50,6 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		pD = 1 - (pL + pC + pE)
 	} else {
 		cFInfo, prs = fInfo.invokingClasses[class.Name]
-		log.Printf("cFInfo: %v", cFInfo)
-		log.Printf("prs: %v", prs)
 		if !prs {
 			pL = startingLocalProb
 			pC = startingCloudOffloadProb
@@ -65,13 +63,13 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	//TODO remove
+	/** FIXME AUDIT
 	nContainers, _ := node.WarmStatus()[name]
 	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are "+
 		"\t pL: %f "+
 		"\t pC: %f "+
 		"\t pE: %f "+
-		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
+		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD) */
 
 	if policyFlag == "edgeCloud" {
 		if !r.CanDoOffloading {
@@ -141,20 +139,20 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pC:%f pE:%f pD:%f", name, class.Name, pL, pC, pE, pD)
+	// FIXME AUDIT log.Printf("Probabilities after evaluation for %s-%s are pL:%f pC:%f pE:%f pD:%f", name, class.Name, pL, pC, pE, pD)
 
-	log.Printf("prob: %f", prob)
+	// FIXME AUDIT log.Printf("prob: %f", prob)
 	if prob <= pL {
-		log.Println("Execute LOCAL")
+		// FIXME AUDIT log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
 	} else if prob <= pL+pC {
-		log.Println("Execute CLOUD OFFLOAD")
+		// FIXME AUDIT log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
-	} else if prob <= pL+pC+pE {
-		log.Println("Execute EDGE OFFLOAD")
+	} else if prob <= pL+pC+pE && policyFlag == "edgeCloud" {
+		// FIXME AUDIT log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else {
-		log.Println("Execute DROP")
+		// FIXME AUDIT log.Println("Execute DROP")
 		// fixme: why dropped was false here?
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
@@ -173,7 +171,7 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	address := config.GetString(config.STORAGE_DB_ADDRESS, "http://localhost:8086")
 	token := config.GetString(config.STORAGE_DB_TOKEN, "serverledge")
 
-	log.Printf("Organization %s at %s\n", orgName, address)
+	// FIXME AUDIT log.Printf("Organization %s at %s\n", orgName, address)
 
 	// TODO edit batch size
 	clientInflux = influxdb2.NewClientWithOptions(address, token,
@@ -565,7 +563,7 @@ func (d *decisionEngineFlux) handler() {
 			// fKeys: contains extra information about the function execution
 			// - duration
 			// - init_time
-			log.Println("Result storage handler - adding data to influxdb")
+			// FIXME AUDIT log.Println("Result storage handler - adding data to influxdb")
 
 			var fKeys map[string]interface{}
 			offloaded := "false"
@@ -610,7 +608,7 @@ func (d *decisionEngineFlux) handler() {
 				time.Now())
 
 			writeAPI.WritePoint(p)
-			log.Println("ADDED NEW POINT INTO INFLUXDB")
+			// FIXME AUDIT log.Println("ADDED NEW POINT INTO INFLUXDB")
 
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			// A new request is arrived: update the counter of incoming request in the node structure
@@ -674,13 +672,14 @@ func (d *decisionEngineFlux) ShowData() {
 // 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
 
+	/** FIXME AUDIT
 	if offloaded == 0 {
 		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else if offloaded == 1 {
 		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else {
 		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	}
+	} */
 
 	requestChannel <- completedRequest{
 		scheduledRequest: r,

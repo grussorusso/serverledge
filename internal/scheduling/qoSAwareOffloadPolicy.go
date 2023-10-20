@@ -50,24 +50,28 @@ func (p *QoSAwareOffloadPolicy) OnArrival(r *scheduledRequest) {
 	if dec == LOCAL_EXEC_REQUEST {
 		containerID, err := node.AcquireWarmContainer(r.Fun)
 		if err == nil {
-			log.Printf("Using a warm container for: %v", r)
+			// FIXME AUDIT log.Printf("Using a warm container for: %v", r)
 			execLocally(r, containerID, true)
 		} else if handleColdStart(r) {
-			log.Printf("No warm containers for: %v - COLD START", r)
+			// FIXME AUDIT log.Printf("No warm containers for: %v - COLD START", r)
 			return
 		} else if r.CanDoOffloading {
-			// horizontal offloading - search for a nearby node to offload
-			log.Printf("No warm containers and node cant'handle cold start due to lack of resources: proceeding with offloading")
-			url := pickEdgeNodeForOffloading(r)
-			if url != "" {
-				log.Printf("Found node at url: %s - proceeding with horizontal offloading", url)
-				handleEdgeOffload(r, url)
+			if policyFlag == "edgeCloud" {
+				// horizontal offloading - search for a nearby node to offload
+				// FIXME AUDIT log.Printf("No warm containers and node cant'handle cold start due to lack of resources: proceeding with offloading")
+				url := pickEdgeNodeForOffloading(r)
+				if url != "" {
+					log.Printf("Found node at url: %s - proceeding with horizontal offloading", url)
+					handleEdgeOffload(r, url)
+				} else {
+					// FIXME AUDIT log.Printf("Cant find nearby nodes - proceeding with vertical offloading")
+					handleCloudOffload(r)
+				}
 			} else {
-				log.Printf("Cant find nearby nodes - proceeding with vertical offloading")
 				handleCloudOffload(r)
 			}
 		} else {
-			log.Printf("Can't execute locally and can't offload - dropping incoming request")
+			// FIXME AUDIT log.Printf("Can't execute locally and can't offload - dropping incoming request")
 			dropRequest(r)
 		}
 	} else if dec == CLOUD_OFFLOAD_REQUEST {
@@ -94,7 +98,7 @@ func (p *QoSAwareOffloadPolicy) OnArrival(r *scheduledRequest) {
 		if url != "" {
 			handleEdgeOffload(r, url)
 		} else {
-			log.Println("Can't execute horizontal offloading due to lack of resources available: offloading to cloud")
+			// FIXME AUDIT log.Println("Can't execute horizontal offloading due to lack of resources available: offloading to cloud")
 			handleCloudOffload(r)
 		}
 	} else if dec == DROP_REQUEST {

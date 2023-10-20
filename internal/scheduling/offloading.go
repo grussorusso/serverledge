@@ -25,21 +25,21 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	}
 
 	//first, search for warm container
-	log.Printf("Search for a warm container")
+	// FIXME AUDIT log.Printf("Search for a warm container")
 	for _, v := range nearbyServersMap {
 		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
 			return v.Addresses.NodeAddress
 		}
 	}
-	log.Printf("Nobody has warm container: search for available memory")
+	// FIXME AUDIT log.Printf("Nobody has warm container: search for available memory")
 	//second, (nobody has warm container) search for available memory
 	for _, v := range nearbyServersMap {
-		log.Printf("nearby node available memory: %d", v.AvailableMemMB)
+		// FIXME AUDIT log.Printf("nearby node available memory: %d", v.AvailableMemMB)
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
 			return v.Addresses.NodeAddress
 		}
 	}
-	log.Println("No nearby nodes with enough resources to handle execution.")
+	// FIXME AUDIT log.Println("No nearby nodes with enough resources to handle execution.")
 	return ""
 }
 

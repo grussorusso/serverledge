@@ -132,7 +132,7 @@ func solve(m map[string]*functionInfo) {
 			})
 		}
 	}
-	// FIXME REMOVE log.Println("class list: ", classList)
+	// FIXME AUDIT log.Println("class list: ", classList)
 
 	var aggregatedEdgeMemory float32
 	if policyFlag == "cloudOnly" {
@@ -165,15 +165,15 @@ func solve(m map[string]*functionInfo) {
 		log.Println(err)
 	}
 
-	log.Println("Evaluation took: ", response.GetTimeTaken())
+	// FIXME AUDIT log.Println("Evaluation took: ", response.GetTimeTaken())
 	res := response.GetFResponse()
-	log.Println("response: ", res)
+	// FIXME AUDIT log.Println("response: ", res)
 
 	for _, r := range res {
 		fInfo, prs := m[r.GetName()]
 
 		if !prs {
-			log.Printf("Function %s never invoked on this node: cannot assign probabilities", r.GetName())
+			// FIXME AUDIT log.Printf("Function %s never invoked on this node: cannot assign probabilities", r.GetName())
 			continue
 		}
 
@@ -181,7 +181,7 @@ func solve(m map[string]*functionInfo) {
 		for _, x := range r.GetClassResponses() {
 			cFInfo, prs := invokingClasses[x.GetName()]
 			if !prs {
-				log.Printf("No functions with class %s was ever invoked on this node: cannot assign probabilities", x.GetName())
+				// FIXME AUDIT log.Printf("No functions with class %s was ever invoked on this node: cannot assign probabilities", x.GetName())
 				continue
 			}
 
