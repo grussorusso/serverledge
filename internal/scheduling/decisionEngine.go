@@ -1,13 +1,8 @@
 package scheduling
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/grussorusso/serverledge/internal/client"
-	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
-	"log"
 	"math/rand"
 	"time"
 )
@@ -119,38 +114,6 @@ func canExecute(function *function.Function) bool {
 	}
 
 	return false
-}
-
-// Recovers the remote host for cloud or edge offloading
-func recoverRemoteUrl(r *scheduledRequest, isCloudUrl bool) string {
-	if isCloudUrl {
-		return config.GetString(config.CLOUD_URL, "")
-	} else {
-		// pick the edge node used for offloading and recover its url
-		return pickEdgeNodeForOffloading(r)
-	}
-}
-
-// Calculates the packet size of the message offloaded to another host
-func calculatePacketSize(r *scheduledRequest, isCloudCalc bool) int {
-	serverUrl := recoverRemoteUrl(r, isCloudCalc)
-	request := client.InvocationRequest{Params: r.Params,
-		QoSMaxRespT: r.MaxRespT,
-		Async:       r.Async}
-	invocationBody, err := json.Marshal(request)
-	if err != nil {
-		log.Print(err)
-	}
-
-	// Calculate approximate packet size
-	sizePacket := len("POST /invoke/"+r.Fun.Name+" HTTP/1.1") +
-		len("Host: "+serverUrl) +
-		len("User-Agent: Go-http-client/1.1") +
-		len("Content-Length: "+fmt.Sprintf("%d", len(invocationBody))) +
-		len("Content-Type: application/json") +
-		len("\r\n\r\n") +
-		len(invocationBody)
-	return sizePacket
 }
 
 type decisionEngine interface {

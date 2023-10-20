@@ -50,29 +50,71 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 
 	log.Println("Probabilities are", pL, pC, pE, pD)
 
-	if !r.CanDoOffloading {
-		// Can be executed only locally or dropped
-		pD = pD / (pD + pL)
-		pL = pL / (pD + pL)
-		pC = 0
-		pE = 0
-	} else if !canExecute(r.Fun) {
-		// Node can't execute function locally
-		if pD == 0 && pC == 0 {
-			pD = 0
-			pC = 1
-			pE = 0
-			pL = 0
-		} else if pD == 0 && pE == 0 {
-			pD = 0
-			pC = 0
-			pE = 1
-			pL = 0
-		} else {
-			pD = pD / (pD + pC + pE)
-			pC = pC / (pD + pC + pE)
-			pE = pE / (pD + pC + pE)
-			pL = 0
+	if policyFlag == "edgeCloud" {
+		if !r.CanDoOffloading {
+			// Can be executed only locally or dropped
+			if pL == 0 && pD == 0 && canExecute(r.Fun) {
+				pL = 1
+				pD = 0
+				pC = 0
+				pE = 0
+			} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
+				pL = 0
+				pD = 1
+				pC = 0
+				pE = 0
+			} else {
+				pD = pD / (pD + pL)
+				pL = pL / (pD + pL)
+				pC = 0
+				pE = 0
+			}
+		} else if !canExecute(r.Fun) {
+			// Node can't execute function locally
+			if pD == 0 && pC == 0 && pE == 0 {
+				pD = 0
+				pC = 0.5
+				pE = 0.5
+				pL = 0
+			} else {
+				pD = pD / (pD + pC + pE)
+				pC = pC / (pD + pC + pE)
+				pE = pE / (pD + pC + pE)
+				pL = 0
+			}
+		}
+	} else {
+		if !r.CanDoOffloading {
+			// Can be executed only locally or dropped
+			if pL == 0 && pD == 0 && canExecute(r.Fun) {
+				pL = 1
+				pD = 0
+				pC = 0
+				pE = 0
+			} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
+				pL = 0
+				pD = 1
+				pC = 0
+				pE = 0
+			} else {
+				pD = pD / (pD + pL)
+				pL = pL / (pD + pL)
+				pC = 0
+				pE = 0
+			}
+		} else if !canExecute(r.Fun) {
+			// Node can't execute function locally
+			if pD == 0 && pC == 0 && pE == 0 {
+				pD = 0
+				pC = 1
+				pE = 0
+				pL = 0
+			} else {
+				pD = pD / (pD + pC)
+				pC = pC / (pD + pC)
+				pE = 0
+				pL = 0
+			}
 		}
 	}
 
@@ -80,13 +122,18 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 		log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
 	} else if prob <= pL+pC {
-		log.Println("Execute OFFLOAD")
+		log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
-	} else if prob <= pL+pC+pE {
+	} else if prob <= pL+pC+pE && policyFlag == "edgeCloud" {
 		log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
+		requestChannel <- completedRequest{
+			scheduledRequest: r,
+			dropped:          true,
+		}
+
 		return DROP_REQUEST
 	}
 }
@@ -211,6 +258,14 @@ func (d *decisionEngineMem) updateProbabilities() {
 }
 
 func (d *decisionEngineMem) ShowData() {
+	for {
+		time.Sleep(time.Second * 10)
+		for _, fInfo := range d.m {
+			for _, cFInfo := range fInfo.invokingClasses {
+				log.Println(cFInfo)
+			}
+		}
+	}
 	//log.Println("ERLANG: ", ErlangB(57, 45))
 	//for {
 	//	time.Sleep(5 * time.Second)
