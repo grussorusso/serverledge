@@ -194,6 +194,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 
 	contID, err := container.NewContainer(image, fun.TarFunctionCode, &container.ContainerOptions{
 		MemoryMB: fun.MemoryMB,
+		CPUQuota: fun.CPUDemand,
 	})
 
 	if err != nil {
