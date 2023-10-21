@@ -181,16 +181,18 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	defer Resources.Unlock()
 	fp := GetFunctionPool(f)
 	// we must update the busy list by removing this element
+	var deleted interface{}
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(busyContainer).contID == contID {
-			fp.busy.Remove(elem) // delete the element from the busy list
+			deleted = fp.busy.Remove(elem) // delete the element from the busy list
 			break
 		}
 		elem = elem.Next()
 	}
-
-	fp.putReadyContainer(contID, elem.Value.(busyContainer), expTime) // FIXME: here there is a nil pointer dereference with high number of users
+	if deleted != nil {
+		fp.putReadyContainer(contID, deleted.(busyContainer), expTime) // FIXME: here there is a nil pointer dereference with high number of users
+	}
 
 	releaseResources(f.CPUDemand, 0)
 }
