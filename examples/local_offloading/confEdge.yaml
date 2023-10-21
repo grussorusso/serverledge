@@ -1,8 +1,8 @@
 api.port: 1323
 registry.udp.port: 9876
 scheduler.policy: QoSAwareEdgeCloud
-scheduler.version: mem
+scheduler.version: flux
 container.pool.memory: 3072
-container.pool.cpus: 3
+container.pool.cpus: 2
 #cloud.server.url: http://192.168.0.131:1326
 
