@@ -97,7 +97,7 @@ func InitializePyFunctionWithName(fnName string, fileName string, handler string
 		Name:            fnName,
 		Runtime:         "python310",
 		MemoryMB:        PY_MEMORY,
-		CPUDemand:       1.0,
+		CPUDemand:       0.25,
 		Handler:         fmt.Sprintf("%s.%s", fileName, handler), // on python, for now is needed file name and handler name!!
 		TarFunctionCode: encoded,
 		Signature:       sign,

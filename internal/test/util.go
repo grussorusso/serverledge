@@ -74,7 +74,7 @@ func initializePyFunction(name string, handler string, sign *function.Signature)
 		Name:            name,
 		Runtime:         "python310",
 		MemoryMB:        PY_MEMORY,
-		CPUDemand:       1.0,
+		CPUDemand:       0.25,
 		Handler:         fmt.Sprintf("%s.%s", name, handler), // on python, for now is needed file name and handler name!!
 		TarFunctionCode: encoded,
 		Signature:       sign,
@@ -93,7 +93,7 @@ func initializeJsFunction(name string, sign *function.Signature) (*function.Func
 		Name:            name,
 		Runtime:         "nodejs17ng",
 		MemoryMB:        JS_MEMORY,
-		CPUDemand:       1.0,
+		CPUDemand:       0.25,
 		Handler:         name, // on js only file name is needed!!
 		TarFunctionCode: encoded,
 		Signature:       sign,
