@@ -164,6 +164,17 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 }
 
 func (d *decisionEngineFlux) InitDecisionEngine() {
+	// Initializing starting probabilities
+	if policyFlag == "edgeCloud" {
+		startingLocalProb = 0.5
+		startingEdgeOffloadProb = 0.25
+		startingCloudOffloadProb = 0.25
+	} else {
+		startingLocalProb = 0.5
+		startingEdgeOffloadProb = 0
+		startingCloudOffloadProb = 0.5
+	}
+
 	s := rand.NewSource(time.Now().UnixNano())
 	rGen = rand.New(s)
 

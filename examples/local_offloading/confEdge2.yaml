@@ -1,6 +1,6 @@
 api.port: 1327
 registry.udp.port: 9878
-scheduler.policy: QoSAwareEdgeCloud
+scheduler.policy: QoSAwareCloud
 scheduler.version: flux
 container.pool.memory: 3072
 container.pool.cpus: 2
