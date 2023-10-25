@@ -143,16 +143,18 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	fp := getFunctionPool(f)
 
 	// we must update the busy list by removing this element
+	var deleted interface{}
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(container.ContainerID) == contID {
-			fp.busy.Remove(elem) // delete the element from the busy list
+			deleted = fp.busy.Remove(elem) // delete the element from the busy list
 			break
 		}
 		elem = elem.Next()
 	}
-
-	fp.putReadyContainer(contID, expTime)
+	if deleted != nil {
+		fp.putReadyContainer(contID, expTime)
+	}
 
 	releaseResources(f.CPUDemand, 0)
 
