@@ -63,39 +63,27 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	/** FIXME AUDIT
 	nContainers, _ := node.WarmStatus()[name]
 	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are "+
 		"\t pL: %f "+
 		"\t pC: %f "+
 		"\t pE: %f "+
-		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD) */
+		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
 
 	if policyFlag == "edgeCloud" {
+		// Cloud and Edge offloading allowed
 		if !r.CanDoOffloading {
 			// Can be executed only locally or dropped
-			if pL == 0 && pD == 0 && canExecute(r.Fun) {
-				pL = 1
-				pD = 0
-				pC = 0
-				pE = 0
-			} else if pL == 0 && pD == 0 && !canExecute(r.Fun) {
-				pL = 0
-				pD = 1
-				pC = 0
-				pE = 0
-			} else {
-				pD = pD / (pD + pL)
-				pL = pL / (pD + pL)
-				pC = 0
-				pE = 0
-			}
+			pD = pD / (pD + pL)
+			pL = pL / (pD + pL)
+			pC = 0
+			pE = 0
 		} else if !canExecute(r.Fun) {
 			// Node can't execute function locally
 			if pD == 0 && pC == 0 && pE == 0 {
 				pD = 0
-				pC = 0.5
-				pE = 0.5
+				pC = 0.1
+				pE = 0.9
 				pL = 0
 			} else {
 				pD = pD / (pD + pC + pE)
@@ -113,9 +101,10 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 			pE = 0
 		} else if !canExecute(r.Fun) {
 			if pD == 0 && pC == 0 {
+				// Node can't execute function locally
 				pD = 0
-				pE = 0.5
-				pC = 0.5
+				pE = 0
+				pC = 1
 				pL = 0
 			} else {
 				pD = pD / (pD + pC)
@@ -126,18 +115,18 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pC:%f pE:%f pD:%f", name, class.Name, pL, pC, pE, pD)
+	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
 
 	log.Printf("prob: %f", prob)
 	if prob <= pL {
 		log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
-	} else if prob <= pL+pC {
-		log.Println("Execute CLOUD OFFLOAD")
-		return CLOUD_OFFLOAD_REQUEST
-	} else if prob <= pL+pC+pE && policyFlag == "edgeCloud" {
+	} else if prob <= pL+pE {
 		log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
+	} else if prob <= pL+pE+pC {
+		log.Println("Execute CLOUD OFFLOAD")
+		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
 		// fixme: why dropped was false here?
@@ -153,9 +142,9 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 func (d *decisionEngineFlux) InitDecisionEngine() {
 	// Initializing starting probabilities
 	if policyFlag == "edgeCloud" {
-		startingLocalProb = 0.5
-		startingEdgeOffloadProb = 0.25
-		startingCloudOffloadProb = 0.25
+		startingLocalProb = 1
+		startingEdgeOffloadProb = 0
+		startingCloudOffloadProb = 0
 	} else {
 		startingLocalProb = 0.5
 		startingEdgeOffloadProb = 0
