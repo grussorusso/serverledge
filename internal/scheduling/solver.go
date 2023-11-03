@@ -234,8 +234,8 @@ func solve(m map[string]*functionInfo) {
 //	return index*4 + 3
 //}
 //
-//func SolveprobabilitiesLegacy(m map[string]*functionInfo) {
-//	if len(m) == 0 {
+//func SolveprobabilitiesLegacy(FunctionMap map[string]*functionInfo) {
+//	if len(FunctionMap) == 0 {
 //		return
 //	}
 //
@@ -250,9 +250,9 @@ func solve(m map[string]*functionInfo) {
 //	functionPColdMap = make(map[string]int)
 //	functionPdIndex := make(map[string]int)
 //
-//	functionNumber := len(m)
+//	functionNumber := len(FunctionMap)
 //
-//	for _, fInfo := range m {
+//	for _, fInfo := range FunctionMap {
 //		for class, cFInfo := range fInfo.invokingClasses {
 //			list = append(list, cFInfoWithClass{cFInfo, class})
 //
@@ -271,7 +271,7 @@ func solve(m map[string]*functionInfo) {
 //	numberOfFunctionClass = len(list)
 //
 //	index := 0
-//	for fName := range m {
+//	for fName := range FunctionMap {
 //		functionPColdMap[fName] = numberOfFunctionClass*4 + index
 //
 //		index++
@@ -383,12 +383,12 @@ func solve(m map[string]*functionInfo) {
 //	}
 //
 //	for name, index := range functionPColdMap {
-//		_, prs := m[name]
+//		_, prs := FunctionMap[name]
 //		if !prs {
 //			continue
 //		}
 //
-//		m[name].probCold = vars[index]
+//		FunctionMap[name].probCold = vars[index]
 //	}
 //
 //	if debug {
@@ -400,29 +400,29 @@ func solve(m map[string]*functionInfo) {
 //	}
 //}
 //
-//func ErlangB(m int, a float64) float64 {
+//func ErlangB(FunctionMap int, a float64) float64 {
 //	sum := 0.0
 //	fact := 1.0
 //
-//	for i := 1.0; i <= float64(m); i++ {
+//	for i := 1.0; i <= float64(FunctionMap); i++ {
 //		fact *= i
 //		sum += math.Pow(a, i) / fact
 //	}
 //
 //	sum += 1
 //
-//	return math.Pow(sum, -1) * (math.Pow(a, float64(m)) / fact)
+//	return math.Pow(sum, -1) * (math.Pow(a, float64(FunctionMap)) / fact)
 //}
 //
-//func SolveColdStart(m map[string]*functionInfo) map[string]int {
+//func SolveColdStart(FunctionMap map[string]*functionInfo) map[string]int {
 //	outMap := make(map[string]int)
 //
-//	numberOfFunctions := len(m)
+//	numberOfFunctions := len(FunctionMap)
 //	if numberOfFunctions == 0 {
 //		return outMap
 //	}
 //
-//	for fName, fInfo := range m {
+//	for fName, fInfo := range FunctionMap {
 //		sum := 0.0
 //		arrivals := 0.0
 //		w := 0
@@ -478,8 +478,8 @@ func solve(m map[string]*functionInfo) {
 //// TODO test
 //var preference = 1.0
 //
-//func SolveProbabilities(m map[string]*functionInfo) {
-//	if len(m) == 0 {
+//func SolveProbabilities(FunctionMap map[string]*functionInfo) {
+//	if len(FunctionMap) == 0 {
 //		return
 //	}
 //
@@ -493,7 +493,7 @@ func solve(m map[string]*functionInfo) {
 //
 //	functionPdIndex := make(map[string]int)
 //
-//	for _, fInfo := range m {
+//	for _, fInfo := range FunctionMap {
 //		for class, cFInfo := range fInfo.invokingClasses {
 //			list = append(list, cFInfoWithClass{cFInfo, class})
 //
@@ -609,12 +609,12 @@ func solve(m map[string]*functionInfo) {
 //	}
 //
 //	for name, index := range functionPColdMap {
-//		_, prs := m[name]
+//		_, prs := FunctionMap[name]
 //		if !prs {
 //			continue
 //		}
 //
-//		m[name].probCold = vars[index]
+//		FunctionMap[name].probCold = vars[index]
 //	}
 //
 //	if debug {

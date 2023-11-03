@@ -63,7 +63,7 @@ package scheduling
 //
 //	arrivalChannel <- r
 //
-//	fInfo, prs := m[name]
+//	fInfo, prs := FunctionMap[name]
 //
 //	//HIGH PERFORMANCE?
 //	/*
@@ -172,7 +172,7 @@ package scheduling
 //	for {
 //		time.Sleep(5 * time.Second)
 //		log.Println("---------------------REPORT---------------------")
-//		log.Println(m)
+//		log.Println(FunctionMap)
 //		log.Println(node.WarmStatus())
 //		log.Printf("Offload latency %f\n", getRTT())
 //		log.Printf("Init latency %f\n", getInitTime("sleep1", LOCAL))
@@ -196,18 +196,18 @@ package scheduling
 //	sum := 0.0
 //	x := initPoints
 //
-//	_, prs := m[name]
+//	_, prs := FunctionMap[name]
 //	if !prs {
 //		return -1
 //	}
 //
 //	//Rolling average not complete
-//	if m[name].count[offload] < initPoints {
-//		x = m[name].count[offload]
+//	if FunctionMap[name].count[offload] < initPoints {
+//		x = FunctionMap[name].count[offload]
 //	}
 //
 //	for i := 0; i < x; i++ {
-//		sum += m[name].initTime[offload][i]
+//		sum += FunctionMap[name].initTime[offload][i]
 //	}
 //
 //	return sum / float64(x)
@@ -220,7 +220,7 @@ package scheduling
 //
 //// Delete TODO modify API to call this function when a function is deleted
 //func Delete_old(name string) {
-//	delete(m, name)
+//	delete(FunctionMap, name)
 //}
 //
 //// UpdateDataAsync TODO Use reqID to get missing information?
@@ -243,7 +243,7 @@ package scheduling
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //
-//	fInfo, prs := m[name]
+//	fInfo, prs := FunctionMap[name]
 //
 //	if !prs {
 //		fInfo = functionInfo{name: name}
@@ -264,7 +264,7 @@ package scheduling
 //
 //	fInfo.varianceDuration[off] = (diff * diff2) / float64(fInfo.count[off])
 //
-//	m[name] = fInfo
+//	FunctionMap[name] = fInfo
 //
 //	mut.Unlock()
 //}
@@ -279,7 +279,7 @@ package scheduling
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //
-//	fInfo, prs := m[name]
+//	fInfo, prs := FunctionMap[name]
 //
 //	if !prs {
 //		fInfo = functionInfo{name: name}
@@ -306,7 +306,7 @@ package scheduling
 //		fInfo.missed[location]++
 //	}
 //
-//	m[name] = fInfo
+//	FunctionMap[name] = fInfo
 //
 //	mut.Unlock()
 //}

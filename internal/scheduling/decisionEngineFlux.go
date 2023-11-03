@@ -28,7 +28,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	fInfo, prs := d.g.m[name]
+	fInfo, prs := d.g.FunctionMap[name]
 	if !prs {
 		pL = startingLocalProb
 		pC = startingCloudOffloadProb
@@ -115,7 +115,6 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		log.Println("Execute DROP")
-		// fixme: why dropped was false here?
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
 			dropped:          true,
@@ -137,7 +136,6 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 		startingCloudOffloadProb = 0
 	}
 
-	/* TODO GET METRIC GRABBER INSTEAD OF THIS */
 	d.g.InitMetricGrabber()
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
@@ -169,7 +167,7 @@ func (d *decisionEngineFlux) handler() {
 			log.Println("Evaluating")
 
 			//Check if there are some instances with 0 arrivals
-			for fName, fInfo := range d.g.m {
+			for fName, fInfo := range d.g.FunctionMap {
 				for cName, cFInfo := range fInfo.invokingClasses {
 					//Cleanup
 					if cFInfo.arrivalCount == 0 {
@@ -190,26 +188,9 @@ func (d *decisionEngineFlux) handler() {
 }
 
 func (d *decisionEngineFlux) updateProbabilities() {
-	solve(d.g.m)
+	solve(d.g.FunctionMap)
 }
 
-// Completed : this method is executed only in case the request is not dropped and
-// takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
-// 1) offloaded = LOCAL = 0 --> the request is executed locally and not offloaded
-// 2) offloaded = OFFLOADED_CLOUD = 1 --> the request is offloaded to cloud
-// 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
-	if offloaded == 0 {
-		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	} else if offloaded == 1 {
-		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	} else {
-		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	}
-
-	requestChannel <- completedRequest{
-		scheduledRequest: r,
-		location:         offloaded,
-		dropped:          false,
-	}
+	d.g.Completed(r, offloaded, false)
 }

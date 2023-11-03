@@ -269,12 +269,12 @@ func (d *decisionEngineMem) ShowData() {
 	//log.Println("ERLANG: ", ErlangB(57, 45))
 	//for {
 	//	time.Sleep(5 * time.Second)
-	//	log.Println("map", m)
+	//	log.Println("map", FunctionMap)
 	//}
 	/*
 		for {
 			time.Sleep(5 * time.Second)
-			for _, functionMap := range m {
+			for _, functionMap := range FunctionMap {
 				for _, finfo := range functionMap {
 					log.Println(finfo)
 				}
@@ -283,6 +283,7 @@ func (d *decisionEngineMem) ShowData() {
 	*/
 }
 
+// FIXME: this is now into metricGrabber!!! call the method inside!
 func (d *decisionEngineMem) Completed(r *scheduledRequest, offloaded int) {
 	if offloaded == 0 {
 		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
@@ -329,7 +330,7 @@ func UpdateDataAsync(r function.Response) {
 	}
 
 	//TODO edit this
-	fInfo, prs := de.m[name]
+	fInfo, prs := de.FunctionMap[name]
 	if !prs {
 		// If it is missing from the map then enough time has passed to cause expiring on the function entry,
 		// or the invocation came from somewhere else.

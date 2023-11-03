@@ -15,7 +15,7 @@ import (
 )
 
 type metricGrabberFlux struct {
-	m map[string]*functionInfo
+	FunctionMap map[string]*functionInfo
 }
 
 var clientInflux influxdb2.Client
@@ -111,16 +111,18 @@ func (g *metricGrabberFlux) InitMetricGrabber() {
 	queryAPI = clientInflux.QueryAPI(orgName)
 	deleteAPI = clientInflux.DeleteAPI()
 
-	g.m = make(map[string]*functionInfo)
+	g.FunctionMap = make(map[string]*functionInfo)
 
 	go g.ShowData()
 	go g.handler()
+	log.Println("Initialized functionMap: ", g.FunctionMap)
 }
 
+// FIXME set audit
 func (g *metricGrabberFlux) ShowData() {
 	for {
 		time.Sleep(time.Second * 10)
-		for _, fInfo := range g.m {
+		for _, fInfo := range g.FunctionMap {
 			for _, cFInfo := range fInfo.invokingClasses {
 				log.Println(cFInfo)
 			}
@@ -195,10 +197,11 @@ func (g *metricGrabberFlux) handler() {
 
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			// A new request is arrived: update the counter of incoming request in the node structure
+			log.Println("NEW ARRIVAL!")
 			node.Resources.RequestsCount += 1
 
 			name := arr.Fun.Name
-			fInfo, prs := g.m[name]
+			fInfo, prs := g.FunctionMap[name]
 			if !prs {
 				fInfo = &functionInfo{
 					name:            name,
@@ -209,7 +212,7 @@ func (g *metricGrabberFlux) handler() {
 					bandwidthEdge:   0,
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				g.m[name] = fInfo
+				g.FunctionMap[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
@@ -238,7 +241,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 	searchInterval := 24 * time.Hour
 
 	//Query for arrivals
-	for _, fInfo := range g.m {
+	for _, fInfo := range g.FunctionMap {
 		for _, cFInfo := range fInfo.invokingClasses {
 			cFInfo.arrivals = 0
 		}
@@ -261,7 +264,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			funct := x["_measurement"].(string)
 			class := x["class"].(string)
 
-			fInfo, prs := g.m[funct] // access function map in Decision Engine
+			fInfo, prs := g.FunctionMap[funct] // access function map in Decision Engine
 			if !prs {
 				f, _ := function.GetFunction(funct)
 				fInfo = &functionInfo{
@@ -271,7 +274,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 					probCold:        [3]float64{0, 0, 0},
 					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				g.m[funct] = fInfo
+				g.FunctionMap[funct] = fInfo
 			}
 
 			//timeWindow := 25 * 60.0
@@ -329,7 +332,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			} else if off == "true" && offCloud == "false" {
 				location = OFFLOADED_EDGE
 			}
-			fInfo, prs := g.m[funct]
+			fInfo, prs := g.FunctionMap[funct]
 			if !prs {
 				continue
 			}
@@ -414,7 +417,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 				location = OFFLOADED_EDGE
 			}
 
-			fInfo, prs := g.m[funct]
+			fInfo, prs := g.FunctionMap[funct]
 			if !prs {
 				continue
 			}
@@ -456,7 +459,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 				location = OFFLOADED_EDGE
 			}
 
-			fInfo, prs := g.m[funct]
+			fInfo, prs := g.FunctionMap[funct]
 			if !prs {
 				continue
 			}
@@ -476,7 +479,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 		log.Println("DB error", err)
 	}
 
-	for _, fInfo := range g.m {
+	for _, fInfo := range g.FunctionMap {
 		// If none cold start happened in a specific location (local, cloud or edge), then the cold start probability is optimistically 0
 		for location := 0; location < 3; location++ {
 			if fInfo.coldStartCount[location] == 0 {
@@ -488,8 +491,37 @@ func (g *metricGrabberFlux) GrabMetrics() {
 	}
 }
 
+// Completed : this method is executed only in case the request is not dropped and
+// takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
+// 1) offloaded = LOCAL = 0 --> the request is executed locally and not offloaded
+// 2) offloaded = OFFLOADED_CLOUD = 1 --> the request is offloaded to cloud
+// 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
+// Triggers the DB update
+func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int, dropped bool) {
+	if dropped {
+		requestChannel <- completedRequest{
+			scheduledRequest: r,
+			dropped:          true,
+		}
+	} else {
+		if offloaded == 0 {
+			log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+		} else if offloaded == 1 {
+			log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+		} else {
+			log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+		}
+
+		requestChannel <- completedRequest{
+			scheduledRequest: r,
+			location:         offloaded,
+			dropped:          false,
+		}
+	}
+}
+
 func (g *metricGrabberFlux) Delete(function string, class string) {
-	fInfo, prs := g.m[function]
+	fInfo, prs := g.FunctionMap[function]
 	if !prs {
 		return
 	}
@@ -498,6 +530,6 @@ func (g *metricGrabberFlux) Delete(function string, class string) {
 
 	//If there aren't any more classes calls the function can be deleted
 	if len(fInfo.invokingClasses) == 0 {
-		delete(g.m, function)
+		delete(g.FunctionMap, function)
 	}
 }

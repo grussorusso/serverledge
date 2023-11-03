@@ -73,5 +73,6 @@ func (fInfo *functionInfo) getProbCold(location int) float64 {
 type metricGrabber interface {
 	InitMetricGrabber()
 	GrabMetrics()
+	Completed(r *scheduledRequest, offloaded int, dropped bool)
 	Delete(function string, class string)
 }
