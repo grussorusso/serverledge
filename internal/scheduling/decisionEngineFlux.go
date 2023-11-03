@@ -146,9 +146,9 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 		startingEdgeOffloadProb = 0
 		startingCloudOffloadProb = 0
 	} else {
-		startingLocalProb = 0.5
+		startingLocalProb = 1
 		startingEdgeOffloadProb = 0
-		startingCloudOffloadProb = 0.5
+		startingCloudOffloadProb = 0
 	}
 
 	s := rand.NewSource(time.Now().UnixNano())
@@ -535,7 +535,7 @@ func (d *decisionEngineFlux) handler() {
 			}
 
 			//TODO set period
-			d.deleteOldData(24 * time.Hour)
+			//d.deleteOldData(24 * time.Hour)
 
 			d.queryDb()
 			d.updateProbabilities()
