@@ -67,7 +67,6 @@ const BANDWIDTH_EDGE = "metrics.bandwidth.cloud"
 // Scheduling policy to use
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
-const SCHEDULING_POLICY_VERSION = "scheduler.version"
 
 const CLOUD_COST = "scheduler.cloud.cost"
 const BUDGET = "scheduler.local.budget"
@@ -80,6 +79,8 @@ const SOLVER_EVALUATION_INTERVAL = "solver.evalinterval"
 
 // Solver ip address
 const SOLVER_ADDRESS = "solver.address"
+
+const STORAGE_VERSION = "storage.version"
 
 const STORAGE_DB_ADDRESS = "storage.address"
 const STORAGE_DB_TOKEN = "storage.token"

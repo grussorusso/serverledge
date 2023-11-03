@@ -1,0 +1,503 @@
+package scheduling
+
+import (
+	"context"
+	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/domain"
+	"log"
+	"math/rand"
+	"time"
+)
+
+type metricGrabberFlux struct {
+	m map[string]*functionInfo
+}
+
+var clientInflux influxdb2.Client
+var writeAPI api.WriteAPI
+var queryAPI api.QueryAPI
+var deleteAPI api.DeleteAPI
+var orgServerledge domain.Organization
+var bucketServerledge *domain.Bucket
+
+var bucketName string
+
+func (g *metricGrabberFlux) InitMetricGrabber() {
+	s := rand.NewSource(time.Now().UnixNano())
+	rGen = rand.New(s)
+
+	orgName := config.GetString(config.STORAGE_DB_ORGNAME, "serverledge")
+	address := config.GetString(config.STORAGE_DB_ADDRESS, "http://localhost:8086")
+	token := config.GetString(config.STORAGE_DB_TOKEN, "serverledge")
+
+	log.Printf("Organization %s at %s\n", orgName, address)
+
+	// TODO edit batch size
+	// Get InfluxDB organization
+	clientInflux = influxdb2.NewClientWithOptions(address, token,
+		influxdb2.DefaultOptions().SetBatchSize(20))
+	orgsAPI := clientInflux.OrganizationsAPI()
+	bucketAPI := clientInflux.BucketsAPI()
+	orgs, err := orgsAPI.GetOrganizations(context.Background(), api.PagingWithDescending(true))
+	if err != nil {
+		log.Fatal("Organization API error", err)
+	}
+
+	found := false
+	for _, org := range *orgs {
+		if orgName == org.Name {
+			log.Printf("Found organization %s\n", org.Name)
+			found = true
+			orgServerledge = org
+		}
+	}
+
+	var orgId string
+
+	if !found {
+		orgId = "serverledge"
+		name := "Serverledge organization"
+		timeNow := time.Now()
+		_, err := orgsAPI.CreateOrganization(context.Background(), &domain.Organization{
+			CreatedAt:   &timeNow,
+			Description: &name,
+			Id:          &orgId,
+			Name:        orgName,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		orgId = *orgServerledge.Id
+	}
+
+	// Create a new bucket for the local node
+	found = false
+	bucketName = "serverledge-" + node.NodeIdentifier
+	buckets, err := bucketAPI.GetBuckets(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, bucket := range *buckets {
+		if bucketName == bucket.Name {
+			log.Printf("Found bucket %s\n", bucket.Name)
+			found = true
+			bucketServerledge = &bucket
+			break
+		}
+	}
+
+	if !found {
+		log.Printf("Creating bucket %s\n", bucketName)
+
+		bucketServerledge, err = bucketAPI.CreateBucket(context.Background(), &domain.Bucket{
+			Id:    &bucketName,
+			Name:  bucketName,
+			OrgID: &orgId,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	writeAPI = clientInflux.WriteAPI(orgName, bucketName)
+	queryAPI = clientInflux.QueryAPI(orgName)
+	deleteAPI = clientInflux.DeleteAPI()
+
+	g.m = make(map[string]*functionInfo)
+
+	go g.ShowData()
+	go g.handler()
+}
+
+func (g *metricGrabberFlux) ShowData() {
+	for {
+		time.Sleep(time.Second * 10)
+		for _, fInfo := range g.m {
+			for _, cFInfo := range fInfo.invokingClasses {
+				log.Println(cFInfo)
+			}
+		}
+	}
+}
+
+/*
+Function that:
+- Writes the report of the request completion into the data store (influxdb).
+- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
+*/
+func (g *metricGrabberFlux) handler() {
+	for {
+		select {
+		case r := <-requestChannel: // Result storage handler
+			// New request completed or dropped - added data to influxdb - need to differentiate between edge offloading and cloud offloading
+			// completed: true if the completed request is not dropped
+			// offloaded: true if the request is offloaded to another node
+			// offloaded_cloud: true if the completed request is offloaded vertically
+			// offloaded_edge: true if the completed request is offloaded horizontally
+			// warm_start: true if there were available instances to execute the function locally
+			// fKeys: contains extra information about the function execution
+			// - duration
+			// - init_time
+			log.Println("Result storage handler - adding data to influxdb")
+
+			var fKeys map[string]interface{}
+			offloaded := "false"
+			offloadedCloud := "false"
+			warmStart := "false"
+			completed := "false"
+
+			// If the request was dropped, then update the respective value in the node structure
+			if r.dropped {
+				node.Resources.DropRequestsCount += 1
+				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				completed = "false"
+			} else {
+				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				completed = "true"
+			}
+
+			if r.ExecReport.OffloadLatencyCloud != 0 {
+				offloaded = "true"
+				offloadedCloud = "true"
+				fKeys["offload_latency_cloud"] = r.ExecReport.OffloadLatencyCloud
+			}
+
+			if r.ExecReport.OffloadLatencyEdge != 0 {
+				offloaded = "true"
+				offloadedCloud = "false"
+				fKeys["offload_latency_edge"] = r.ExecReport.OffloadLatencyEdge
+			}
+
+			if r.ExecReport.IsWarmStart {
+				warmStart = "true"
+			}
+
+			p := influxdb2.NewPoint(r.Fun.Name,
+				map[string]string{
+					"class":           r.ClassService.Name,
+					"offloaded":       offloaded,
+					"offloaded_cloud": offloadedCloud,
+					"warm_start":      warmStart,
+					"completed":       completed},
+				fKeys,
+				time.Now())
+
+			writeAPI.WritePoint(p)
+			log.Println("ADDED NEW POINT INTO INFLUXDB")
+
+		case arr := <-arrivalChannel: // Arrival handler - structures initialization
+			// A new request is arrived: update the counter of incoming request in the node structure
+			node.Resources.RequestsCount += 1
+
+			name := arr.Fun.Name
+			fInfo, prs := g.m[name]
+			if !prs {
+				fInfo = &functionInfo{
+					name:            name,
+					memory:          arr.Fun.MemoryMB,
+					cpu:             arr.Fun.CPUDemand,
+					probCold:        [3]float64{0, 0, 0},
+					bandwidthCloud:  0,
+					bandwidthEdge:   0,
+					invokingClasses: make(map[string]*classFunctionInfo)}
+
+				g.m[name] = fInfo
+			}
+
+			cFInfo, prs := fInfo.invokingClasses[arr.class]
+			if !prs {
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+					probExecuteLocal:         startingLocalProb,
+					probOffloadCloud:         startingCloudOffloadProb,
+					probOffloadEdge:          startingEdgeOffloadProb,
+					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb + startingEdgeOffloadProb),
+					arrivals:                 0,
+					arrivalCount:             0,
+					timeSlotsWithoutArrivals: 0,
+					className:                arr.class}
+
+				fInfo.invokingClasses[arr.class] = cFInfo
+			}
+
+			cFInfo.timeSlotsWithoutArrivals = 0
+
+		}
+	}
+}
+
+func (g *metricGrabberFlux) GrabMetrics() {
+	//TODO edit time window
+	searchInterval := 24 * time.Hour
+
+	//Query for arrivals
+	for _, fInfo := range g.m {
+		for _, cFInfo := range fInfo.invokingClasses {
+			cFInfo.arrivals = 0
+		}
+	}
+
+	start := time.Now().Add(-evaluationInterval)
+	query := fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> filter(fn: (r) => r["_field"] == "duration")
+										|> group(columns: ["_measurement", "class"])
+									    |> aggregateWindow(every: 1s, fn: count, createEmpty: true)
+									    |> mean()`, bucketName, start.Unix())
+
+	result, err := queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(float64)
+			funct := x["_measurement"].(string)
+			class := x["class"].(string)
+
+			fInfo, prs := g.m[funct] // access function map in Decision Engine
+			if !prs {
+				f, _ := function.GetFunction(funct)
+				fInfo = &functionInfo{
+					name:            funct,
+					memory:          f.MemoryMB,
+					cpu:             f.CPUDemand,
+					probCold:        [3]float64{0, 0, 0},
+					invokingClasses: make(map[string]*classFunctionInfo)}
+
+				g.m[funct] = fInfo
+			}
+
+			//timeWindow := 25 * 60.0
+			cFInfo, prs := fInfo.invokingClasses[class]
+			if !prs {
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+					probExecuteLocal:         startingLocalProb,
+					probOffloadCloud:         startingCloudOffloadProb,
+					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
+					arrivals:                 0,
+					arrivalCount:             0,
+					timeSlotsWithoutArrivals: 0,
+					className:                class}
+
+				fInfo.invokingClasses[class] = cFInfo
+			}
+			cFInfo.arrivals = val
+
+			//Reset deletion
+			cFInfo.timeSlotsWithoutArrivals = 0
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for meanDuration
+	start = time.Now().Add(-searchInterval)
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud"])
+										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
+										|> tail(n: %d)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
+
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(float64)
+
+			funct := x["_measurement"].(string)
+			off := x["offloaded"].(string)
+			offCloud := x["offloaded_cloud"].(string)
+
+			// retrieve location value to check if the function was executed locally, on cloud or on edge
+			location := LOCAL
+			if off == "true" && offCloud == "true" {
+				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
+			}
+			fInfo, prs := g.m[funct]
+			if !prs {
+				continue
+			}
+
+			fInfo.meanDuration[location] = val
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for OffloadLatencyCloud
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> filter(fn: (r) => r["_field"] == "offload_latency_cloud" and r["completed"] == "true")
+										|> group()
+										|> median()`, bucketName, start.Unix())
+
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			CloudOffloadLatency = result.Record().Values()["_value"].(float64)
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for offloadLatencyEdge
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> filter(fn: (r) => r["_field"] == "offload_latency_edge" and r["completed"] == "true")
+										|> group()
+										|> median()`, bucketName, start.Unix())
+
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			EdgeOffloadLatency = result.Record().Values()["_value"].(float64)
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	//Query for initTime
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud"])
+										|> filter(fn: (r) => r["_field"] == "init_time" and r["warm_start"] == "false" and r["completed"] == "true")
+										|> tail(n: %d)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(float64)
+
+			funct := x["_measurement"].(string)
+			off := x["offloaded"].(string)
+			offCloud := x["offloaded_cloud"].(string)
+
+			location := LOCAL
+			if off == "true" && offCloud == "true" {
+				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
+			}
+
+			fInfo, prs := g.m[funct]
+			if !prs {
+				continue
+			}
+
+			fInfo.initTime[location] = val
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for count and coldStartCount
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+  										|> filter(fn: (r) => r["_field"] == "duration" and r["completed"] == "true")
+										|> group(columns: ["_measurement", "offloaded", "offloaded_cloud", "warm_start"])
+										|> count()`, bucketName, start.Unix())
+
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(int64)
+
+			funct := x["_measurement"].(string)
+			off := x["offloaded"].(string)
+			offCloud := x["offloaded_cloud"].(string)
+			warmStart := x["warm_start"].(string)
+
+			location := LOCAL
+			if off == "true" && offCloud == "true" {
+				location = OFFLOADED_CLOUD
+			} else if off == "true" && offCloud == "false" {
+				location = OFFLOADED_EDGE
+			}
+
+			fInfo, prs := g.m[funct]
+			if !prs {
+				continue
+			}
+
+			if warmStart == "true" {
+				fInfo.count[location] = val
+			} else {
+				fInfo.coldStartCount[location] = val
+			}
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	for _, fInfo := range g.m {
+		// If none cold start happened in a specific location (local, cloud or edge), then the cold start probability is optimistically 0
+		for location := 0; location < 3; location++ {
+			if fInfo.coldStartCount[location] == 0 {
+				fInfo.probCold[location] = 0.0
+			} else {
+				fInfo.probCold[location] = float64(fInfo.coldStartCount[location]) / float64(fInfo.count[location]+fInfo.coldStartCount[location])
+			}
+		}
+	}
+}
+
+func (g *metricGrabberFlux) Delete(function string, class string) {
+	fInfo, prs := g.m[function]
+	if !prs {
+		return
+	}
+
+	delete(fInfo.invokingClasses, class)
+
+	//If there aren't any more classes calls the function can be deleted
+	if len(fInfo.invokingClasses) == 0 {
+		delete(g.m, function)
+	}
+}

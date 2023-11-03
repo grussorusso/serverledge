@@ -178,6 +178,8 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.QoSAwareOffloadPolicy{
 			CloudOnly: true,
 		}
+	} else if policyConf == "minR" {
+		return &scheduling.MinRPolicy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

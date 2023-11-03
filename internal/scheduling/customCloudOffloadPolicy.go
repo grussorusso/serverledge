@@ -13,12 +13,14 @@ type CustomCloudOffloadPolicy struct {
 
 // TODO add configuration for different types of decision engines
 func (p *CustomCloudOffloadPolicy) Init() {
-	version := config.GetString(config.SCHEDULING_POLICY_VERSION, "flux")
+	version := config.GetString(config.STORAGE_VERSION, "flux")
 	if version == "mem" {
+		// fixme ADD METRIC GRABBER MEM NON WORKING NOW
 		de = &decisionEngineMem{}
-
 	} else {
-		de = &decisionEngineFlux{}
+		de = &decisionEngineFlux{
+			&metricGrabberFlux{},
+		}
 	}
 
 	log.Println("Policy version:", version)

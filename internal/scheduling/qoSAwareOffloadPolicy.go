@@ -6,7 +6,8 @@ import (
 	"log"
 )
 
-// EdgePolicy supports only Edge-Edge offloading
+// QoSAwareEdgeCloud: policy that supports both horizontal and vertical offloading
+// QoSAwareCloud: policy that supports only vertical offloading
 
 type QoSAwareOffloadPolicy struct {
 	CloudOnly bool `default:"false"`
@@ -17,11 +18,14 @@ var policyFlag string
 
 func (p *QoSAwareOffloadPolicy) Init() {
 	// initialize decision engine
-	version := config.GetString(config.SCHEDULING_POLICY_VERSION, "flux")
+	version := config.GetString(config.STORAGE_VERSION, "flux")
 	if version == "mem" {
+		// FIXME ADD METRIC GRABBER MEM NOT WORKING NOW
 		engine = &decisionEngineMem{}
 	} else {
-		engine = &decisionEngineFlux{}
+		engine = &decisionEngineFlux{
+			&metricGrabberFlux{},
+		}
 	}
 
 	if p.CloudOnly {
