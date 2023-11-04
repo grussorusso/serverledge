@@ -2,8 +2,6 @@ package scheduling
 
 import (
 	"context"
-	"github.com/grussorusso/serverledge/internal/config"
-	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"math/rand"
 	"time"
@@ -49,12 +47,12 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	nContainers, _ := node.WarmStatus()[name]
+	/* FIXME AUDIT nContainers, _ := node.WarmStatus()[name]
 	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are "+
 		"\t pL: %f "+
 		"\t pC: %f "+
 		"\t pE: %f "+
-		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
+		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD) */
 
 	if policyFlag == "edgeCloud" {
 		// Cloud and Edge offloading allowed
@@ -101,20 +99,20 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
+	// FIXME AUDIT log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
 
-	log.Printf("prob: %f", prob)
+	// FIXME AUDIT log.Printf("prob: %f", prob)
 	if prob <= pL {
-		log.Println("Execute LOCAL")
+		// FIXME AUDIT log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
 	} else if prob <= pL+pE {
-		log.Println("Execute EDGE OFFLOAD")
+		// FIXME AUDIT log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else if prob <= pL+pE+pC {
-		log.Println("Execute CLOUD OFFLOAD")
+		// FIXME AUDIT log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
-		log.Println("Execute DROP")
+		// FIXME AUDIT log.Println("Execute DROP")
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
 			dropped:          true,
@@ -137,9 +135,6 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	}
 
 	d.g.InitMetricGrabber()
-
-	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
-	log.Println("Evaluation interval:", evaluationInterval)
 
 	go d.handler()
 }
@@ -192,5 +187,6 @@ func (d *decisionEngineFlux) updateProbabilities() {
 }
 
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
-	d.g.Completed(r, offloaded, false)
+	// FIXME AUDIT log.Println("COMPLETED: in decisionEngineFlux")
+	d.g.Completed(r, offloaded)
 }

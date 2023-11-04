@@ -113,9 +113,11 @@ func (g *metricGrabberFlux) InitMetricGrabber() {
 
 	g.FunctionMap = make(map[string]*functionInfo)
 
+	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
+	// FIXME AUDIT log.Println("Evaluation interval:", evaluationInterval)
+
 	go g.ShowData()
 	go g.handler()
-	log.Println("Initialized functionMap: ", g.FunctionMap)
 }
 
 // FIXME set audit
@@ -148,7 +150,7 @@ func (g *metricGrabberFlux) handler() {
 			// fKeys: contains extra information about the function execution
 			// - duration
 			// - init_time
-			log.Println("Result storage handler - adding data to influxdb")
+			// FIXME AUDIT log.Println("Result storage handler - adding data to influxdb")
 
 			var fKeys map[string]interface{}
 			offloaded := "false"
@@ -193,11 +195,11 @@ func (g *metricGrabberFlux) handler() {
 				time.Now())
 
 			writeAPI.WritePoint(p)
-			log.Println("ADDED NEW POINT INTO INFLUXDB")
+			// FIXME AUDIT log.Println("ADDED NEW POINT INTO INFLUXDB")
 
 		case arr := <-arrivalChannel: // Arrival handler - structures initialization
 			// A new request is arrived: update the counter of incoming request in the node structure
-			log.Println("NEW ARRIVAL!")
+			// FIXME AUDIT log.Println("NEW ARRIVAL!")
 			node.Resources.RequestsCount += 1
 
 			name := arr.Fun.Name
@@ -292,6 +294,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 				fInfo.invokingClasses[class] = cFInfo
 			}
 			cFInfo.arrivals = val
+			// FIXME REMOVE log.Println("Recovered arrivals from influxDb: ", cFInfo.arrivals)
 
 			//Reset deletion
 			cFInfo.timeSlotsWithoutArrivals = 0
@@ -497,26 +500,20 @@ func (g *metricGrabberFlux) GrabMetrics() {
 // 2) offloaded = OFFLOADED_CLOUD = 1 --> the request is offloaded to cloud
 // 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 // Triggers the DB update
-func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int, dropped bool) {
-	if dropped {
-		requestChannel <- completedRequest{
-			scheduledRequest: r,
-			dropped:          true,
-		}
+func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int) {
+	/** FIXME AUDIT
+	if offloaded == 0 {
+		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	} else if offloaded == 1 {
+		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else {
-		if offloaded == 0 {
-			log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-		} else if offloaded == 1 {
-			log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-		} else {
-			log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-		}
+		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
+	}*/
 
-		requestChannel <- completedRequest{
-			scheduledRequest: r,
-			location:         offloaded,
-			dropped:          false,
-		}
+	requestChannel <- completedRequest{
+		scheduledRequest: r,
+		location:         offloaded,
+		dropped:          false,
 	}
 }
 

@@ -74,6 +74,7 @@ func solve(m map[string]*functionInfo) {
 
 		for _, cFInfo := range fInfo.invokingClasses {
 			arrivals := float32(cFInfo.arrivals)
+			// FIXME REMOVE log.Println("Arrivals sent to solver: ", arrivals)
 
 			invocationList = append(invocationList, &pb.FunctionInvocation{
 				QosClass: &cFInfo.className,

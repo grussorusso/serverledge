@@ -4,7 +4,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -23,8 +22,6 @@ const (
 var startingLocalProb = 0.5         //Optimistically start with a higher probability of executing function locally
 var startingCloudOffloadProb = 0.25 //
 var startingEdgeOffloadProb = 0.25  // It's equally probable that we have a vertical offload and a horizontal offload
-
-var evaluationInterval time.Duration
 
 var rGen *rand.Rand
 

@@ -1,5 +1,7 @@
 package scheduling
 
+import "time"
+
 /*
 *
 
@@ -61,6 +63,8 @@ type arrivalRequest struct {
 var CloudOffloadLatency = 0.0 //RTT cloud
 var EdgeOffloadLatency = 0.0  // RTT edge
 
+var evaluationInterval time.Duration
+
 func (fInfo *functionInfo) getProbCold(location int) float64 {
 	if fInfo.timeSlotCount[location] == 0 {
 		//If there are no arrivals there's a high probability that the function execution requires a cold start
@@ -73,6 +77,6 @@ func (fInfo *functionInfo) getProbCold(location int) float64 {
 type metricGrabber interface {
 	InitMetricGrabber()
 	GrabMetrics()
-	Completed(r *scheduledRequest, offloaded int, dropped bool)
+	Completed(r *scheduledRequest, offloaded int)
 	Delete(function string, class string)
 }
