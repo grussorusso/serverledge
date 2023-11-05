@@ -68,7 +68,7 @@ const BANDWIDTH_EDGE = "metrics.bandwidth.cloud"
 // Possible values: "qosaware", "default", "cloudonly"
 const SCHEDULING_POLICY = "scheduler.policy"
 
-const CLOUD_COST = "scheduler.cloud.cost"
+const CLOUD_COST_FACTOR = "scheduler.cloud.cost"
 const BUDGET = "scheduler.local.budget"
 
 // Capacity of the queue (possibly) used by the scheduler

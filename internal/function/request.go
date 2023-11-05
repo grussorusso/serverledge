@@ -35,6 +35,7 @@ type ExecutionReport struct {
 	VerticallyOffloaded bool
 	OffloadLatencyCloud float64
 	OffloadLatencyEdge  float64
+	Cost                float64
 } // if verticallyOffloaded == true and SchedAction == "offloa
 
 type Response struct {

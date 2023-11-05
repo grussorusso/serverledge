@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/metrics"
 	"io/ioutil"
 	"log"
@@ -160,10 +161,12 @@ func Offload(r *function.Request, serverUrl string) error {
 		r.ExecReport.OffloadLatencyCloud = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_CLOUD
 		r.ExecReport.VerticallyOffloaded = true
+		r.ExecReport.Cost = config.GetFloat(config.CLOUD_COST_FACTOR, 0.01) * r.ExecReport.Duration * float64(r.Fun.MemoryMB)
 	} else {
 		r.ExecReport.OffloadLatencyEdge = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 		r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD_EDGE
 		r.ExecReport.VerticallyOffloaded = false
+		r.ExecReport.Cost = 0
 	}
 
 	policy.OnCompletion(&scheduledRequest{

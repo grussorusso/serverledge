@@ -144,7 +144,7 @@ func solve(m map[string]*functionInfo) {
 	}
 	offloadLatencyCloud := float32(CloudOffloadLatency)
 	offloadLatencyEdge := float32(EdgeOffloadLatency)
-	costCloud := float32(config.GetFloat(config.CLOUD_COST, 0.01))
+	costCloud := float32(config.GetFloat(config.CLOUD_COST_FACTOR, 0.01))
 	localBudget := float32(config.GetFloat(config.BUDGET, 0.01))
 	localCpu := float32(node.Resources.MaxCPUs)
 	localMem := float32(node.Resources.MaxMemMB)
