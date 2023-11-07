@@ -15,7 +15,7 @@ import (
 )
 
 type metricGrabberFlux struct {
-	FunctionMap map[string]*functionInfo
+	FunctionMap map[string]*FunctionInfo
 }
 
 var clientInflux influxdb2.Client
@@ -111,7 +111,7 @@ func (g *metricGrabberFlux) InitMetricGrabber() {
 	queryAPI = clientInflux.QueryAPI(orgName)
 	deleteAPI = clientInflux.DeleteAPI()
 
-	g.FunctionMap = make(map[string]*functionInfo)
+	g.FunctionMap = make(map[string]*FunctionInfo)
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 	// FIXME AUDIT log.Println("Evaluation interval:", evaluationInterval)
@@ -135,7 +135,7 @@ func (g *metricGrabberFlux) ShowData() {
 /*
 Function that:
 - Writes the report of the request completion into the data store (influxdb).
-- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
+- With the arrival of a new request, initializes new FunctionInfo and ClassFunctionInfo objects.
 */
 func (g *metricGrabberFlux) handler() {
 	for {
@@ -161,10 +161,18 @@ func (g *metricGrabberFlux) handler() {
 			// If the request was dropped, then update the respective value in the node structure
 			if r.dropped {
 				node.Resources.DropRequestsCount += 1
-				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				fKeys = map[string]interface{}{
+					"duration":   r.ExecReport.Duration,
+					"init_time":  r.ExecReport.InitTime,
+					"input_size": r.ExecReport.InputSize,
+				}
 				completed = "false"
 			} else {
-				fKeys = map[string]interface{}{"duration": r.ExecReport.Duration, "init_time": r.ExecReport.InitTime}
+				fKeys = map[string]interface{}{
+					"duration":   r.ExecReport.Duration,
+					"init_time":  r.ExecReport.InitTime,
+					"input_size": r.ExecReport.InputSize,
+				}
 				completed = "true"
 			}
 
@@ -205,21 +213,21 @@ func (g *metricGrabberFlux) handler() {
 			name := arr.Fun.Name
 			fInfo, prs := g.FunctionMap[name]
 			if !prs {
-				fInfo = &functionInfo{
+				fInfo = &FunctionInfo{
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{0, 0, 0},
 					bandwidthCloud:  0,
 					bandwidthEdge:   0,
-					invokingClasses: make(map[string]*classFunctionInfo)}
+					invokingClasses: make(map[string]*ClassFunctionInfo)}
 
 				g.FunctionMap[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
-				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probOffloadEdge:          startingEdgeOffloadProb,
@@ -269,12 +277,12 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			fInfo, prs := g.FunctionMap[funct] // access function map in Decision Engine
 			if !prs {
 				f, _ := function.GetFunction(funct)
-				fInfo = &functionInfo{
+				fInfo = &FunctionInfo{
 					name:            funct,
 					memory:          f.MemoryMB,
 					cpu:             f.CPUDemand,
 					probCold:        [3]float64{0, 0, 0},
-					invokingClasses: make(map[string]*classFunctionInfo)}
+					invokingClasses: make(map[string]*ClassFunctionInfo)}
 
 				g.FunctionMap[funct] = fInfo
 			}
@@ -282,7 +290,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			//timeWindow := 25 * 60.0
 			cFInfo, prs := fInfo.invokingClasses[class]
 			if !prs {
-				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
@@ -426,6 +434,36 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			}
 
 			fInfo.initTime[location] = val
+		}
+
+		// check for an error
+		if result.Err() != nil {
+			log.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		log.Println("DB error", err)
+	}
+
+	// Query for input size
+	query = fmt.Sprintf(`from(bucket: "%s")
+										|> range(start: %d)
+										|> group(columns: ["_measurement"])
+										|> filter(fn: (r) => r["_field"] == "input_size" and r["completed"] == "true")
+										|> tail(n: %d)
+										|> exponentialMovingAverage(n: %d)`, bucketName, start.Unix(), 100, 100)
+	result, err = queryAPI.Query(context.Background(), query)
+	if err == nil {
+		// Iterate over query response
+		for result.Next() {
+			x := result.Record().Values()
+			val := result.Record().Value().(float64)
+
+			funct := x["_measurement"].(string)
+			fInfo, prs := g.FunctionMap[funct]
+			if !prs {
+				continue
+			}
+			fInfo.meanInputSize = val
 		}
 
 		// check for an error

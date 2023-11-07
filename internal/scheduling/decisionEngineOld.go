@@ -48,7 +48,7 @@ package scheduling
 //
 //var mut_old sync.Mutex
 //
-//var m_old = make(map[string]functionInfo)
+//var m_old = make(map[string]FunctionInfo)
 //
 //var rtt [rttPoints]float64
 //var rttIndex = 0
@@ -246,7 +246,7 @@ package scheduling
 //	fInfo, prs := FunctionMap[name]
 //
 //	if !prs {
-//		fInfo = functionInfo{name: name}
+//		fInfo = FunctionInfo{name: name}
 //	}
 //
 //	if !resp.IsWarmStart {
@@ -282,7 +282,7 @@ package scheduling
 //	fInfo, prs := FunctionMap[name]
 //
 //	if !prs {
-//		fInfo = functionInfo{name: name}
+//		fInfo = FunctionInfo{name: name}
 //	}
 //
 //	if !r.ExecReport.IsWarmStart {

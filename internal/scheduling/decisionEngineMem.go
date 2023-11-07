@@ -9,7 +9,7 @@ import (
 )
 
 type decisionEngineMem struct {
-	m map[string]*functionInfo
+	m map[string]*FunctionInfo
 }
 
 func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
@@ -23,7 +23,7 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 	var pE float64
 	var pD float64
 
-	var cFInfo *classFunctionInfo
+	var cFInfo *ClassFunctionInfo
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
@@ -145,7 +145,7 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 	log.Println("Evaluation interval:", evaluationInterval)
 
-	d.m = make(map[string]*functionInfo)
+	d.m = make(map[string]*FunctionInfo)
 
 	go d.ShowData()
 	go d.handler()
@@ -155,7 +155,7 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 Function that:
 - Handles the evaluation and calculation of the cold start probabilities.
 - Writes the report of the request completion into the data store (influxdb).
-- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
+- With the arrival of a new request, initializes new FunctionInfo and ClassFunctionInfo objects.
 */
 func (d *decisionEngineMem) handler() {
 	evaluationTicker :=
@@ -212,21 +212,21 @@ func (d *decisionEngineMem) handler() {
 
 			fInfo, prs := d.m[name]
 			if !prs {
-				fInfo = &functionInfo{
+				fInfo = &FunctionInfo{
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{1, 1, 1},
 					bandwidthCloud:  0,
 					bandwidthEdge:   0,
-					invokingClasses: make(map[string]*classFunctionInfo)}
+					invokingClasses: make(map[string]*ClassFunctionInfo)}
 
 				d.m[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
-				cFInfo = &classFunctionInfo{functionInfo: fInfo,
+				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probOffloadEdge:          startingEdgeOffloadProb,

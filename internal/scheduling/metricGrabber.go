@@ -1,6 +1,13 @@
 package scheduling
 
-import "time"
+import (
+	"encoding/json"
+	"github.com/grussorusso/serverledge/internal/client"
+	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/function"
+	"log"
+	"time"
+)
 
 /*
 *
@@ -8,7 +15,7 @@ import "time"
 	 	Stores the function information and metrics.
 		Metrics are stored as an array with size 3, to maintain also horizontal offloading data
 */
-type functionInfo struct {
+type FunctionInfo struct {
 	name             string
 	count            [3]int64   //Number of function requests
 	meanDuration     [3]float64 //Mean duration time
@@ -22,14 +29,15 @@ type functionInfo struct {
 	probCold         [3]float64 //Probability of a cold start when requesting the function
 	bandwidthCloud   int        //Bandwidth on cloud links
 	bandwidthEdge    int        //Bandwidth on edge links
+	meanInputSize    float64    //Mean size of function input
 
 	//Map containing information about function requests for every class
-	invokingClasses map[string]*classFunctionInfo
+	invokingClasses map[string]*ClassFunctionInfo
 }
 
-type classFunctionInfo struct {
+type ClassFunctionInfo struct {
 	//Pointer used for accessing information about the function
-	*functionInfo
+	*FunctionInfo
 	//
 	probExecuteLocal float64
 	probOffloadCloud float64
@@ -65,13 +73,46 @@ var EdgeOffloadLatency = 0.0  // RTT edge
 
 var evaluationInterval time.Duration
 
-func (fInfo *functionInfo) getProbCold(location int) float64 {
+func (fInfo *FunctionInfo) GetProbCold(location int) float64 {
 	if fInfo.timeSlotCount[location] == 0 {
 		//If there are no arrivals there's a high probability that the function execution requires a cold start
 		return 1
 	} else {
 		return float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
 	}
+}
+
+func estimateLatency(r *scheduledRequest) (float64, float64) {
+	// Execute a type assertion to access FunctionMap
+	var fun *FunctionInfo
+	if flux, ok := grabber.(*metricGrabberFlux); ok {
+		// Access function map
+		fun = flux.FunctionMap[r.Fun.Name]
+		if fun == nil {
+			return latencyLocal, latencyCloud
+		}
+	}
+	latencyLocal = fun.meanDuration[0] + fun.probCold[0]*fun.initTime[0]
+	latencyCloud = fun.meanDuration[1] + fun.probCold[1]*fun.initTime[1] +
+		2*CloudOffloadLatency +
+		fun.meanInputSize*8/1000/1000/config.GetFloat(config.BANDWIDTH_CLOUD, 1.0)
+	log.Println("Latency local: ", latencyLocal)
+	log.Println("Latency cloud: ", latencyCloud)
+	return latencyLocal, latencyCloud
+}
+
+func CalculatePacketSize(r *function.Request) int {
+	request := client.InvocationRequest{Params: r.Params,
+		QoSMaxRespT: r.MaxRespT,
+		Async:       r.Async}
+	invocationBody, err := json.Marshal(request)
+	if err != nil {
+		log.Print(err)
+	}
+	// Calculate approximate packet size
+	sizePacket := len(invocationBody)
+	log.Println("size packet calculated")
+	return sizePacket
 }
 
 type metricGrabber interface {

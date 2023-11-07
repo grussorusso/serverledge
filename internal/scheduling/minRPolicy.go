@@ -35,22 +35,6 @@ func queryDb() {
 	}
 }
 
-func estimateLatency(r *scheduledRequest) (float64, float64) {
-	// Execute a type assertion to access FunctionMap
-	var fun *functionInfo
-	if flux, ok := grabber.(*metricGrabberFlux); ok {
-		// Access function map
-		fun = flux.FunctionMap[r.Fun.Name]
-		if fun == nil {
-			return latencyLocal, latencyCloud
-		}
-	}
-	latencyLocal = fun.meanDuration[0] + fun.probCold[0]*fun.initTime[0]
-	latencyCloud = fun.meanDuration[1] + fun.probCold[1]*fun.initTime[1] + 2*CloudOffloadLatency
-	log.Println("Latency local: ", latencyLocal)
-	log.Println("Latency cloud: ", latencyCloud)
-	return latencyLocal, latencyCloud
-}
 func (p *MinRPolicy) Init() {
 	// Initialize DecisionEngine to recover information about incoming requests and metrics
 	version := config.GetString(config.STORAGE_VERSION, "flux")

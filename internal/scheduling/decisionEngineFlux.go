@@ -22,7 +22,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 	var pE float64
 	var pD float64
 
-	var cFInfo *classFunctionInfo
+	var cFInfo *ClassFunctionInfo
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 

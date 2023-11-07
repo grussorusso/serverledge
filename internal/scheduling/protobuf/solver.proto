@@ -12,16 +12,17 @@ service Solver {
 
 // argument
 message Request {
-  required float offload_latency_cloud = 1;       // offload latency cloud
-  required float offload_latency_edge = 2;        // offload latency edge
-  repeated Function functions = 3;                // functions
-  repeated QosClass classes = 4;                  // classes
-  required float cost_cloud = 5;                  // cost of the request if executed on cloud
-  required float local_budget = 6;
-  required float memory_local = 7;               // memory available on local node
-  required float cpu_local = 8;                  // cpu available on local node
-  required float memory_aggregate = 9;           // total memory available on all edge nodes
-  required float usable_memory_coefficient = 10;  // local usable memory coefficient
+  required string policy = 1;
+  required float offload_latency_cloud = 2;       // offload latency cloud
+  required float offload_latency_edge = 3;        // offload latency edge
+  repeated Function functions = 4;                // functions
+  repeated QosClass classes = 5;                  // classes
+  required float cost_cloud = 6;                  // cost of the request if executed on cloud
+  required float local_budget = 7;
+  required float memory_local = 8;               // memory available on local node
+  required float cpu_local = 9;                  // cpu available on local node
+  required float memory_aggregate = 10;           // total memory available on all edge nodes
+  required float usable_memory_coefficient = 11;  // local usable memory coefficient
 }
 
 message FunctionInvocation {
@@ -47,6 +48,7 @@ message Function {
   required float pcold_offloaded_edge = 13;     // probabilità cold start nell'edge
   required float bandwidth_cloud = 14;        // bandwidth to cloud node calculated with the request packet
   required float bandwidth_edge = 15;         // bandwidth to edge node calculated with the request packet
+  required float input_size = 16;             // mean input size
 }
 
 message QosClass {
