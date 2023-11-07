@@ -153,6 +153,7 @@ func solve(m map[string]*FunctionInfo) {
 	localMem := float32(node.Resources.MaxMemMB)
 	localUsableMem := float32(calculateUsableMemoryCoefficient())
 	response, err := client.Solve(context.Background(), &pb.Request{
+		Policy:                  &policyFlag,
 		OffloadLatencyCloud:     &offloadLatencyCloud,
 		OffloadLatencyEdge:      &offloadLatencyEdge,
 		Functions:               functionList,
