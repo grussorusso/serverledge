@@ -130,8 +130,8 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 		startingCloudOffloadProb = 0.333
 	} else {
 		startingLocalProb = 0.5
-		startingEdgeOffloadProb = 0.5
-		startingCloudOffloadProb = 0
+		startingEdgeOffloadProb = 0
+		startingCloudOffloadProb = 0.5
 	}
 
 	d.g.InitMetricGrabber()
