@@ -15,7 +15,7 @@ import (
 )
 
 type metricGrabberFlux struct {
-	FunctionMap map[string]*FunctionInfo
+	m map[string]*functionInfo
 }
 
 var clientInflux influxdb2.Client
@@ -111,7 +111,7 @@ func (g *metricGrabberFlux) InitMetricGrabber() {
 	queryAPI = clientInflux.QueryAPI(orgName)
 	deleteAPI = clientInflux.DeleteAPI()
 
-	g.FunctionMap = make(map[string]*FunctionInfo)
+	g.m = make(map[string]*functionInfo)
 
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 	// FIXME AUDIT log.Println("Evaluation interval:", evaluationInterval)
@@ -124,7 +124,7 @@ func (g *metricGrabberFlux) InitMetricGrabber() {
 func (g *metricGrabberFlux) ShowData() {
 	for {
 		time.Sleep(time.Second * 10)
-		for _, fInfo := range g.FunctionMap {
+		for _, fInfo := range g.m {
 			for _, cFInfo := range fInfo.invokingClasses {
 				log.Println(cFInfo)
 			}
@@ -134,12 +134,38 @@ func (g *metricGrabberFlux) ShowData() {
 
 /*
 Function that:
+- Handles the evaluation and calculation of the local, edge and cloud probabilities.
 - Writes the report of the request completion into the data store (influxdb).
-- With the arrival of a new request, initializes new FunctionInfo and ClassFunctionInfo objects.
+- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
 */
 func (g *metricGrabberFlux) handler() {
+	evaluationTicker :=
+		time.NewTicker(evaluationInterval)
 	for {
 		select {
+		case _ = <-evaluationTicker.C: // Evaluation handler
+			s := rand.NewSource(time.Now().UnixNano())
+			rGen = rand.New(s)
+			log.Println("Evaluating")
+
+			//Check if there are some instances with 0 arrivals
+			for fName, fInfo := range g.m {
+				for cName, cFInfo := range fInfo.invokingClasses {
+					//Cleanup
+					if cFInfo.arrivalCount == 0 {
+						cFInfo.timeSlotsWithoutArrivals++
+						if cFInfo.timeSlotsWithoutArrivals >= maxTimeSlots {
+							log.Println("DELETING", fName, cName)
+							g.Delete(fName, cName)
+						}
+					}
+				}
+			}
+
+			//d.deleteOldData(24 * time.Hour)
+			g.queryMetrics()
+			g.updateProbabilities()
+
 		case r := <-requestChannel: // Result storage handler
 			// New request completed or dropped - added data to influxdb - need to differentiate between edge offloading and cloud offloading
 			// completed: true if the completed request is not dropped
@@ -211,9 +237,9 @@ func (g *metricGrabberFlux) handler() {
 			node.Resources.RequestsCount += 1
 
 			name := arr.Fun.Name
-			fInfo, prs := g.FunctionMap[name]
+			fInfo, prs := g.m[name]
 			if !prs {
-				fInfo = &FunctionInfo{
+				fInfo = &functionInfo{
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
@@ -221,14 +247,14 @@ func (g *metricGrabberFlux) handler() {
 					bandwidthCloud:  0,
 					bandwidthEdge:   0,
 					meanInputSize:   100,
-					invokingClasses: make(map[string]*ClassFunctionInfo)}
+					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				g.FunctionMap[name] = fInfo
+				g.m[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
-				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probOffloadEdge:          startingEdgeOffloadProb,
@@ -247,12 +273,12 @@ func (g *metricGrabberFlux) handler() {
 	}
 }
 
-func (g *metricGrabberFlux) GrabMetrics() {
+func (g *metricGrabberFlux) queryMetrics() {
 	//TODO edit time window
 	searchInterval := 24 * time.Hour
 
 	//Query for arrivals
-	for _, fInfo := range g.FunctionMap {
+	for _, fInfo := range g.m {
 		for _, cFInfo := range fInfo.invokingClasses {
 			cFInfo.arrivals = 0
 		}
@@ -275,23 +301,23 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			funct := x["_measurement"].(string)
 			class := x["class"].(string)
 
-			fInfo, prs := g.FunctionMap[funct] // access function map in Decision Engine
+			fInfo, prs := g.m[funct] // access function map in Decision Engine
 			if !prs {
 				f, _ := function.GetFunction(funct)
-				fInfo = &FunctionInfo{
+				fInfo = &functionInfo{
 					name:            funct,
 					memory:          f.MemoryMB,
 					cpu:             f.CPUDemand,
 					probCold:        [3]float64{0, 0, 0},
-					invokingClasses: make(map[string]*ClassFunctionInfo)}
+					invokingClasses: make(map[string]*classFunctionInfo)}
 
-				g.FunctionMap[funct] = fInfo
+				g.m[funct] = fInfo
 			}
 
 			//timeWindow := 25 * 60.0
 			cFInfo, prs := fInfo.invokingClasses[class]
 			if !prs {
-				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probDrop:                 1 - (startingLocalProb + startingCloudOffloadProb),
@@ -344,7 +370,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			} else if off == "true" && offCloud == "false" {
 				location = OFFLOADED_EDGE
 			}
-			fInfo, prs := g.FunctionMap[funct]
+			fInfo, prs := g.m[funct]
 			if !prs {
 				continue
 			}
@@ -429,7 +455,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 				location = OFFLOADED_EDGE
 			}
 
-			fInfo, prs := g.FunctionMap[funct]
+			fInfo, prs := g.m[funct]
 			if !prs {
 				continue
 			}
@@ -460,7 +486,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 			val := result.Record().Value().(float64)
 
 			funct := x["_measurement"].(string)
-			fInfo, prs := g.FunctionMap[funct]
+			fInfo, prs := g.m[funct]
 			if !prs {
 				continue
 			}
@@ -501,7 +527,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 				location = OFFLOADED_EDGE
 			}
 
-			fInfo, prs := g.FunctionMap[funct]
+			fInfo, prs := g.m[funct]
 			if !prs {
 				continue
 			}
@@ -521,7 +547,7 @@ func (g *metricGrabberFlux) GrabMetrics() {
 		log.Println("DB error", err)
 	}
 
-	for _, fInfo := range g.FunctionMap {
+	for _, fInfo := range g.m {
 		// If none cold start happened in a specific location (local, cloud or edge), then the cold start probability is optimistically 0
 		for location := 0; location < 3; location++ {
 			if fInfo.coldStartCount[location] == 0 {
@@ -533,6 +559,18 @@ func (g *metricGrabberFlux) GrabMetrics() {
 	}
 }
 
+func (g *metricGrabberFlux) GrabFunctionInfo(functionName string) (*functionInfo, bool) {
+	fInfo, prs := g.m[functionName]
+	if !prs {
+		log.Printf("Function with name %s is not present in cache.", functionName)
+	}
+	return fInfo, prs
+}
+
+func (g *metricGrabberFlux) updateProbabilities() {
+	solve(g.m)
+}
+
 // Completed : this method is executed only in case the request is not dropped and
 // takes in input a 'scheduledRequest' object and an integer 'offloaded' that can have 3 possible values:
 // 1) offloaded = LOCAL = 0 --> the request is executed locally and not offloaded
@@ -540,14 +578,13 @@ func (g *metricGrabberFlux) GrabMetrics() {
 // 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 // Triggers the DB update
 func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int) {
-	/** FIXME AUDIT
 	if offloaded == 0 {
 		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else if offloaded == 1 {
 		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else {
 		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	}*/
+	}
 
 	requestChannel <- completedRequest{
 		scheduledRequest: r,
@@ -557,7 +594,7 @@ func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int) {
 }
 
 func (g *metricGrabberFlux) Delete(function string, class string) {
-	fInfo, prs := g.FunctionMap[function]
+	fInfo, prs := g.m[function]
 	if !prs {
 		return
 	}
@@ -566,6 +603,6 @@ func (g *metricGrabberFlux) Delete(function string, class string) {
 
 	//If there aren't any more classes calls the function can be deleted
 	if len(fInfo.invokingClasses) == 0 {
-		delete(g.FunctionMap, function)
+		delete(g.m, function)
 	}
 }

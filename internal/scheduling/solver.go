@@ -44,7 +44,7 @@ func calculateUsableMemoryCoefficient() float64 {
 	return coefficient
 }
 
-func solve(m map[string]*FunctionInfo) {
+func solve(m map[string]*functionInfo) {
 	// FIXME: modify to implement new model with edge offloading probability
 	if len(m) == 0 {
 		return
@@ -215,7 +215,7 @@ func solve(m map[string]*FunctionInfo) {
 //var debug = true
 //
 //type cFInfoWithClass struct {
-//	*ClassFunctionInfo
+//	*classFunctionInfo
 //	class string
 //}
 //
@@ -239,8 +239,8 @@ func solve(m map[string]*FunctionInfo) {
 //	return index*4 + 3
 //}
 //
-//func SolveprobabilitiesLegacy(FunctionMap map[string]*FunctionInfo) {
-//	if len(FunctionMap) == 0 {
+//func SolveprobabilitiesLegacy(m map[string]*functionInfo) {
+//	if len(m) == 0 {
 //		return
 //	}
 //
@@ -250,20 +250,20 @@ func solve(m map[string]*FunctionInfo) {
 //	memoryConstraintEntries := make([]golp.Entry, 0)
 //	cpuConstraintEntries := make([]golp.Entry, 0)
 //
-//	classMap := make(map[string][]*ClassFunctionInfo)
+//	classMap := make(map[string][]*classFunctionInfo)
 //
 //	functionPColdMap = make(map[string]int)
 //	functionPdIndex := make(map[string]int)
 //
-//	functionNumber := len(FunctionMap)
+//	functionNumber := len(m)
 //
-//	for _, fInfo := range FunctionMap {
+//	for _, fInfo := range m {
 //		for class, cFInfo := range fInfo.invokingClasses {
 //			list = append(list, cFInfoWithClass{cFInfo, class})
 //
 //			classFunctionList, prs := classMap[class]
 //			if !prs {
-//				classFunctionList = make([]*ClassFunctionInfo, 1)
+//				classFunctionList = make([]*classFunctionInfo, 1)
 //				classFunctionList[0] = cFInfo
 //			} else {
 //				classFunctionList = append(classFunctionList, cFInfo)
@@ -276,7 +276,7 @@ func solve(m map[string]*FunctionInfo) {
 //	numberOfFunctionClass = len(list)
 //
 //	index := 0
-//	for fName := range FunctionMap {
+//	for fName := range m {
 //		functionPColdMap[fName] = numberOfFunctionClass*4 + index
 //
 //		index++
@@ -388,12 +388,12 @@ func solve(m map[string]*FunctionInfo) {
 //	}
 //
 //	for name, index := range functionPColdMap {
-//		_, prs := FunctionMap[name]
+//		_, prs := m[name]
 //		if !prs {
 //			continue
 //		}
 //
-//		FunctionMap[name].probCold = vars[index]
+//		m[name].probCold = vars[index]
 //	}
 //
 //	if debug {
@@ -405,29 +405,29 @@ func solve(m map[string]*FunctionInfo) {
 //	}
 //}
 //
-//func ErlangB(FunctionMap int, a float64) float64 {
+//func ErlangB(m int, a float64) float64 {
 //	sum := 0.0
 //	fact := 1.0
 //
-//	for i := 1.0; i <= float64(FunctionMap); i++ {
+//	for i := 1.0; i <= float64(m); i++ {
 //		fact *= i
 //		sum += math.Pow(a, i) / fact
 //	}
 //
 //	sum += 1
 //
-//	return math.Pow(sum, -1) * (math.Pow(a, float64(FunctionMap)) / fact)
+//	return math.Pow(sum, -1) * (math.Pow(a, float64(m)) / fact)
 //}
 //
-//func SolveColdStart(FunctionMap map[string]*FunctionInfo) map[string]int {
+//func SolveColdStart(m map[string]*functionInfo) map[string]int {
 //	outMap := make(map[string]int)
 //
-//	numberOfFunctions := len(FunctionMap)
+//	numberOfFunctions := len(m)
 //	if numberOfFunctions == 0 {
 //		return outMap
 //	}
 //
-//	for fName, fInfo := range FunctionMap {
+//	for fName, fInfo := range m {
 //		sum := 0.0
 //		arrivals := 0.0
 //		w := 0
@@ -483,8 +483,8 @@ func solve(m map[string]*FunctionInfo) {
 //// TODO test
 //var preference = 1.0
 //
-//func SolveProbabilities(FunctionMap map[string]*FunctionInfo) {
-//	if len(FunctionMap) == 0 {
+//func SolveProbabilities(m map[string]*functionInfo) {
+//	if len(m) == 0 {
 //		return
 //	}
 //
@@ -494,17 +494,17 @@ func solve(m map[string]*FunctionInfo) {
 //	memoryConstraintEntries := make([]golp.Entry, 0)
 //	cpuConstraintEntries := make([]golp.Entry, 0)
 //
-//	classMap := make(map[string][]*ClassFunctionInfo)
+//	classMap := make(map[string][]*classFunctionInfo)
 //
 //	functionPdIndex := make(map[string]int)
 //
-//	for _, fInfo := range FunctionMap {
+//	for _, fInfo := range m {
 //		for class, cFInfo := range fInfo.invokingClasses {
 //			list = append(list, cFInfoWithClass{cFInfo, class})
 //
 //			classFunctionList, prs := classMap[class]
 //			if !prs {
-//				classFunctionList = make([]*ClassFunctionInfo, 1)
+//				classFunctionList = make([]*classFunctionInfo, 1)
 //				classFunctionList[0] = cFInfo
 //			} else {
 //				classFunctionList = append(classFunctionList, cFInfo)
@@ -614,12 +614,12 @@ func solve(m map[string]*FunctionInfo) {
 //	}
 //
 //	for name, index := range functionPColdMap {
-//		_, prs := FunctionMap[name]
+//		_, prs := m[name]
 //		if !prs {
 //			continue
 //		}
 //
-//		FunctionMap[name].probCold = vars[index]
+//		m[name].probCold = vars[index]
 //	}
 //
 //	if debug {

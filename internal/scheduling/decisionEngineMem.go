@@ -9,7 +9,7 @@ import (
 )
 
 type decisionEngineMem struct {
-	m map[string]*FunctionInfo
+	m map[string]*functionInfo
 }
 
 func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
@@ -23,7 +23,7 @@ func (d *decisionEngineMem) Decide(r *scheduledRequest) int {
 	var pE float64
 	var pD float64
 
-	var cFInfo *ClassFunctionInfo
+	var cFInfo *classFunctionInfo
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
@@ -145,7 +145,7 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 	evaluationInterval = time.Duration(config.GetInt(config.SOLVER_EVALUATION_INTERVAL, 10)) * time.Second
 	log.Println("Evaluation interval:", evaluationInterval)
 
-	d.m = make(map[string]*FunctionInfo)
+	d.m = make(map[string]*functionInfo)
 
 	go d.ShowData()
 	go d.handler()
@@ -155,7 +155,7 @@ func (d *decisionEngineMem) InitDecisionEngine() {
 Function that:
 - Handles the evaluation and calculation of the cold start probabilities.
 - Writes the report of the request completion into the data store (influxdb).
-- With the arrival of a new request, initializes new FunctionInfo and ClassFunctionInfo objects.
+- With the arrival of a new request, initializes new functionInfo and classFunctionInfo objects.
 */
 func (d *decisionEngineMem) handler() {
 	evaluationTicker :=
@@ -212,21 +212,21 @@ func (d *decisionEngineMem) handler() {
 
 			fInfo, prs := d.m[name]
 			if !prs {
-				fInfo = &FunctionInfo{
+				fInfo = &functionInfo{
 					name:            name,
 					memory:          arr.Fun.MemoryMB,
 					cpu:             arr.Fun.CPUDemand,
 					probCold:        [3]float64{1, 1, 1},
 					bandwidthCloud:  0,
 					bandwidthEdge:   0,
-					invokingClasses: make(map[string]*ClassFunctionInfo)}
+					invokingClasses: make(map[string]*classFunctionInfo)}
 
 				d.m[name] = fInfo
 			}
 
 			cFInfo, prs := fInfo.invokingClasses[arr.class]
 			if !prs {
-				cFInfo = &ClassFunctionInfo{FunctionInfo: fInfo,
+				cFInfo = &classFunctionInfo{functionInfo: fInfo,
 					probExecuteLocal:         startingLocalProb,
 					probOffloadCloud:         startingCloudOffloadProb,
 					probOffloadEdge:          startingEdgeOffloadProb,
@@ -269,12 +269,12 @@ func (d *decisionEngineMem) ShowData() {
 	//log.Println("ERLANG: ", ErlangB(57, 45))
 	//for {
 	//	time.Sleep(5 * time.Second)
-	//	log.Println("map", FunctionMap)
+	//	log.Println("map", m)
 	//}
 	/*
 		for {
 			time.Sleep(5 * time.Second)
-			for _, functionMap := range FunctionMap {
+			for _, functionMap := range m {
 				for _, finfo := range functionMap {
 					log.Println(finfo)
 				}
@@ -330,7 +330,7 @@ func UpdateDataAsync(r function.Response) {
 	}
 
 	//TODO edit this
-	fInfo, prs := de.FunctionMap[name]
+	fInfo, prs := de.m[name]
 	if !prs {
 		// If it is missing from the map then enough time has passed to cause expiring on the function entry,
 		// or the invocation came from somewhere else.

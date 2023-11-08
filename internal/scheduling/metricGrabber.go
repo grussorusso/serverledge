@@ -3,7 +3,6 @@ package scheduling
 import (
 	"encoding/json"
 	"github.com/grussorusso/serverledge/internal/client"
-	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"log"
 	"time"
@@ -15,7 +14,7 @@ import (
 	 	Stores the function information and metrics.
 		Metrics are stored as an array with size 3, to maintain also horizontal offloading data
 */
-type FunctionInfo struct {
+type functionInfo struct {
 	name             string
 	count            [3]int64   //Number of function requests
 	meanDuration     [3]float64 //Mean duration time
@@ -32,12 +31,12 @@ type FunctionInfo struct {
 	meanInputSize    float64    //Mean size of function input
 
 	//Map containing information about function requests for every class
-	invokingClasses map[string]*ClassFunctionInfo
+	invokingClasses map[string]*classFunctionInfo
 }
 
-type ClassFunctionInfo struct {
+type classFunctionInfo struct {
 	//Pointer used for accessing information about the function
-	*FunctionInfo
+	*functionInfo
 	//
 	probExecuteLocal float64
 	probOffloadCloud float64
@@ -73,32 +72,13 @@ var EdgeOffloadLatency = 0.0  // RTT edge
 
 var evaluationInterval time.Duration
 
-func (fInfo *FunctionInfo) GetProbCold(location int) float64 {
+func (fInfo *functionInfo) GetProbCold(location int) float64 {
 	if fInfo.timeSlotCount[location] == 0 {
 		//If there are no arrivals there's a high probability that the function execution requires a cold start
 		return 1
 	} else {
 		return float64(fInfo.coldStartCount[location]) / float64(fInfo.timeSlotCount[location])
 	}
-}
-
-func estimateLatency(r *scheduledRequest) (float64, float64) {
-	// Execute a type assertion to access FunctionMap
-	var fun *FunctionInfo
-	if flux, ok := grabber.(*metricGrabberFlux); ok {
-		// Access function map
-		fun = flux.FunctionMap[r.Fun.Name]
-		if fun == nil {
-			return latencyLocal, latencyCloud
-		}
-	}
-	latencyLocal = fun.meanDuration[0] + fun.probCold[0]*fun.initTime[0]
-	latencyCloud = fun.meanDuration[1] + fun.probCold[1]*fun.initTime[1] +
-		2*CloudOffloadLatency +
-		fun.meanInputSize*8/1000/1000/config.GetFloat(config.BANDWIDTH_CLOUD, 1.0)
-	log.Println("Latency local: ", latencyLocal)
-	log.Println("Latency cloud: ", latencyCloud)
-	return latencyLocal, latencyCloud
 }
 
 func CalculatePacketSize(r *function.Request) int {
@@ -117,7 +97,9 @@ func CalculatePacketSize(r *function.Request) int {
 
 type metricGrabber interface {
 	InitMetricGrabber()
-	GrabMetrics()
+	GrabFunctionInfo(functionName string) (*functionInfo, bool)
 	Completed(r *scheduledRequest, offloaded int)
 	Delete(function string, class string)
+	updateProbabilities()
+	queryMetrics()
 }

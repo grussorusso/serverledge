@@ -216,19 +216,19 @@ func (dP *decisionEnginePrometheus) handler() {
 }
 
 func (dP *decisionEnginePrometheus) updateProbabilities() {
-	//SolveProbabilities(dP.FunctionMap)
+	//SolveProbabilities(dP.m)
 }
 
 func (dP *decisionEnginePrometheus) ShowData() {
 	//log.Println("ERLANG: ", ErlangB(57, 45))
 	//for {
 	//	time.Sleep(5 * time.Second)
-	//	log.Println("map", FunctionMap)
+	//	log.Println("map", m)
 	//}
 	/*
 		for {
 			time.Sleep(5 * time.Second)
-			for _, functionMap := range FunctionMap {
+			for _, functionMap := range m {
 				for _, finfo := range functionMap {
 					log.Println(finfo)
 				}

@@ -48,7 +48,7 @@ package scheduling
 //
 //var mut_old sync.Mutex
 //
-//var m_old = make(map[string]FunctionInfo)
+//var m_old = make(map[string]functionInfo)
 //
 //var rtt [rttPoints]float64
 //var rttIndex = 0
@@ -63,7 +63,7 @@ package scheduling
 //
 //	arrivalChannel <- r
 //
-//	fInfo, prs := FunctionMap[name]
+//	fInfo, prs := m[name]
 //
 //	//HIGH PERFORMANCE?
 //	/*
@@ -172,7 +172,7 @@ package scheduling
 //	for {
 //		time.Sleep(5 * time.Second)
 //		log.Println("---------------------REPORT---------------------")
-//		log.Println(FunctionMap)
+//		log.Println(m)
 //		log.Println(node.WarmStatus())
 //		log.Printf("Offload latency %f\n", getRTT())
 //		log.Printf("Init latency %f\n", getInitTime("sleep1", LOCAL))
@@ -196,18 +196,18 @@ package scheduling
 //	sum := 0.0
 //	x := initPoints
 //
-//	_, prs := FunctionMap[name]
+//	_, prs := m[name]
 //	if !prs {
 //		return -1
 //	}
 //
 //	//Rolling average not complete
-//	if FunctionMap[name].count[offload] < initPoints {
-//		x = FunctionMap[name].count[offload]
+//	if m[name].count[offload] < initPoints {
+//		x = m[name].count[offload]
 //	}
 //
 //	for i := 0; i < x; i++ {
-//		sum += FunctionMap[name].initTime[offload][i]
+//		sum += m[name].initTime[offload][i]
 //	}
 //
 //	return sum / float64(x)
@@ -220,7 +220,7 @@ package scheduling
 //
 //// Delete TODO modify API to call this function when a function is deleted
 //func Delete_old(name string) {
-//	delete(FunctionMap, name)
+//	delete(m, name)
 //}
 //
 //// UpdateDataAsync TODO Use reqID to get missing information?
@@ -243,10 +243,10 @@ package scheduling
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //
-//	fInfo, prs := FunctionMap[name]
+//	fInfo, prs := m[name]
 //
 //	if !prs {
-//		fInfo = FunctionInfo{name: name}
+//		fInfo = functionInfo{name: name}
 //	}
 //
 //	if !resp.IsWarmStart {
@@ -264,7 +264,7 @@ package scheduling
 //
 //	fInfo.varianceDuration[off] = (diff * diff2) / float64(fInfo.count[off])
 //
-//	FunctionMap[name] = fInfo
+//	m[name] = fInfo
 //
 //	mut.Unlock()
 //}
@@ -279,10 +279,10 @@ package scheduling
 //		rttIndex = (rttIndex + 1) % rttPoints
 //	}
 //
-//	fInfo, prs := FunctionMap[name]
+//	fInfo, prs := m[name]
 //
 //	if !prs {
-//		fInfo = FunctionInfo{name: name}
+//		fInfo = functionInfo{name: name}
 //	}
 //
 //	if !r.ExecReport.IsWarmStart {
@@ -306,7 +306,7 @@ package scheduling
 //		fInfo.missed[location]++
 //	}
 //
-//	FunctionMap[name] = fInfo
+//	m[name] = fInfo
 //
 //	mut.Unlock()
 //}

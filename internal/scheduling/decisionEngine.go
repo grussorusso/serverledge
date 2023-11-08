@@ -44,7 +44,6 @@ func canExecute(function *function.Function) bool {
 
 type decisionEngine interface {
 	InitDecisionEngine()
-	updateProbabilities()
 	Completed(r *scheduledRequest, offloaded int)
 	Decide(r *scheduledRequest) int
 }

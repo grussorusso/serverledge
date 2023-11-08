@@ -4,8 +4,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/node"
 	"log"
-	"math/rand"
-	"time"
 )
 
 // MinRPolicy: greedy policy that chooses scheduling action based on the minimum expected latency
@@ -17,24 +15,19 @@ var grabber metricGrabber
 var latencyCloud = 0.0
 var latencyLocal = 0.0
 
-func queryDb() {
-	evaluationTicker :=
-		time.NewTicker(evaluationInterval)
-
-	for {
-		select {
-		case _ = <-evaluationTicker.C: // Evaluation handler
-			s := rand.NewSource(time.Now().UnixNano())
-			rGen = rand.New(s)
-			log.Println("QUERY DB")
-
-			// Query DB to get metrics
-			//d.deleteOldData(24 * time.Hour)
-			log.Println("GRABBING METRICS")
-			grabber.GrabMetrics()
-			log.Println("METRICS GRABBED")
-		}
+func estimateLatency(r *scheduledRequest) (float64, float64) {
+	// Execute a type assertion to access m
+	fun, prs := grabber.GrabFunctionInfo(r.Fun.Name)
+	if !prs {
+		return latencyLocal, latencyCloud
 	}
+	latencyLocal = fun.meanDuration[0] + fun.probCold[0]*fun.initTime[0]
+	latencyCloud = fun.meanDuration[1] + fun.probCold[1]*fun.initTime[1] +
+		2*CloudOffloadLatency +
+		fun.meanInputSize*8/1000/1000/config.GetFloat(config.BANDWIDTH_CLOUD, 1.0)
+	log.Println("Latency local: ", latencyLocal)
+	log.Println("Latency cloud: ", latencyCloud)
+	return latencyLocal, latencyCloud
 }
 
 func (p *MinRPolicy) Init() {
@@ -50,9 +43,6 @@ func (p *MinRPolicy) Init() {
 	log.Println("INITIALIZING GRABBER")
 	grabber.InitMetricGrabber()
 	log.Println("GRABBER INITIALIZED")
-	log.Println("STARTING QUERY DB GOROUTINE")
-	go queryDb()
-	log.Println("QUERY DB GOROUTINE STARTED")
 }
 
 func (p *MinRPolicy) OnCompletion(r *scheduledRequest) {

@@ -3,7 +3,6 @@ package scheduling
 import (
 	"context"
 	"log"
-	"math/rand"
 	"time"
 )
 
@@ -22,11 +21,11 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 	var pE float64
 	var pD float64
 
-	var cFInfo *ClassFunctionInfo
+	var cFInfo *classFunctionInfo
 
 	arrivalChannel <- arrivalRequest{r, class.Name}
 
-	fInfo, prs := d.g.FunctionMap[name]
+	fInfo, prs := d.g.GrabFunctionInfo(name)
 	if !prs {
 		pL = startingLocalProb
 		pC = startingCloudOffloadProb
@@ -135,8 +134,6 @@ func (d *decisionEngineFlux) InitDecisionEngine() {
 	}
 
 	d.g.InitMetricGrabber()
-
-	go d.handler()
 }
 
 func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
@@ -144,46 +141,6 @@ func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
 	if err != nil {
 		log.Println(err)
 	}
-}
-
-/*
-Function that:
-- Handles the evaluation and calculation of the local, edge and cloud probabilities.
-*/
-func (d *decisionEngineFlux) handler() {
-	evaluationTicker :=
-		time.NewTicker(evaluationInterval)
-
-	for {
-		select {
-		case _ = <-evaluationTicker.C: // Evaluation handler
-			s := rand.NewSource(time.Now().UnixNano())
-			rGen = rand.New(s)
-			log.Println("Evaluating")
-
-			//Check if there are some instances with 0 arrivals
-			for fName, fInfo := range d.g.FunctionMap {
-				for cName, cFInfo := range fInfo.invokingClasses {
-					//Cleanup
-					if cFInfo.arrivalCount == 0 {
-						cFInfo.timeSlotsWithoutArrivals++
-						if cFInfo.timeSlotsWithoutArrivals >= maxTimeSlots {
-							log.Println("DELETING", fName, cName)
-							d.g.Delete(fName, cName)
-						}
-					}
-				}
-			}
-
-			//d.deleteOldData(24 * time.Hour)
-			d.g.GrabMetrics()
-			d.updateProbabilities()
-		}
-	}
-}
-
-func (d *decisionEngineFlux) updateProbabilities() {
-	solve(d.g.FunctionMap)
 }
 
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
