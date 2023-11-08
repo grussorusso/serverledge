@@ -125,7 +125,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 func (d *decisionEngineFlux) InitDecisionEngine() {
 	// Initializing starting probabilities
 	if policyFlag == "edgeCloud" {
-		startingLocalProb = 0.333
+		startingLocalProb = 0.334
 		startingEdgeOffloadProb = 0.333
 		startingCloudOffloadProb = 0.333
 	} else {

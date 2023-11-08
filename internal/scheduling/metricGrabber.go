@@ -102,17 +102,17 @@ func estimateLatency(r *scheduledRequest) (float64, float64) {
 }
 
 func CalculatePacketSize(r *function.Request) int {
-	request := client.InvocationRequest{Params: r.Params,
+	invocationBody, err := json.Marshal(client.InvocationRequest{
+		Params:      r.Params,
 		QoSMaxRespT: r.MaxRespT,
-		Async:       r.Async}
-	invocationBody, err := json.Marshal(request)
+		Async:       r.Async,
+	})
 	if err != nil {
-		log.Print(err)
+		log.Println(err)
+		return 0
 	}
-	// Calculate approximate packet size
-	sizePacket := len(invocationBody)
-	log.Println("size packet calculated")
-	return sizePacket
+
+	return len(invocationBody)
 }
 
 type metricGrabber interface {

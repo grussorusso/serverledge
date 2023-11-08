@@ -1,6 +1,6 @@
 api.port: 1323
 registry.udp.port: 9876
-scheduler.policy: QoSAwareEdgeCloud
+scheduler.policy: minR
 scheduler.version: flux
 scheduler.cloud.cost: 0.00001
 scheduler.local.budget: 0.25

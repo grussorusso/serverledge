@@ -220,6 +220,7 @@ func (g *metricGrabberFlux) handler() {
 					probCold:        [3]float64{0, 0, 0},
 					bandwidthCloud:  0,
 					bandwidthEdge:   0,
+					meanInputSize:   100,
 					invokingClasses: make(map[string]*ClassFunctionInfo)}
 
 				g.FunctionMap[name] = fInfo

@@ -79,6 +79,7 @@ func InvokeFunction(c echo.Context) error {
 	r.ExecReport.OffloadLatencyCloud = 0.0
 	r.ExecReport.OffloadLatencyEdge = 0.0
 	r.ExecReport.InputSize = float64(scheduling.CalculatePacketSize(r))
+	log.Println("size packet calculated")
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
