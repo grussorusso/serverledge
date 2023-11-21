@@ -62,7 +62,7 @@ Start a Serverledge node:
 
 Register a function `func` from example code:
 
-	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" 
+	$ `bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" `
 
 Invoke `func` with arguments `a=2` and `b=3`:
 

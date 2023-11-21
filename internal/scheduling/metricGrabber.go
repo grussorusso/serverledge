@@ -81,6 +81,7 @@ func (fInfo *functionInfo) GetProbCold(location int) float64 {
 	}
 }
 
+// CalculatePacketSize Calculates the packet size of the request (used to estimate latency between nodes).
 func CalculatePacketSize(r *function.Request) int {
 	invocationBody, err := json.Marshal(client.InvocationRequest{
 		Params:      r.Params,

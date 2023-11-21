@@ -63,16 +63,30 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 			pE = 0
 		} else if !canExecute(r.Fun) {
 			// Node can't execute function locally
-			if pD == 0 && pC == 0 && pE == 0 {
-				pD = 0
-				pC = 0.1
-				pE = 0.9
-				pL = 0
+			if canAffordCloudOffloading(r) {
+				if pD == 0 && pC == 0 && pE == 0 {
+					pD = 0
+					pC = 0.1
+					pE = 0.9
+					pL = 0
+				} else {
+					pD = pD / (pD + pC + pE)
+					pC = pC / (pD + pC + pE)
+					pE = pE / (pD + pC + pE)
+					pL = 0
+				}
 			} else {
-				pD = pD / (pD + pC + pE)
-				pC = pC / (pD + pC + pE)
-				pE = pE / (pD + pC + pE)
-				pL = 0
+				if pD == 0 && pE == 0 {
+					pD = 0
+					pC = 0
+					pE = 1
+					pL = 0
+				} else {
+					pD = pD / (pD + pE)
+					pE = pE / (pD + pE)
+					pC = 0
+					pL = 0
+				}
 			}
 		}
 	} else {
@@ -83,35 +97,42 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 			pC = 0
 			pE = 0
 		} else if !canExecute(r.Fun) {
-			if pD == 0 && pC == 0 {
-				// Node can't execute function locally
-				pD = 0
-				pE = 0
-				pC = 1
-				pL = 0
+			if canAffordCloudOffloading(r) {
+				if pD == 0 && pC == 0 {
+					// Node can't execute function locally
+					pD = 0
+					pE = 0
+					pC = 1
+					pL = 0
+				} else {
+					pD = pD / (pD + pC)
+					pC = pC / (pD + pC)
+					pE = 0
+					pL = 0
+				}
 			} else {
-				pD = pD / (pD + pC)
-				pC = pC / (pD + pC)
+				pD = 1
 				pE = 0
+				pC = 0
 				pL = 0
 			}
 		}
 	}
 
-	// FIXME AUDIT log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
+	//log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
 
-	// FIXME AUDIT log.Printf("prob: %f", prob)
+	//log.Printf("prob: %f", prob)
 	if prob <= pL {
-		// FIXME AUDIT log.Println("Execute LOCAL")
+		log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
 	} else if prob <= pL+pE {
-		// FIXME AUDIT log.Println("Execute EDGE OFFLOAD")
+		log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else if prob <= pL+pE+pC {
-		// FIXME AUDIT log.Println("Execute CLOUD OFFLOAD")
+		log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
-		// FIXME AUDIT log.Println("Execute DROP")
+		log.Println("Execute DROP")
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
 			dropped:          true,
@@ -146,4 +167,8 @@ func (d *decisionEngineFlux) deleteOldData(period time.Duration) {
 func (d *decisionEngineFlux) Completed(r *scheduledRequest, offloaded int) {
 	// FIXME AUDIT log.Println("COMPLETED: in decisionEngineFlux")
 	d.g.Completed(r, offloaded)
+}
+
+func (d *decisionEngineFlux) GetGrabber() metricGrabber {
+	return d.g
 }
