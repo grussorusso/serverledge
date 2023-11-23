@@ -56,36 +56,41 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 	if policyFlag == "edgeCloud" {
 		// Cloud and Edge offloading allowed
 		if !r.CanDoOffloading {
-			// Can be executed only locally or dropped
-			pD = pD / (pD + pL)
-			pL = pL / (pD + pL)
-			pC = 0
 			pE = 0
-		} else if !canExecute(r.Fun) {
-			// Node can't execute function locally
-			if canAffordCloudOffloading(r) {
-				if pD == 0 && pC == 0 && pE == 0 {
-					pD = 0
-					pC = 0.1
-					pE = 0.9
-					pL = 0
-				} else {
-					pD = pD / (pD + pC + pE)
-					pC = pC / (pD + pC + pE)
-					pE = pE / (pD + pC + pE)
-					pL = 0
-				}
+			pC = 0
+			if pL+pC+pE+pD > 0 {
+				pL = pL / (pL + pC + pE + pD)
+				pC = pC / (pL + pC + pE + pD)
+				pE = pE / (pL + pC + pE + pD)
+				pD = pD / (pL + pC + pE + pD)
 			} else {
-				if pD == 0 && pE == 0 {
+				pL = 0.5
+				pC = 0
+				pE = 0
+				pD = 0.5
+			}
+		} else if !canExecute(r.Fun) {
+			pL = 0
+			canAffordCloud := canAffordCloudOffloading(r)
+			if !canAffordCloud {
+				pC = 0
+			}
+			if pL+pC+pE+pD > 0 {
+				pL = pL / (pL + pC + pE + pD)
+				pC = pC / (pL + pC + pE + pD)
+				pE = pE / (pL + pC + pE + pD)
+				pD = pD / (pL + pC + pE + pD)
+			} else {
+				if r.CanDoOffloading && canAffordCloud {
+					pL = 0
+					pC = 0.5
+					pE = 0.5
 					pD = 0
-					pC = 0
-					pE = 1
-					pL = 0
 				} else {
-					pD = pD / (pD + pE)
-					pE = pE / (pD + pE)
-					pC = 0
 					pL = 0
+					pC = 0
+					pE = 0.5
+					pD = 0.5
 				}
 			}
 		}
@@ -123,16 +128,16 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 
 	//log.Printf("prob: %f", prob)
 	if prob <= pL {
-		log.Println("Execute LOCAL")
+		//log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
 	} else if prob <= pL+pE {
-		log.Println("Execute EDGE OFFLOAD")
+		//log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else if prob <= pL+pE+pC {
-		log.Println("Execute CLOUD OFFLOAD")
+		//log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
-		log.Println("Execute DROP")
+		//log.Println("Execute DROP")
 		requestChannel <- completedRequest{
 			scheduledRequest: r,
 			dropped:          true,

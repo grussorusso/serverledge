@@ -18,7 +18,7 @@ type NodeResources struct {
 	MaxCPUs           float64
 	RequestsCount     int64   // number of requests arrived at the node
 	DropRequestsCount int64   // number of requests arrived at the node but dropped in the end
-	NodeExpenses      float64 // Cumulative expenses of the node in terms of $/s
+	NodeExpenses      float64 // Cumulative expenses of the node in terms of $
 	ContainerPools    map[string]*ContainerPool
 }
 

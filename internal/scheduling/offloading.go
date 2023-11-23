@@ -27,21 +27,20 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	}
 
 	//first, search for warm container
-	// FIXME AUDIT log.Printf("Search for a warm container")
+	//log.Printf("Search for a warm container")
 	for _, v := range nearbyServersMap {
 		if v.AvailableWarmContainers[r.Fun.Name] != 0 && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
 			return v.Addresses.NodeAddress
 		}
 	}
-	// FIXME AUDIT log.Printf("Nobody has warm container: search for available memory")
+	//log.Printf("Nobody has warm container: search for available memory")
 	//second, (nobody has warm container) search for available memory
 	for _, v := range nearbyServersMap {
-		// FIXME AUDIT log.Printf("nearby node available memory: %d", v.AvailableMemMB)
 		if v.AvailableMemMB >= r.Request.Fun.MemoryMB && v.AvailableCPUs >= r.Request.Fun.CPUDemand {
 			return v.Addresses.NodeAddress
 		}
 	}
-	// FIXME AUDIT log.Println("No nearby nodes with enough resources to handle execution.")
+	//log.Println("No nearby nodes with enough resources to handle execution.")
 	return ""
 }
 
@@ -192,7 +191,7 @@ func checkIfCloudOffloading(serverUrl string) bool {
 		nodeInfo := registration.GetNodeAddresses(value)
 		url := nodeInfo.NodeAddress
 		if serverUrl == url {
-			log.Printf("Server with key %v was chosen to host offloading", key)
+			log.Printf("Cloud server with key %v was chosen to host offloading", key)
 			return true
 		} // vertical offloading
 	}

@@ -4,8 +4,8 @@ import (
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
-	"log"
 	"math/rand"
+	"time"
 )
 
 const (
@@ -24,6 +24,7 @@ const (
 var startingLocalProb = 0.5         //Optimistically start with a higher probability of executing function locally
 var startingCloudOffloadProb = 0.25 //
 var startingEdgeOffloadProb = 0.25  // It's equally probable that we have a vertical offload and a horizontal offload
+var startTime time.Time             // Initial timestamp of the execution
 
 var rGen *rand.Rand
 
@@ -46,8 +47,6 @@ func canExecute(function *function.Function) bool {
 
 // CalculateExpectedCost Calculates the expected cost of a scheduled request. It's used to check if the node can afford Cloud offloading
 func CalculateExpectedCost(r *scheduledRequest) float64 {
-	log.Println("grabber: ", grabber)
-	log.Println("r.Fun.name: ", r.Fun.Name)
 	fInfo, prs := engine.GetGrabber().GrabFunctionInfo(r.Fun.Name)
 	if !prs {
 		return 0
@@ -58,12 +57,17 @@ func CalculateExpectedCost(r *scheduledRequest) float64 {
 func canAffordCloudOffloading(r *scheduledRequest) bool {
 	// Need to check if I can financially afford to offload to Cloud node
 	localBudget := config.GetFloat(config.BUDGET, 0.01)
-	if node.Resources.NodeExpenses+CalculateExpectedCost(r) < localBudget/3600 {
-		log.Printf("Can afford Cloud - proceeding with vertical offloading")
-		return true
-	} else {
-		log.Printf("Cannot afford Cloud - dropping request")
+	executionTime := time.Now().Hour() - startTime.Hour()
+	//totalExpense := (node.Resources.NodeExpenses + CalculateExpectedCost(r)) * 3600
+	meanHourlyExpense := (node.Resources.NodeExpenses + CalculateExpectedCost(r)) / float64(executionTime)
+	//log.Println("localBudget: ", localBudget)
+	//log.Println("totalExpense: ", meanHourlyExpense)
+	if meanHourlyExpense > localBudget {
+		//log.Printf("Cannot afford Cloud - dropping request")
 		return false
+	} else {
+		//log.Printf("Can afford Cloud - proceeding with vertical offloading")
+		return true
 	}
 }
 
