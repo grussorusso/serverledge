@@ -86,11 +86,16 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 					pC = 0.5
 					pE = 0.5
 					pD = 0
-				} else {
+				} else if r.CanDoOffloading && !canAffordCloud {
 					pL = 0
 					pC = 0
 					pE = 0.5
 					pD = 0.5
+				} else {
+					pL = 0
+					pC = 0
+					pE = 0
+					pD = 1
 				}
 			}
 		}
