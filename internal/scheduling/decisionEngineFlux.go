@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"context"
+	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"time"
 )
@@ -46,57 +47,33 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	/* FIXME AUDIT nContainers, _ := node.WarmStatus()[name]
-	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are "+
-		"\t pL: %f "+
-		"\t pC: %f "+
-		"\t pE: %f "+
-		"\t pD: %f ", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD) */
+	nContainers, _ := node.WarmStatus()[name]
+	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are: \n"+
+		"\t pL: %f \n"+
+		"\t pC: %f \n"+
+		"\t pE: %f \n"+
+		"\t pD: %f \n", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
 
 	if policyFlag == "edgeCloud" {
 		// Cloud and Edge offloading allowed
 		if !r.CanDoOffloading {
-			pE = 0
+			// Can be executed only locally or dropped
+			pD = pD / (pD + pL)
+			pL = pL / (pD + pL)
 			pC = 0
-			if pL+pC+pE+pD > 0 {
-				pL = pL / (pL + pC + pE + pD)
-				pC = pC / (pL + pC + pE + pD)
-				pE = pE / (pL + pC + pE + pD)
-				pD = pD / (pL + pC + pE + pD)
-			} else {
-				pL = 0.5
-				pC = 0
-				pE = 0
-				pD = 0.5
-			}
+			pE = 0
 		} else if !canExecute(r.Fun) {
-			pL = 0
-			canAffordCloud := canAffordCloudOffloading(r)
-			if !canAffordCloud {
-				pC = 0
-			}
-			if pL+pC+pE+pD > 0 {
-				pL = pL / (pL + pC + pE + pD)
-				pC = pC / (pL + pC + pE + pD)
-				pE = pE / (pL + pC + pE + pD)
-				pD = pD / (pL + pC + pE + pD)
+			// Node can't execute function locally
+			if pD == 0 && pC == 0 && pE == 0 {
+				pD = 0
+				pC = 0.5
+				pE = 0.5
+				pL = 0
 			} else {
-				if r.CanDoOffloading && canAffordCloud {
-					pL = 0
-					pC = 0.5
-					pE = 0.5
-					pD = 0
-				} else if r.CanDoOffloading && !canAffordCloud {
-					pL = 0
-					pC = 0
-					pE = 0.5
-					pD = 0.5
-				} else {
-					pL = 0
-					pC = 0
-					pE = 0
-					pD = 1
-				}
+				pD = pD / (pD + pC + pE)
+				pC = pC / (pD + pC + pE)
+				pE = pE / (pD + pC + pE)
+				pL = 0
 			}
 		}
 	} else {
@@ -107,31 +84,37 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 			pC = 0
 			pE = 0
 		} else if !canExecute(r.Fun) {
-			if canAffordCloudOffloading(r) {
-				if pD == 0 && pC == 0 {
-					// Node can't execute function locally
-					pD = 0
-					pE = 0
-					pC = 1
-					pL = 0
-				} else {
-					pD = pD / (pD + pC)
-					pC = pC / (pD + pC)
-					pE = 0
-					pL = 0
-				}
-			} else {
-				pD = 1
+			if pD == 0 && pC == 0 {
+				// Node can't execute function locally
+				pD = 0
 				pE = 0
-				pC = 0
+				pC = 1
+				pL = 0
+			} else {
+				pD = pD / (pD + pC)
+				pC = pC / (pD + pC)
+				pE = 0
 				pL = 0
 			}
 		}
 	}
 
-	//log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
+	if !canAffordCloudOffloading(r) {
+		pC = 0
+		if pL == 0 && pE == 0 && pD == 0 {
+			pL = 0
+			pE = 0
+			pD = 1
+		} else {
+			pL = pL / (pL + pE + pD)
+			pE = pE / (pL + pE + pD)
+			pD = pD / (pL + pE + pD)
+		}
+	}
 
-	//log.Printf("prob: %f", prob)
+	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
+
+	log.Printf("prob: %f", prob)
 	if prob <= pL {
 		//log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
@@ -139,7 +122,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		//log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else if prob <= pL+pE+pC {
-		//log.Println("Execute CLOUD OFFLOAD")
+		log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		//log.Println("Execute DROP")
@@ -155,14 +138,15 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 func (d *decisionEngineFlux) InitDecisionEngine() {
 	// Initializing starting probabilities
 	if policyFlag == "edgeCloud" {
-		startingLocalProb = 0.334
-		startingEdgeOffloadProb = 0.333
-		startingCloudOffloadProb = 0.333
+		startingLocalProb = 0.5
+		startingEdgeOffloadProb = 0.25
+		startingCloudOffloadProb = 0.25
 	} else {
 		startingLocalProb = 0.5
 		startingEdgeOffloadProb = 0
 		startingCloudOffloadProb = 0.5
 	}
+	startTime = time.Now()
 
 	d.g.InitMetricGrabber()
 }

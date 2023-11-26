@@ -192,6 +192,14 @@ func handleOffload(r *scheduledRequest, serverHost string, act action) {
 	}
 }
 
+func tryCloudOffload(r *scheduledRequest) {
+	if canAffordCloudOffloading(r) {
+		handleCloudOffload(r)
+	} else {
+		dropRequest(r)
+	}
+}
+
 func handleCloudOffload(r *scheduledRequest) {
 	// FIXME MAYBE USELESS cloudAddress := config.GetString(config.CLOUD_URL, "")
 	cloudAddress := pickCloudNodeForOffloading()

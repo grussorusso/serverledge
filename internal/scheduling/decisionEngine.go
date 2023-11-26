@@ -56,13 +56,13 @@ func CalculateExpectedCost(r *scheduledRequest) float64 {
 
 func canAffordCloudOffloading(r *scheduledRequest) bool {
 	// Need to check if I can financially afford to offload to Cloud node
+	executionTime := time.Now().Sub(startTime).Seconds()
 	localBudget := config.GetFloat(config.BUDGET, 0.01)
-	executionTime := time.Now().Hour() - startTime.Hour()
-	//totalExpense := (node.Resources.NodeExpenses + CalculateExpectedCost(r)) * 3600
-	meanHourlyExpense := (node.Resources.NodeExpenses + CalculateExpectedCost(r)) / float64(executionTime)
+	meanExpense := (node.Resources.NodeExpenses + CalculateExpectedCost(r)) / executionTime * 3600
 	//log.Println("localBudget: ", localBudget)
-	//log.Println("totalExpense: ", meanHourlyExpense)
-	if meanHourlyExpense > localBudget {
+	//log.Println("totalExpense: ", node.Resources.NodeExpenses/executionTime)
+	//log.Println("expectedExpense: ", meanExpense)
+	if meanExpense > localBudget {
 		//log.Printf("Cannot afford Cloud - dropping request")
 		return false
 	} else {

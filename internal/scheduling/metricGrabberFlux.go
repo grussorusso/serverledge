@@ -578,13 +578,13 @@ func (g *metricGrabberFlux) updateProbabilities() {
 // 3) offloaded = OFFLOADED_EDGE = 2 --> the request is offloaded to edge node
 // Triggers the DB update
 func (g *metricGrabberFlux) Completed(r *scheduledRequest, offloaded int) {
-	/* FIXME AUDIT if offloaded == 0 {
+	if offloaded == 0 {
 		log.Printf("LOCAL RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else if offloaded == 1 {
 		log.Printf("VERTICAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
 	} else {
 		log.Printf("HORIZONTAL OFFLOADING RESULT %s - Duration: %f, InitTime: %f", r.Fun.Name, r.ExecReport.Duration, r.ExecReport.InitTime)
-	}*/
+	}
 
 	requestChannel <- completedRequest{
 		scheduledRequest: r,

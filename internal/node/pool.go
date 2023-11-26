@@ -127,7 +127,7 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	log.Printf("Acquired resources for warm container. Now: %v", Resources)
 	return contID, nil
 }
 
@@ -167,12 +167,12 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
-		//log.Printf("Not enough resources for the new container.")
+		log.Printf("Not enough resources for the new container - mem demand: %d - CPU demand: %d.", fun.MemoryMB, fun.CPUDemand)
 		Resources.Unlock()
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for new container. Now: %v", Resources)
+	log.Printf("Acquired resources for new container. Now: %v", Resources)
 	Resources.Unlock()
 
 	return NewContainerWithAcquiredResources(fun)
