@@ -112,9 +112,9 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
+	//log.Printf("Probabilities after evaluation for %s-%s are pL:%f pE:%f pC:%f pD:%f", name, class.Name, pL, pE, pC, pD)
 
-	log.Printf("prob: %f", prob)
+	//log.Printf("prob: %f", prob)
 	if prob <= pL {
 		//log.Println("Execute LOCAL")
 		return LOCAL_EXEC_REQUEST
@@ -122,7 +122,7 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		//log.Println("Execute EDGE OFFLOAD")
 		return EDGE_OFFLOAD_REQUEST
 	} else if prob <= pL+pE+pC {
-		log.Println("Execute CLOUD OFFLOAD")
+		//log.Println("Execute CLOUD OFFLOAD")
 		return CLOUD_OFFLOAD_REQUEST
 	} else {
 		//log.Println("Execute DROP")
