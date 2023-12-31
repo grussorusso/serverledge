@@ -97,7 +97,7 @@ func solve(m map[string]*functionInfo) {
 		bandwidthCloud := float32(config.GetFloat(config.BANDWIDTH_CLOUD, 1.0))
 		bandwidthEdge := float32(config.GetFloat(config.BANDWIDTH_EDGE, 1.0))
 		inputSize := float32(fInfo.meanInputSize)
-		log.Printf("inputSize of function %s is %f", fInfo.name, inputSize)
+		//log.Printf("inputSize of function %s is %f", fInfo.name, inputSize)
 
 		x := &pb.Function{
 			Name:                   &name,

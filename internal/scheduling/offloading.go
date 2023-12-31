@@ -187,11 +187,11 @@ func Offload(r *function.Request, serverUrl string) error {
 // checkIfCloudOffloading checks if the offloading is vertical or horizontal, given the url of the target server
 func checkIfCloudOffloading(serverUrl string) bool {
 	allCloudNodes, _ := registration.Reg.GetAll(true)
-	for key, value := range allCloudNodes {
+	for _, value := range allCloudNodes {
 		nodeInfo := registration.GetNodeAddresses(value)
 		url := nodeInfo.NodeAddress
 		if serverUrl == url {
-			log.Printf("Cloud server with key %v was chosen to host offloading", key)
+			//log.Printf("Cloud server with key %v was chosen to host offloading", key)
 			return true
 		} // vertical offloading
 	}

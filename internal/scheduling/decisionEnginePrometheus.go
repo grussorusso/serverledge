@@ -181,7 +181,7 @@ func (dP *decisionEnginePrometheus) handler() {
 		case _ = <-evaluationTicker.C:
 			s := rand.NewSource(time.Now().UnixNano())
 			rGen = rand.New(s)
-			log.Println("Evaluating")
+			//log.Println("Evaluating")
 			getDataFromPrometheus()
 			dP.updateProbabilities()
 		case arr := <-arrivalChannel:

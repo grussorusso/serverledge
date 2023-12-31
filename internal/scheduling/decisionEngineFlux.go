@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"context"
-	"github.com/grussorusso/serverledge/internal/node"
 	"log"
 	"time"
 )
@@ -47,12 +46,12 @@ func (d *decisionEngineFlux) Decide(r *scheduledRequest) int {
 		}
 	}
 
-	nContainers, _ := node.WarmStatus()[name]
+	/*nContainers, _ := node.WarmStatus()[name]
 	log.Printf("Function name: %s - class: %s - local node available mem: %d - func mem: %d - node containers: %d - can execute :%t - Probabilities are: \n"+
 		"\t pL: %f \n"+
 		"\t pC: %f \n"+
 		"\t pE: %f \n"+
-		"\t pD: %f \n", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)
+		"\t pD: %f \n", name, class.Name, node.Resources.AvailableMemMB, r.Fun.MemoryMB, nContainers, canExecute(r.Fun), pL, pC, pE, pD)*/
 
 	if policyFlag == "edgeCloud" {
 		// Cloud and Edge offloading allowed
