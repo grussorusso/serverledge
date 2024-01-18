@@ -8,15 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"io/ioutil"
 )
 
 const resultFile = "/tmp/_executor_result.json"
 const paramsFile = "/tmp/_executor.params"
 
 func readExecutionResult(resultFile string) string {
-	content, err := ioutil.ReadFile(resultFile)
+	content, err := os.ReadFile(resultFile)
 	if err != nil {
 		log.Printf("%v", err)
 		return ""
@@ -60,7 +58,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		// in the latter case, we find the command in the env
 		customCmd, ok := os.LookupEnv("CUSTOM_CMD")
 		if !ok {
-			log.Printf("Invalid request!")
+			log.Printf("Invalid request!\n")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

@@ -25,4 +25,4 @@ An example is given in `examples/sieve.js`.
 
 ## Custom function runtimes
 
-Follow [these instructions](./docs/custom_runtime.md).
+Follow [these instructions](./custom_runtime.md).

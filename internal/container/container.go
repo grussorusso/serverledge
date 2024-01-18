@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -12,23 +13,27 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
-//NewContainer creates and starts a new container.
+// NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
-	contID, err := cf.Create(image, opts)
+	contID, err := cf.Create(image, opts) // cf = container factory
 	if err != nil {
 		log.Printf("Failed container creation")
 		return "", err
 	}
 
 	if len(codeTar) > 0 {
-		decodedCode, _ := base64.StdEncoding.DecodeString(codeTar)
+		decodedCode, errDecode := base64.StdEncoding.DecodeString(codeTar)
+		if errDecode != nil {
+			log.Printf("Failed code decode\n")
+			return "", errDecode
+		}
 		err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 		if err != nil {
-			log.Printf("Failed code copy")
+			log.Printf("Failed code copy\n")
 			return "", err
 		}
 	}
-
+	// Starts the container after copying the code in it
 	err = cf.Start(contID)
 	if err != nil {
 		return "", err
@@ -46,11 +51,26 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	}
 
 	postBody, _ := json.Marshal(req)
-	postBodyB := bytes.NewBuffer(postBody)
+	postBodyB := bytes.NewBuffer(postBody) // this buffer will be erased after send
 	resp, waitDuration, err := sendPostRequestWithRetries(fmt.Sprintf("http://%s:%d/invoke", ipAddr,
 		executor.DEFAULT_EXECUTOR_PORT), postBodyB)
-	if err != nil || resp == nil {
-		return nil, waitDuration, fmt.Errorf("Request to executor failed: %v", err)
+	if err != nil {
+		if resp != nil {
+			buffer, err2 := io.ReadAll(resp.Body)
+			if err2 != nil {
+				return nil, waitDuration, fmt.Errorf("request to executor failed: %v - can't get response buffer: %v", err, err2)
+			}
+			return nil, waitDuration, fmt.Errorf("request to executor failed: %v - response: %s", err, buffer)
+		}
+		return nil, waitDuration, fmt.Errorf("request to executor failed: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
+		buffer, err2 := io.ReadAll(resp.Body)
+		if err2 != nil {
+			return nil, waitDuration, fmt.Errorf("function invocation with params: %s failed with status %s: - can't get response buffer %v", postBodyB, resp.Status, err2)
+		}
+		return nil, waitDuration, fmt.Errorf("function invocation with params: %s failed with status %s: %s", postBodyB, resp.Status, buffer)
 	}
 	defer resp.Body.Close()
 
@@ -60,7 +80,6 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	if err != nil {
 		return nil, waitDuration, fmt.Errorf("Parsing executor response failed: %v", err)
 	}
-
 	return response, waitDuration, nil
 }
 
@@ -72,10 +91,14 @@ func Destroy(id ContainerID) error {
 	return cf.Destroy(id)
 }
 
+func GetLog(id ContainerID) (string, error) {
+	return cf.GetLog(id)
+}
+
 func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response, time.Duration, error) {
 	const TIMEOUT_MILLIS = 30000
-	const MAX_BACKOFF_MILLIS = 500
-	var backoffMillis = 25
+	const MAX_BACKOFF_MILLIS = 1000
+	var backoffMillis = 50
 	var totalWaitMillis = 0
 	var attempts = 1
 
@@ -88,7 +111,7 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 		} else if attempts > 3 {
 			// It is common to have a failure after a cold start, so
 			// we avoid logging failures on the first attempt(s)
-			log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
+			//log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
 		}
 
 		time.Sleep(time.Duration(backoffMillis * int(time.Millisecond)))

@@ -9,7 +9,7 @@ import (
 
 var DefaultConfigFileName = "serverledge-conf"
 
-//Get returns the configured value for a given key or the specified default.
+// Get returns the configured value for a given key or the specified default.
 func Get(key string, defaultValue interface{}) interface{} {
 	if viper.IsSet(key) {
 		return viper.Get(key)
@@ -50,7 +50,7 @@ func GetBool(key string, defaultValue bool) bool {
 	}
 }
 
-//ReadConfiguration reads a configuration file stored in one of the predefined paths.
+// ReadConfiguration reads a configuration file stored in one of the predefined paths.
 func ReadConfiguration(fileName string) {
 	// paths where the config file can be placed
 	viper.AddConfigPath("/etc/serverledge/")
@@ -73,7 +73,7 @@ func ReadConfiguration(fileName string) {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// No configuration file parsed
 		} else {
-			log.Printf("Config file parsing failed!")
+			log.Printf("Config file parsing failed!\n")
 		}
 	}
 }

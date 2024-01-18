@@ -18,6 +18,8 @@ import (
 )
 
 var requests chan *scheduledRequest
+
+// var compositionRequests chan *scheduledCompositionRequest // watch out for circular import!!!
 var completions chan *completion
 
 var remoteServerUrl string
@@ -34,7 +36,7 @@ func Run(p Policy) {
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	log.Printf("Current resources: %v", &node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -60,7 +62,7 @@ func Run(p Policy) {
 	var c *completion
 	for {
 		select {
-		case r = <-requests:
+		case r = <-requests: // receive request
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
@@ -82,8 +84,8 @@ func SubmitRequest(r *function.Request) error {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
-	requests <- &schedRequest
-
+	requests <- &schedRequest // send request
+	// fmt.Printf("Submitting request for executing function %s\n", r.Fun.Name)
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
@@ -96,13 +98,13 @@ func SubmitRequest(r *function.Request) error {
 		//log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+		//log.Printf("Offloading request\n")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
+		err = Execute(schedDecision.contID, &schedRequest, r.IsInComposition) // executing request
 		if err != nil {
 			return err
 		}
@@ -115,30 +117,30 @@ func SubmitAsyncRequest(r *function.Request) {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
-	requests <- &schedRequest
+	requests <- &schedRequest // send async request
 
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		PublishAsyncResponse(r.ReqId, function.Response{Success: false})
 		return
 	}
 
 	var err error
 	if schedDecision.action == DROP {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		PublishAsyncResponse(r.ReqId, function.Response{Success: false})
 	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+		//log.Printf("Offloading request\n")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			PublishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
+		err = Execute(schedDecision.contID, &schedRequest, r.IsInComposition) // executing async request
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			PublishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
-		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		PublishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
 	}
 }
 

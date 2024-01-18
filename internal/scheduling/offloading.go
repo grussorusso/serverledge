@@ -38,7 +38,7 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 
 func Offload(r *function.Request, serverUrl string) error {
 	// Prepare request
-	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
+	request := client.InvocationRequest{Params: r.Params, QoSClass: r.Class, QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)
@@ -75,7 +75,7 @@ func Offload(r *function.Request, serverUrl string) error {
 func OffloadAsync(r *function.Request, serverUrl string) error {
 	// Prepare request
 	request := client.InvocationRequest{Params: r.Params,
-		QoSClass:    int64(r.Class),
+		QoSClass:    r.Class,
 		QoSMaxRespT: r.MaxRespT,
 		Async:       true}
 	invocationBody, err := json.Marshal(request)

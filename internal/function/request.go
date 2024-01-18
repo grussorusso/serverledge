@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//Request represents a single function invocation.
+// Request represents a single function invocation, with a ReqId, reference to the Function, parameters and metrics data
 type Request struct {
 	ReqId      string
 	Fun        *Function
@@ -15,6 +15,7 @@ type Request struct {
 	RequestQoS
 	CanDoOffloading bool
 	Async           bool
+	IsInComposition bool // not currently used
 }
 
 type RequestQoS struct {
@@ -24,11 +25,11 @@ type RequestQoS struct {
 
 type ExecutionReport struct {
 	Result         string
-	ResponseTime   float64
+	ResponseTime   float64 // time waited by the user to get the output: completion time - arrival time (offload + cold start + execution time)
 	IsWarmStart    bool
-	InitTime       float64
-	OffloadLatency float64
-	Duration       float64
+	InitTime       float64 // time spent sleeping before initializing container
+	OffloadLatency float64 // time spent offloading the request
+	Duration       float64 // execution (service) time
 	SchedAction    string
 }
 
@@ -42,7 +43,7 @@ type AsyncResponse struct {
 }
 
 func (r *Request) String() string {
-	return fmt.Sprintf("Rq-%s", r.Fun.Name, r.ReqId)
+	return fmt.Sprintf("Rq-%s-%s", r.Fun.Name, r.ReqId)
 }
 
 type ServiceClass int64

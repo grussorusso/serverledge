@@ -5,6 +5,13 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 )
 
+// Custom1Policy executes locally if possible, otherwise if the local resource are not enough:
+//
+// - chooses an edge node when a function has a HIGH_PERFORMANCE class
+//
+// - chooses a cloud node if offloading is enabled
+//
+// - drops the request if offloading is disabled and previous conditions are not met
 type Custom1Policy struct {
 }
 

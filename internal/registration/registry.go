@@ -68,7 +68,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	return r.Key, nil
 }
 
-//GetAll is used to obtain the list of  other server's addresses under a specific local Area
+// GetAll is used to obtain the list of  other server's addresses under a specific local Area
 func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	var baseDir string
 	if remotes {
@@ -76,7 +76,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	} else {
 		baseDir = r.getEtcdKey("")
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -102,7 +102,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	return servers, nil
 }
 
-//GetCloudNodes retrieves the list of Cloud servers in a given region
+// GetCloudNodes retrieves the list of Cloud servers in a given region
 func GetCloudNodes(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
@@ -125,7 +125,7 @@ func GetCloudNodes(region string) (map[string]string, error) {
 	return servers, nil
 }
 
-//GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
+// GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
 func GetCloudNodesInRegion(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
