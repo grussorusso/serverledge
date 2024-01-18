@@ -1,9 +1,9 @@
 package fc
 
-import "C"
 import (
 	"errors"
 	"fmt"
+
 	"github.com/grussorusso/serverledge/internal/function"
 )
 

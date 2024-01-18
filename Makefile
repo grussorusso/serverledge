@@ -9,7 +9,7 @@ lb:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/main.go
 
 serverledge-cli:
-	$(GO) build -ldflags="-w -s -linkmode external -extldflags '-static'" -o $(BIN)/$@ cmd/cli/main.go # can't use CGO_ENABLED=0 because it cannot find libraries. But without ldflags I would get error GLIBC not found on the server. This emits warnings but works.
+	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/cli/main.go
 
 executor:
 	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/executor.go
@@ -17,7 +17,7 @@ executor:
 proto:
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/scheduling/protobuf/solver.proto
 
-DOCKERHUB_USER=ferrarally
+DOCKERHUB_USER=grussorusso
 images:  image-python310 image-nodejs17ng image-base
 image-python310:
 	docker build -t $(DOCKERHUB_USER)/serverledge-python310 -f images/python310/Dockerfile .
