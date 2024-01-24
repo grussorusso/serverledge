@@ -63,7 +63,7 @@ func initializeExampleJSFunction() (*function.Function, error) {
 	return &f, nil
 }
 
-func initializePyFunction(name string, handler string, sign *function.Signature) (*function.Function, error) {
+func InitializePyFunction(name string, handler string, sign *function.Signature) (*function.Function, error) {
 	srcPath := "../../examples/" + name + ".py"
 	srcContent, err := cli.ReadSourcesAsTar(srcPath)
 	if err != nil {

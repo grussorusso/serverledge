@@ -34,7 +34,7 @@ func TestExperiment2(t *testing.T) {
  *    ------------End-----------
  */
 func createComplexComposition(t *testing.T) (*fc.FunctionComposition, error) {
-	fnGrep, err := initializePyFunction("grep", "handler", function.NewSignature().
+	fnGrep, err := InitializePyFunction("grep", "handler", function.NewSignature().
 		AddInput("InputText", function.Text{}).
 		AddOutput("Rows", function.Array[function.Text]{}).
 		Build())
@@ -46,7 +46,7 @@ func createComplexComposition(t *testing.T) (*fc.FunctionComposition, error) {
 		AddOutput("NumberOfWords", function.Int{}).
 		Build())
 
-	fnSummarize, err := initializePyFunction("summarize", "handler", function.NewSignature().
+	fnSummarize, err := InitializePyFunction("summarize", "handler", function.NewSignature().
 		AddInput("InputText", function.Text{}).
 		AddInput("Task", function.Bool{}). // should be false
 		AddOutput("Summary", function.Text{}).

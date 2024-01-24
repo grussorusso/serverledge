@@ -28,7 +28,7 @@ func TestExperiment1(t *testing.T) {
 
 // TestCreateComposition tests the compose REST API that creates a new function composition
 func CreateNoopCompositionSequence(t *testing.T, fcName string, host string, port int, length int) (*fc.FunctionComposition, error) {
-	fn, err := initializePyFunction("noop", "handler", function.NewSignature().Build())
+	fn, err := InitializePyFunction("noop", "handler", function.NewSignature().Build())
 	utils.AssertNilMsg(t, err, "failed to initialize function noop")
 
 	fArr := make([]*function.Function, 0, length)

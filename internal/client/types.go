@@ -28,3 +28,8 @@ type CompositionInvocationRequest struct {
 	//   or simply, we can get the N partialData for the Fan Out, coming from the previous nodes.
 	//   furthermore, we should be careful not to run multiple fanIn at the same time!
 }
+
+type CompositionCreationFromASLRequest struct {
+	Name   string // Name of the new composition
+	ASLSrc string // Specification source in Amazon State Language
+}

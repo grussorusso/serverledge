@@ -31,6 +31,7 @@ func StartAPIServer(e *echo.Echo) {
 	// Function composition routes
 	e.POST("/play/:fc", InvokeFunctionComposition)
 	e.POST("/compose", CreateFunctionComposition)
+	e.POST("/composeASL", CreateFunctionCompositionFromASL)
 	e.POST("/uncompose", DeleteFunctionComposition)
 	e.GET("/fc", GetFunctionCompositions)
 

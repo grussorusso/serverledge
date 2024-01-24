@@ -15,7 +15,7 @@ import (
 
 func TestMarshalingFunctionComposition(t *testing.T) {
 	fcName := "sequence"
-	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+	fn, err := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -139,7 +139,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	u.AssertNil(t, errJs)
 	incPy, errPy := initializeExamplePyFunction()
 	u.AssertNil(t, errPy)
-	doublePy, errDp := initializePyFunction("double", "handler", function.NewSignature().
+	doublePy, errDp := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).Build())
 	u.AssertNil(t, errDp)
@@ -188,7 +188,7 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
-	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+	fDouble, errF1 := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -251,7 +251,7 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
-	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+	fDouble, errF1 := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -472,7 +472,7 @@ func TestInvokeFC_DifferentBranches(t *testing.T) {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
-	f, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+	f, errF1 := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -521,7 +521,7 @@ func TestInvokeFC_ScatterFanOut(t *testing.T) {
 
 	fcName := "test"
 	// CREATE - we create a test function composition
-	fDouble, errF1 := initializePyFunction("double", "handler", function.NewSignature().
+	fDouble, errF1 := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -573,14 +573,14 @@ func TestInvokeSieveChoice(t *testing.T) {
 		Build())
 	u.AssertNil(t, errJs)
 
-	isPrimePy, errPy := initializePyFunction("isprimeWithNumber", "handler", function.NewSignature().
+	isPrimePy, errPy := InitializePyFunction("isprimeWithNumber", "handler", function.NewSignature().
 		AddInput("n", function.Int{}).
 		AddOutput("IsPrime", function.Bool{}).
 		AddOutput("n", function.Int{}).
 		Build())
 	u.AssertNil(t, errPy)
 
-	incPy, errDp := initializePyFunction("inc", "handler", function.NewSignature().
+	incPy, errDp := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).Build())
 	u.AssertNil(t, errDp)
@@ -630,7 +630,7 @@ func TestInvokeCompositionError(t *testing.T) {
 	}
 	fcName := "error"
 
-	incPy, errDp := initializePyFunction("inc", "handler", function.NewSignature().
+	incPy, errDp := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).Build())
 	u.AssertNil(t, errDp)
