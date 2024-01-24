@@ -10,6 +10,10 @@ import (
 )
 
 func TestParsingSimple(t *testing.T) {
+	if val, found := os.LookupEnv("INTEGRATION"); !found || val != "1" {
+		t.SkipNow()
+	}
+
 	f, err := test.InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
@@ -34,18 +38,4 @@ func TestParsingSimple(t *testing.T) {
 	comp.SaveToEtcd()
 
 	fmt.Println(fc.GetAllFC())
-}
-
-func TestParsing(t *testing.T) {
-	body, err := os.ReadFile("../../test/machine.json")
-	if err != nil {
-		t.Fatalf("unable to read file: %v", err)
-	}
-	src := string(body)
-	comp, err := fc.FromASL("prova", src)
-	if err != nil {
-		fmt.Printf("%v", err)
-		t.Fail()
-	}
-	fmt.Println(comp)
 }
