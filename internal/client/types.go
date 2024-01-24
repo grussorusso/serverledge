@@ -31,5 +31,5 @@ type CompositionInvocationRequest struct {
 
 type CompositionCreationFromASLRequest struct {
 	Name   string // Name of the new composition
-	ASLSrc string // Specification source in Amazon State Language
+	ASLSrc string // Specification source in Amazon State Language (encoded in Base64)
 }

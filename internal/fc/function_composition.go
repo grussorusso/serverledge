@@ -126,7 +126,6 @@ func GetFC(name string) (*FunctionComposition, bool) {
 		// cache miss
 		f, err := getFCFromEtcd(name)
 		if err != nil {
-			log.Error(err.Error()) // at times, this error is returned, but only to check that the FC doesn't exists
 			return nil, false
 		}
 		//insert a new element to the cache

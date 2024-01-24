@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,7 +44,12 @@ func CreateFunctionCompositionFromASL(e echo.Context) error {
 
 	log.Printf("New request: creation of composition %s", creationRequest.Name)
 
-	comp, err := fc.FromASL(creationRequest.Name, creationRequest.ASLSrc)
+	decodedSrc, err := base64.StdEncoding.DecodeString(creationRequest.ASLSrc)
+	if err != nil {
+		log.Printf("Could not decode composition source ASL: %v", err)
+		return e.JSON(http.StatusBadRequest, "composition already exists")
+	}
+	comp, err := fc.FromASL(creationRequest.Name, string(decodedSrc[:]))
 	if err != nil {
 		log.Printf("Could not parse composition from ASL: %v", err)
 		return e.JSON(http.StatusBadRequest, "composition already exists")
