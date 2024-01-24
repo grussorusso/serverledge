@@ -19,7 +19,7 @@ func TestContainerPool(t *testing.T) {
 	// creating inc and double functions
 	funcs := []string{"inc", "double"}
 	for _, name := range funcs {
-		fn, err := initializePyFunction(name, "handler", function.NewSignature().
+		fn, err := InitializePyFunction(name, "handler", function.NewSignature().
 			AddInput("input", function.Int{}).
 			AddOutput("result", function.Int{}).
 			Build())
@@ -64,7 +64,7 @@ func TestCreateComposition(t *testing.T) {
 		t.Skip()
 	}
 	fcName := "sequence"
-	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+	fn, err := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -141,7 +141,7 @@ func TestInvokeComposition_DifferentFunctions(t *testing.T) {
 		AddOutput("result", function.Int{}).
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize javascript function")
-	fnPy, err := initializePyFunction("double", "handler", function.NewSignature().
+	fnPy, err := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -180,11 +180,11 @@ func TestDeleteComposition(t *testing.T) {
 		t.Skip()
 	}
 	fcName := "sequence"
-	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+	fn, err := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
-	db, err := initializePyFunction("double", "handler", function.NewSignature().
+	db, err := InitializePyFunction("double", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())
@@ -234,7 +234,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 		t.Skip()
 	}
 	fcName := "sequence"
-	fn, err := initializePyFunction("inc", "handler", function.NewSignature().
+	fn, err := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
 		Build())

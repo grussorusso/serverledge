@@ -57,9 +57,11 @@ func (cer *CompositionExecutionReport) GetAllResults() string {
 // NewFC instantiates a new FunctionComposition with a name and a corresponding dag. Function can contain duplicate functions (with the same name)
 func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDeletion bool) FunctionComposition {
 	functionMap := make(map[string]*function.Function)
-	for _, f := range functions {
-		// if the function is already added, simply replace it
-		functionMap[f.Name] = f
+	if functions != nil {
+		for _, f := range functions {
+			// if the function is already added, simply replace it
+			functionMap[f.Name] = f
+		}
 	}
 
 	return FunctionComposition{
