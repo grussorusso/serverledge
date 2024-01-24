@@ -99,6 +99,8 @@ var compName, funcName, runtime, handler, customImage, src, qosClass, jsonSrc st
 var requestId string
 var memory int64
 var cpuDemand, qosMaxRespT float64
+var inputs []string
+var outputs []string
 var params []string
 var paramsFile string
 var asyncInvocation bool
@@ -126,6 +128,8 @@ func Init() {
 	createCmd.Flags().Float64VarP(&cpuDemand, "cpu", "", 0.0, "estimated CPU demand for the function (1.0 = 1 core)")
 	createCmd.Flags().StringVarP(&src, "src", "", "", "source for the function (single file, directory or TAR archive) (not necessary for runtime==custom)")
 	createCmd.Flags().StringVarP(&customImage, "custom_image", "", "", "custom container image (only if runtime == 'custom')")
+	createCmd.Flags().StringSliceVarP(&inputs, "input", "i", nil, "Input parameter: <name>:<type>")
+	createCmd.Flags().StringSliceVarP(&outputs, "output", "o", nil, "Output specification: <name>:<type>")
 
 	rootCmd.AddCommand(deleteCmd)
 	deleteCmd.Flags().StringVarP(&funcName, "function", "f", "", "name of the function")
@@ -239,6 +243,33 @@ func invoke(cmd *cobra.Command, args []string) {
 	utils.PrintJsonResponse(resp.Body)
 }
 
+func buildSignature() (*function.Signature, error) {
+	sb := function.NewSignature()
+
+	if inputs != nil {
+		for _, str := range inputs {
+			tokens := strings.Split(str, ":")
+			if len(tokens) < 2 {
+				return nil, fmt.Errorf("invalid input specification: %s", str)
+			}
+			dataType := function.StringToDataType(tokens[1])
+			sb = sb.AddInput(tokens[0], dataType)
+		}
+	}
+	if outputs != nil {
+		for _, str := range outputs {
+			tokens := strings.Split(str, ":")
+			if len(tokens) < 2 {
+				return nil, fmt.Errorf("invalid output specification: %s", str)
+			}
+			dataType := function.StringToDataType(tokens[1])
+			sb = sb.AddOutput(tokens[0], dataType)
+		}
+	}
+
+	return sb.Build(), nil
+}
+
 func create(cmd *cobra.Command, args []string) {
 	if funcName == "" || runtime == "" {
 		showHelpAndExit(cmd)
@@ -261,11 +292,24 @@ func create(cmd *cobra.Command, args []string) {
 		encoded = ""
 	}
 
+	// Signature: we only configure one if at least one input or output has been specified
+	var sig *function.Signature = nil
+	if (inputs != nil && len(inputs) > 0) || (outputs != nil && len(outputs) > 0) {
+		s, err := buildSignature()
+		if err != nil {
+			cmd.Help()
+			os.Exit(4)
+		}
+		sig = s
+		fmt.Printf("Parsed signature: %v\n", s)
+	}
+
 	request := function.Function{Name: funcName, Handler: handler,
 		Runtime: runtime, MemoryMB: memory,
 		CPUDemand:       cpuDemand,
 		TarFunctionCode: encoded,
 		CustomImage:     customImage,
+		Signature:       sig,
 	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {

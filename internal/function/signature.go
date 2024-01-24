@@ -33,18 +33,18 @@ func (i InputDef) CheckInput(inputMap map[string]interface{}) error {
 		return fmt.Errorf("no input parameter with name '%s' and type '%s' exists", i.Name, i.Type)
 	}
 
-	t := stringToDataType(i.Type)
+	t := StringToDataType(i.Type)
 	if t == nil {
 		return fmt.Errorf("data type is too complex. Available types are Int, Text, Float, Bool, ArrayInt, ArrayText, ArrayFloat, ArrayBool, ArrayArrayInt, ArrayArrayFloat")
 	}
 
-	return stringToDataType(i.Type).TypeCheck(val)
+	return StringToDataType(i.Type).TypeCheck(val)
 }
 
 func (i InputDef) FindEntryThatTypeChecks(outputMap map[string]interface{}) (string, bool) {
 	for k, v := range outputMap {
 
-		t := stringToDataType(i.Type)
+		t := StringToDataType(i.Type)
 		if t == nil {
 			return "", false
 		}
@@ -69,7 +69,7 @@ func (o OutputDef) CheckOutput(inputMap map[string]interface{}) error {
 	if !exists {
 		return fmt.Errorf("no output parameter with name '%s' and type '%s' exists", o.Name, reflect.TypeOf(o.Type).Name())
 	}
-	t := stringToDataType(o.Type)
+	t := StringToDataType(o.Type)
 	if t != nil {
 		return t.TypeCheck(val)
 	}
@@ -77,7 +77,7 @@ func (o OutputDef) CheckOutput(inputMap map[string]interface{}) error {
 }
 
 func (o OutputDef) TryParse(result string) (interface{}, error) {
-	t := stringToDataType(o.Type)
+	t := StringToDataType(o.Type)
 	if t == nil {
 		return nil, fmt.Errorf("type %s is not a compatible type", datatypeToString(t))
 	}
@@ -194,7 +194,7 @@ func (s *Signature) GetOutputs() []*OutputDef {
 	return s.Outputs
 }
 
-func stringToDataType(t string) DataTypeEnum {
+func StringToDataType(t string) DataTypeEnum {
 	switch t {
 	case INT:
 		return Int{}
