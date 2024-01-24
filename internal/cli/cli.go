@@ -95,7 +95,7 @@ var compPollCmd = &cobra.Command{
 	Run:   pollFunctionComposition,
 }
 
-var compName, funcName, runtime, handler, customImage, src, qosClass, yamlSrc, jsonSrc string
+var compName, funcName, runtime, handler, customImage, src, qosClass, jsonSrc string
 var requestId string
 var memory int64
 var cpuDemand, qosMaxRespT float64
@@ -149,9 +149,7 @@ func Init() {
 
 	rootCmd.AddCommand(compCreateCmd)
 	compCreateCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function")
-	compCreateCmd.Flags().StringVarP(&yamlSrc, "afcl", "y", "", "source YAML file that defines for the function composition with AFCL syntax (if specified, 'aws' must not be set)")
-	compCreateCmd.Flags().StringVarP(&jsonSrc, "aws", "j", "", "source JSON file  that defines for the function composition with AWS Step Function syntax (if specified, 'afcl' must not be set)")
-	compCreateCmd.Flags().BoolVarP(&removeFnOnDelete, "remove-function-on-delete", "r", false, "when the function composition is deleted, if this flag is true, the associated function will also be deleted")
+	compCreateCmd.Flags().StringVarP(&jsonSrc, "src", "s", "", "source Amazon States Language file  that defines the function composition")
 
 	rootCmd.AddCommand(compDeleteCmd)
 	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function composition")
@@ -437,46 +435,26 @@ func invokeFunctionComposition(cmd *cobra.Command, args []string) {
 }
 
 func createComposition(cmd *cobra.Command, args []string) {
-	if compName == "" || (yamlSrc == "" && jsonSrc == "") {
+	if compName == "" || jsonSrc == "" {
 		cmd.Help()
 		os.Exit(1)
 	}
 
-	if yamlSrc != "" && jsonSrc != "" {
-		cmd.Help()
+	src, err := os.ReadFile(jsonSrc)
+	if err != nil {
+		fmt.Errorf("Could not read source file: %s\n", jsonSrc)
 		os.Exit(1)
 	}
-
-	var dag fc.Dag
-	var funcSlice []*function.Function
-	if yamlSrc != "" {
-		dag1, funcs, err := ReadFromYAML(yamlSrc)
-		if err != nil {
-			fmt.Printf("%v", err)
-			os.Exit(3)
-		}
-		dag = *dag1
-		funcSlice = funcs
-	} else if jsonSrc != "" {
-		dag1, funcs, err := ReadFromJSON(jsonSrc)
-		if err != nil {
-			fmt.Printf("%v", err)
-			os.Exit(3)
-		}
-		dag = *dag1
-		funcSlice = funcs
-	}
-	// getting all functions. Todo: register all functions
-
-	request := fc.NewFC(compName, dag, funcSlice, removeFnOnDelete)
+	encoded := base64.StdEncoding.EncodeToString(src)
+	request := client.CompositionCreationFromASLRequest{Name: compName, ASLSrc: encoded}
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		cmd.Help()
-		os.Exit(1)
+		os.Exit(3)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/compose", ServerConfig.Host, ServerConfig.Port)
+	url := fmt.Sprintf("http://%s:%d/composeASL", ServerConfig.Host, ServerConfig.Port)
 	resp, err := utils.PostJson(url, requestBody)
 	if err != nil {
 		// TODO: check returned error code
@@ -484,7 +462,6 @@ func createComposition(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
-
 }
 
 func deleteComposition(cmd *cobra.Command, args []string) {
