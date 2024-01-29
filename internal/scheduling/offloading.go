@@ -63,10 +63,12 @@ func Offload(r *function.Request, serverUrl string) error {
 		return err
 	}
 	r.ExecReport = response.ExecutionReport
+	now := time.Now()
+	response.ExecutionReport.ResponseTime = now.Sub(r.Arrival).Seconds()
 
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"
-	r.ExecReport.OffloadLatency = time.Now().Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
+	r.ExecReport.OffloadLatency = now.Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
 	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
 
 	return nil
