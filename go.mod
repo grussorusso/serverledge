@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/LK4D4/trylock v0.0.0-20191027065348-ff7e133a5c54
+	github.com/buger/jsonparser v1.1.1
 	github.com/cornelk/hashmap v1.0.8
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/enginyoyen/aslparser v0.2.0
