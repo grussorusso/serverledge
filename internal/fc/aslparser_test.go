@@ -9,11 +9,7 @@ import (
 	"testing"
 )
 
-func TestParsingSimple(t *testing.T) {
-	if val, found := os.LookupEnv("INTEGRATION"); !found || val != "1" {
-		t.SkipNow()
-	}
-
+func InitializeIncFunction(t *testing.T) {
 	f, err := test.InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
 		AddOutput("result", function.Int{}).
@@ -22,13 +18,20 @@ func TestParsingSimple(t *testing.T) {
 		t.FailNow()
 	}
 	f.SaveToEtcd()
+}
+
+func TestParsingSimple(t *testing.T) {
+	if val, found := os.LookupEnv("INTEGRATION"); !found || val != "1" {
+		t.SkipNow()
+	}
+
+	InitializeIncFunction(t)
 
 	body, err := os.ReadFile("../../test/simple.json")
 	if err != nil {
 		t.Fatalf("unable to read file: %v", err)
 	}
-	src := string(body)
-	comp, err := fc.FromASL("prova", src)
+	comp, err := fc.FromASL("prova", body)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		t.Fail()
@@ -37,5 +40,24 @@ func TestParsingSimple(t *testing.T) {
 
 	comp.SaveToEtcd()
 
-	fmt.Println(fc.GetAllFC())
+	all, err := fc.GetAllFC()
+	fmt.Println(all)
+}
+func TestParsing(t *testing.T) {
+	//if val, found := os.LookupEnv("INTEGRATION"); !found || val != "1" {
+	//	t.SkipNow()
+	//}
+
+	//InitializeIncFunction(t)
+
+	//body, err := os.ReadFile("../../test/simple.json")
+	body, err := os.ReadFile("../../test/simple.json")
+	if err != nil {
+		t.Fatalf("unable to read file: %v", err)
+	}
+
+	sm, _ := fc.FromASL("prova", body)
+	fmt.Printf("Found state machine:  %v\n", sm)
+
+	fmt.Println()
 }
