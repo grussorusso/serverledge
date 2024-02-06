@@ -11,6 +11,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/function"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 )
 
@@ -53,6 +54,9 @@ func Offload(r *function.Request, serverUrl string) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return node.OutOfResourcesErr
+		}
 		return fmt.Errorf("Remote returned: %v", resp.StatusCode)
 	}
 

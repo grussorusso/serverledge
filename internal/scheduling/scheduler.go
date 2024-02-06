@@ -144,7 +144,9 @@ func SubmitAsyncRequest(r *function.Request) {
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	newContainer, err := node.NewContainer(r.Fun)
-	if errors.Is(err, node.OutOfResourcesErr) || err != nil {
+	if errors.Is(err, node.OutOfResourcesErr) {
+		return false
+	} else if err != nil {
 		log.Printf("Cold start failed: %v", err)
 		return false
 	} else {
