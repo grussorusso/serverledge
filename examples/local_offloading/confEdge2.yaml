@@ -1,0 +1,7 @@
+api.port: 1327
+registry.udp.port: 9878
+scheduler.policy: localonly
+scheduler.version: flux
+container.pool.memory: 3072
+container.pool.cpus: 3
+#cloud.server.url: http://192.168.0.131:1326

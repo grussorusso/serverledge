@@ -1,3 +1,10 @@
-scheduler.policy: cloudonly
-cloud.server.url: "http://127.0.0.1:1326"
+api.port: 1323
+registry.udp.port: 9876
+scheduler.policy: QoSAwareCloud
+scheduler.version: flux
+scheduler.cloud.cost: 0.00005
+scheduler.local.budget: 0.05
+container.pool.memory: 3072
+container.pool.cpus: 0
+#cloud.server.url: http://192.168.0.131:1326
 

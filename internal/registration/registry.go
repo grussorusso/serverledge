@@ -1,6 +1,7 @@
 package registration
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -31,7 +32,7 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 		return "", UnavailableClientErr
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	//generate unique identifier
 	id := shortuuid.New() + strconv.FormatInt(time.Now().UnixNano(), 10)
 	r.Key = r.getEtcdKey(id)
@@ -42,8 +43,19 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	}
 
 	log.Printf("Registration key: %s\n", r.Key)
-	// save couple (id, hostport) to the correct Area-dir on etcd
-	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
+	port := config.GetString(config.LISTEN_UDP_PORT, "9876") //TODO metti la porta da configurazione
+	registryAddress := hostport[0:len(hostport)-5] + ":" + port
+	payload := map[string]string{
+		"nodeAddress":     hostport,
+		"registryAddress": registryAddress,
+	}
+	value, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Cannot marshal etcd payload in node registration process")
+	}
+
+	// save couple (id, {nodeAddress, registryAddress}) to the correct Area-dir on etcd
+	_, err = etcdClient.Put(ctx, r.Key, string(value), clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return "", IdRegistrationErr
@@ -68,7 +80,8 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	return r.Key, nil
 }
 
-//GetAll is used to obtain the list of  other server's addresses under a specific local Area
+// GetAll is used to obtain the list of  other server's addresses under a specific local Area
+// param :remotes: true to get the list of cloud server's addresses, false otherwise
 func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	var baseDir string
 	if remotes {
@@ -76,7 +89,7 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	} else {
 		baseDir = r.getEtcdKey("")
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -91,21 +104,21 @@ func (r *Registry) GetAll(remotes bool) (map[string]string, error) {
 	servers := make(map[string]string)
 	for _, s := range resp.Kvs {
 		servers[string(s.Key)] = string(s.Value)
-		//audit todo delete the next line
-		if remotes {
+		//TODO AUDIT delete the next line
+		/*if remotes {
 			log.Printf("found remote server at: %s", servers[string(s.Key)])
 		} else {
 			log.Printf("found edge server at: %s", servers[string(s.Key)])
-		}
+		}*/
 	}
 
 	return servers, nil
 }
 
-//GetCloudNodes retrieves the list of Cloud servers in a given region
+// GetCloudNodes retrieves the list of Cloud servers in a given region
 func GetCloudNodes(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
@@ -125,10 +138,10 @@ func GetCloudNodes(region string) (map[string]string, error) {
 	return servers, nil
 }
 
-//GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
+// GetCloudNodesInRegion retrieves the list of Cloud servers in a given region
 func GetCloudNodesInRegion(region string) (map[string]string, error) {
 	baseDir := fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", region)
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)

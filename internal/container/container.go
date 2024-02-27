@@ -12,7 +12,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
-//NewContainer creates and starts a new container.
+// NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
 	if err != nil {

@@ -28,11 +28,13 @@ type schedDecision struct {
 
 type action int64
 
+// TODO EXEC_NEIGHBOUR is correct?
 const (
 	DROP                  action = 0
 	EXEC_LOCAL                   = 1
 	EXEC_REMOTE                  = 2
 	BEST_EFFORT_EXECUTION        = 3
+	EXEC_NEIGHBOUR               = 4
 )
 
 type schedulingDecision int64

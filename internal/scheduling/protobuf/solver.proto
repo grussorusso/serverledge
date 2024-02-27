@@ -1,0 +1,79 @@
+// version of protocol buffer used
+syntax = "proto2";
+
+// package name for the buffer will be used later
+package solver;
+option go_package = "github.com/grussorusso/serverledge";
+
+// service which can be executed
+service Solver {
+  rpc Solve(Request) returns (Response);
+}
+
+// argument
+message Request {
+  required string policy = 1;
+  required float offload_latency_cloud = 2;       // offload latency cloud
+  required float offload_latency_edge = 3;        // offload latency edge
+  repeated Function functions = 4;                // functions
+  repeated QosClass classes = 5;                  // classes
+  required float cost_cloud = 6;                  // cost of the request if executed on cloud
+  required float local_budget = 7;
+  required float memory_local = 8;               // memory available on local node
+  required float cpu_local = 9;                  // cpu available on local node
+  required float memory_aggregate = 10;           // total memory available on all edge nodes
+  required float usable_memory_coefficient = 11;  // local usable memory coefficient
+}
+
+message FunctionInvocation {
+  required string qos_class = 1;
+  required float arrivals = 2;
+}
+
+message Function {
+  required string name = 1;
+  required int32 memory = 2;
+  required float cpu = 3;
+
+  repeated FunctionInvocation invocations = 4;
+
+  required float duration = 5;                  // tempo di servizio stimato locale
+  required float duration_offloaded_cloud = 6;  // tempo di servizio stimato nel cloud
+  required float duration_offloaded_edge = 7;   // tempo di servizio stimato nell'edge
+  required float init_time = 8;                 // tempo di inizializzazione locale
+  required float init_time_offloaded_cloud = 9; // tempo di inizializzazione nel cloud
+  required float init_time_offloaded_edge = 10; // tempo di inizializzazione nell'edge
+  required float pcold = 11;                    // probabilità cold start locale
+  required float pcold_offloaded_cloud = 12;    // probabilità cold start nel cloud
+  required float pcold_offloaded_edge = 13;     // probabilità cold start nell'edge
+  required float bandwidth_cloud = 14;        // bandwidth to cloud node calculated with the request packet
+  required float bandwidth_edge = 15;         // bandwidth to edge node calculated with the request packet
+  required float input_size = 16;             // mean input size
+}
+
+message QosClass {
+  required string name = 1;
+  required float utility = 2;
+  required float max_response_time = 3;
+  required float completed_percentage = 4;
+}
+
+
+message ClassResponse {
+  required string name = 1;
+  required float pL = 2;
+  required float pC = 3;
+  required float pE = 4;
+  required float pD = 5;
+  required float share = 6;
+}
+
+message FunctionResponse {
+  required string name = 1;
+  repeated ClassResponse class_responses = 2;
+}
+
+message Response {
+  repeated FunctionResponse f_response = 1;
+  required float time_taken = 2;
+}

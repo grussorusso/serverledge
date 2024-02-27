@@ -13,10 +13,10 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 )
 
-//UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
+// UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
 // this listener should be called asynchronously in the main function
 func UDPStatusServer() {
-	hostname := utils.GetIpAddress().String()
+	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
 	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
 	address := fmt.Sprintf("%s:%d", hostname, port)
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
@@ -61,14 +61,23 @@ func handleUDPConnection(conn *net.UDPConn) {
 }
 
 func getCurrentStatusInformation() (status []byte, err error) {
-	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+	portNumberApi := config.GetInt("api.port", 1323)
+	portNumberReg := config.GetInt("registry.udp.port", 9876)
+	hostname := config.GetString(config.API_IP, utils.GetIpAddress().String())
+	urlApi := fmt.Sprintf("http://%s:%d", hostname, portNumberApi)
+	urlReg := fmt.Sprintf("http://%s:%d", hostname, portNumberReg)
+
+	addr := NodeInterfaces{
+		NodeAddress:     urlApi,
+		RegistryAddress: urlReg,
+	}
+
 	response := StatusInformation{
-		Url:                     url,
+		Addresses:               addr,
 		AvailableWarmContainers: node.WarmStatus(),
 		AvailableMemMB:          node.Resources.AvailableMemMB,
 		AvailableCPUs:           node.Resources.AvailableCPUs,
-		DropCount:               node.Resources.DropCount,
+		DropCount:               node.Resources.DropRequestsCount,
 		Coordinates:             *Reg.Client.GetCoordinate(),
 	}
 
@@ -76,9 +85,10 @@ func getCurrentStatusInformation() (status []byte, err error) {
 
 }
 
-func statusInfoRequest(hostname string) (info *StatusInformation, duration time.Duration) {
-	port := config.GetInt(config.LISTEN_UDP_PORT, 9876)
-	address := fmt.Sprintf("%s:%d", hostname, port)
+// statusInfoRequest sends a request to the local registry of a node
+func statusInfoRequest(hostname string, port string) (info *StatusInformation, duration time.Duration) {
+	// Construct the address of the local registry of the target node
+	address := fmt.Sprintf("%s:%s", hostname, port)
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -119,5 +129,6 @@ func statusInfoRequest(hostname string) (info *StatusInformation, duration time.
 		fmt.Println("Can not unmarshal JSON")
 		return nil, 0
 	}
+
 	return &result, rtt
 }

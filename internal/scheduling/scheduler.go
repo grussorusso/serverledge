@@ -24,8 +24,10 @@ var remoteServerUrl string
 var executionLogEnabled bool
 
 var offloadingClient *http.Client
+var policy Policy
 
 func Run(p Policy) {
+	policy = p
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completion, 500)
 
@@ -33,8 +35,10 @@ func Run(p Policy) {
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
+	node.Resources.MaxMemMB = node.Resources.AvailableMemMB
+	node.Resources.MaxCPUs = node.Resources.AvailableCPUs
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	// FIXME AUDIT log.Printf("Current resources: %v", node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -61,18 +65,31 @@ func Run(p Policy) {
 	for {
 		select {
 		case r = <-requests:
+			//TODO correct place?
+			if metrics.Enabled {
+				metrics.AddArrivals(r.Fun.Name, r.ClassService.Name)
+			}
+
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.Fun)
 			p.OnCompletion(c.scheduledRequest)
 
-			if metrics.Enabled {
-				metrics.AddCompletedInvocation(c.Fun.Name)
-				if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
-				}
+			// fixme: why always true?
+			if metrics.Enabled && (r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD_CLOUD || r.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD_EDGE) {
+				addCompletedMetrics(r)
 			}
 		}
+	}
+
+}
+
+func addCompletedMetrics(r *scheduledRequest) {
+	metrics.AddCompletedInvocation(r.Fun.Name)
+	metrics.AddFunctionDurationValue(r.Fun.Name, r.ExecReport.Duration)
+
+	if !r.ExecReport.IsWarmStart {
+		metrics.AddColdStart(r.Fun.Name, r.ExecReport.InitTime)
 	}
 
 }
@@ -89,14 +106,14 @@ func SubmitRequest(r *function.Request) error {
 	if !ok {
 		return fmt.Errorf("could not schedule the request")
 	}
-	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+	// FIXME AUDIT log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
 	var err error
 	if schedDecision.action == DROP {
-		//log.Printf("[%s] Dropping request", r)
+		// FIXME AUDIT log.Printf("[%s] Dropping request", r)
 		return node.OutOfResourcesErr
-	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
+		// FIXME AUDIT log.Printf("Offloading request")
 		err = Offload(r, schedDecision.remoteHost)
 		if err != nil {
 			return err
@@ -127,8 +144,8 @@ func SubmitAsyncRequest(r *function.Request) {
 	var err error
 	if schedDecision.action == DROP {
 		publishAsyncResponse(r.ReqId, function.Response{Success: false})
-	} else if schedDecision.action == EXEC_REMOTE {
-		//log.Printf("Offloading request")
+	} else if schedDecision.action == EXEC_REMOTE || schedDecision.action == EXEC_NEIGHBOUR {
+		// FIXME AUDIT log.Printf("Offloading request")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
@@ -168,16 +185,31 @@ func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
 	r.decisionChannel <- decision
 }
 
-func handleOffload(r *scheduledRequest, serverHost string) {
+func handleOffload(r *scheduledRequest, serverHost string, act action) {
 	r.CanDoOffloading = false // the next server can't offload this request
 	r.decisionChannel <- schedDecision{
-		action:     EXEC_REMOTE,
+		action:     act,
 		contID:     "",
 		remoteHost: serverHost,
 	}
 }
 
+func tryCloudOffload(r *scheduledRequest) {
+	if canAffordCloudOffloading(r) {
+		handleCloudOffload(r)
+	} else {
+		dropRequest(r)
+	}
+}
+
 func handleCloudOffload(r *scheduledRequest) {
-	cloudAddress := config.GetString(config.CLOUD_URL, "")
-	handleOffload(r, cloudAddress)
+	// FIXME MAYBE USELESS cloudAddress := config.GetString(config.CLOUD_URL, "")
+	cloudAddress := pickCloudNodeForOffloading()
+	// FIXME AUDIT log.Printf("Handling offload to cloud address %s", cloudAddress)
+	handleOffload(r, cloudAddress, EXEC_REMOTE)
+}
+
+func handleEdgeOffload(r *scheduledRequest, serverHost string) {
+	// FIXME AUDIT log.Printf("Handling offload to nearby host %s", serverHost)
+	handleOffload(r, serverHost, EXEC_NEIGHBOUR)
 }

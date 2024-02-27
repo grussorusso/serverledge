@@ -39,6 +39,7 @@ func runMonitor() {
 	//todo  adjust default values
 	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 30)) * time.Second)         //wake-up nearby monitoring
 	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 60)) * time.Second) // wake-up general-area monitoring
+
 	for {
 		select {
 		case <-Reg.etcdCh:
@@ -61,12 +62,16 @@ func monitoring() {
 	}
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
-	for key, url := range etcdServerMap {
+
+	for key, values := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
 
-		ip := url[7 : len(url)-5]
+		nodeInfo := GetNodeAddresses(values)
+		url := nodeInfo.RegistryAddress
+		hostname := url[7 : len(url)-5]
+		port := url[len(url)-4:]
 		// use udp socket to retrieve infos about the edge-node status and rtt
-		newInfo, rtt := statusInfoRequest(ip)
+		newInfo, rtt := statusInfoRequest(hostname, port)
 		if newInfo == nil {
 			//unreachable server
 			delete(Reg.serversMap, key)
@@ -93,7 +98,7 @@ type dist struct {
 	distance time.Duration
 }
 
-//getRank finds servers nearby to the current one
+// getRank finds servers nearby to the current one
 func getRank(rank int) {
 	if rank > len(Reg.serversMap) {
 		for k, v := range Reg.serversMap {
@@ -118,13 +123,17 @@ func getRank(rank int) {
 func nearbyMonitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
+
 	for key, info := range Reg.NearbyServersMap {
 		oldInfo, ok := Reg.serversMap[key]
+		regAddress := info.Addresses.RegistryAddress
 
-		ip := info.Url[7 : len(info.Url)-5]
-		newInfo, rtt := statusInfoRequest(ip)
+		hostname := regAddress[7 : len(regAddress)-5]
+		port := regAddress[len(regAddress)-4:]
+		newInfo, rtt := statusInfoRequest(hostname, port)
 		if newInfo == nil {
 			//unreachable server
+			log.Println("Unreachable server")
 			delete(Reg.serversMap, key)
 			//trigger a complete monitoring phase
 			go func() { Reg.etcdCh <- true }()

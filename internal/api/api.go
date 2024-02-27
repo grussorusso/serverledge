@@ -59,14 +59,26 @@ func InvokeFunction(c echo.Context) error {
 	r.Fun = fun
 	r.Params = invocationRequest.Params
 	r.Arrival = time.Now()
-	r.Class = function.ServiceClass(invocationRequest.QoSClass)
+
+	className := invocationRequest.QoSClass
+	class, prs := scheduling.Classes[className]
+	if !prs {
+		class = scheduling.DefaultClass
+		className = "default"
+	}
+	r.ClassService = class
+
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	r.Async = invocationRequest.Async
 	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
+	r.ExecReport.Name = funcName
+	r.ExecReport.Class = className
 	r.ExecReport.SchedAction = ""
-	r.ExecReport.OffloadLatency = 0.0
+	r.ExecReport.OffloadLatencyCloud = 0.0
+	r.ExecReport.OffloadLatencyEdge = 0.0
+	r.ExecReport.InputSize = float64(scheduling.CalculatePacketSize(r))
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
@@ -109,6 +121,16 @@ func PollAsyncResult(c echo.Context) error {
 
 	if len(res.Kvs) == 1 {
 		payload := res.Kvs[0].Value
+		var resp function.Response
+		err := json.Unmarshal(payload, &resp)
+
+		// TODO maybe remove
+		if err == nil {
+			//scheduling.CompletionAsync(resp)
+		} else {
+			log.Println(err)
+		}
+
 		return c.JSONBlob(http.StatusOK, payload)
 	} else {
 		return c.JSON(http.StatusNotFound, "")
@@ -194,14 +216,22 @@ func DecodeServiceClass(serviceClass string) (p function.ServiceClass) {
 func GetServerStatus(c echo.Context) error {
 	node.Resources.RLock()
 	defer node.Resources.RUnlock()
-	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+	portNumberApi := config.GetInt("api.port", 1323)
+	portNumberReg := config.GetInt("registry.udp.port", 9876)
+	urlApi := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumberApi)
+	urlReg := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumberReg)
+	nodeInterface := registration.NodeInterfaces{
+		NodeAddress:     urlApi,
+		RegistryAddress: urlReg,
+	}
 	response := registration.StatusInformation{
-		Url:            url,
-		AvailableMemMB: node.Resources.AvailableMemMB,
-		AvailableCPUs:  node.Resources.AvailableCPUs,
-		DropCount:      node.Resources.DropCount,
-		Coordinates:    *registration.Reg.Client.GetCoordinate(),
+		Addresses:               nodeInterface,
+		AvailableWarmContainers: node.WarmStatus(),
+		AvailableMemMB:          node.Resources.AvailableMemMB,
+		AvailableCPUs:           node.Resources.AvailableCPUs,
+		DropCount:               node.Resources.DropRequestsCount,
+		RequestCount:            node.Resources.RequestsCount,
+		Coordinates:             *registration.Reg.Client.GetCoordinate(),
 	}
 
 	return c.JSON(http.StatusOK, response)

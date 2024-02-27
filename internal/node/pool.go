@@ -123,11 +123,11 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 	}
 
 	if !acquireResources(f.CPUDemand, 0, false) {
-		//log.Printf("Not enough CPU to start a warm container for %s", f)
+		log.Printf("Not enough CPU to start a warm container for %s", f)
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	log.Printf("Acquired resources for warm container. Now: %v", Resources)
 	return contID, nil
 }
 
@@ -143,16 +143,18 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	fp := getFunctionPool(f)
 
 	// we must update the busy list by removing this element
+	var deleted interface{}
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(container.ContainerID) == contID {
-			fp.busy.Remove(elem) // delete the element from the busy list
+			deleted = fp.busy.Remove(elem) // delete the element from the busy list
 			break
 		}
 		elem = elem.Next()
 	}
-
-	fp.putReadyContainer(contID, expTime)
+	if deleted != nil {
+		fp.putReadyContainer(contID, expTime)
+	}
 
 	releaseResources(f.CPUDemand, 0)
 
@@ -165,12 +167,12 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	Resources.Lock()
 	if !acquireResources(fun.CPUDemand, fun.MemoryMB, true) {
-		//log.Printf("Not enough resources for the new container.")
+		log.Printf("Not enough resources for the new container - mem demand: %d - CPU demand: %d.", fun.MemoryMB, fun.CPUDemand)
 		Resources.Unlock()
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for new container. Now: %v", Resources)
+	log.Printf("Acquired resources for new container. Now: %v", Resources)
 	Resources.Unlock()
 
 	return NewContainerWithAcquiredResources(fun)
