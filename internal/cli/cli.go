@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -136,7 +136,7 @@ func invoke(cmd *cobra.Command, args []string) {
 	if len(paramsFile) > 0 {
 		jsonFile, err := os.Open(paramsFile)
 		defer jsonFile.Close()
-		byteValue, _ := ioutil.ReadAll(jsonFile)
+		byteValue, _ := io.ReadAll(jsonFile)
 		err = json.Unmarshal(byteValue, &paramsMap)
 		if err != nil {
 			fmt.Printf("Could not parse JSON-encoded parameters from '%s'\n", paramsFile)
@@ -224,7 +224,7 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 	var tarFileName string
 
 	if fileInfo.IsDir() || !strings.HasSuffix(srcPath, ".tar") {
-		file, err := ioutil.TempFile("/tmp", "serverledgesource")
+		file, err := os.CreateTemp("/tmp", "serverledgesource")
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +237,7 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 		tarFileName = srcPath
 	}
 
-	return ioutil.ReadFile(tarFileName)
+	return os.ReadFile(tarFileName)
 }
 
 func deleteFunction(cmd *cobra.Command, args []string) {

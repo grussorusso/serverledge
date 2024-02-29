@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 )
@@ -23,7 +22,7 @@ func PostJson(url string, body []byte) (*http.Response, error) {
 
 func PrintJsonResponse(resp io.ReadCloser) {
 	defer resp.Close()
-	body, _ := ioutil.ReadAll(resp)
+	body, _ := io.ReadAll(resp)
 
 	// print indented JSON
 	var out bytes.Buffer

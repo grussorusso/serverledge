@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os/exec"
 
@@ -43,7 +42,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		} else {
 			defer pullResp.Close()
 			// This seems to be necessary to wait for the image to be pulled:
-			io.Copy(ioutil.Discard, pullResp)
+			io.Copy(io.Discard, pullResp)
 			log.Printf("Pulled image: %s", image)
 			refreshedImages[image] = true
 		}

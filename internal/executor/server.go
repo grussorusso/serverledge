@@ -8,15 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"io/ioutil"
 )
 
 const resultFile = "/tmp/_executor_result.json"
 const paramsFile = "/tmp/_executor.params"
 
 func readExecutionResult(resultFile string) string {
-	content, err := ioutil.ReadFile(resultFile)
+	content, err := os.ReadFile(resultFile)
 	if err != nil {
 		log.Printf("%v", err)
 		return ""
