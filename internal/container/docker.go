@@ -40,9 +40,14 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 			// we do not return here, as a stale copy of the image
 			// could still be available locally
 		} else {
-			defer pullResp.Close()
+			defer func(pullResp io.ReadCloser) {
+				err := pullResp.Close()
+				if err != nil {
+					log.Printf("Could not close the docker image pull response")
+				}
+			}(pullResp)
 			// This seems to be necessary to wait for the image to be pulled:
-			io.Copy(io.Discard, pullResp)
+			_, _ = io.Copy(io.Discard, pullResp)
 			log.Printf("Pulled image: %s", image)
 			refreshedImages[image] = true
 		}
