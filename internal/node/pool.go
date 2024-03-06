@@ -289,7 +289,10 @@ func DeleteExpiredContainer() {
 
 				memory, _ := container.GetMemoryMB(warmed.contID)
 				releaseResources(0, memory)
-				container.Destroy(warmed.contID)
+				err := container.Destroy(warmed.contID)
+				if err != nil {
+					log.Printf("Error while destroying container %s: %s", warmed.contID, err)
+				}
 				log.Printf("Released resources. Now: %v", &Resources)
 			} else {
 				elem = elem.Next()
@@ -352,7 +355,10 @@ func ShutdownAllContainers() {
 			pool.ready.Remove(temp)
 
 			memory, _ := container.GetMemoryMB(warmed.contID)
-			container.Destroy(warmed.contID)
+			err := container.Destroy(warmed.contID)
+			if err != nil {
+				log.Printf("Error while destroying container %s: %s", warmed.contID, err)
+			}
 			Resources.AvailableMemMB += memory
 		}
 
@@ -367,7 +373,10 @@ func ShutdownAllContainers() {
 			pool.ready.Remove(temp)
 
 			memory, _ := container.GetMemoryMB(contID)
-			container.Destroy(contID)
+			err := container.Destroy(contID)
+			if err != nil {
+				log.Printf("Error while destroying container %s: %s", contID, err)
+			}
 			Resources.AvailableMemMB += memory
 			Resources.AvailableCPUs += functionDescriptor.CPUDemand
 		}
