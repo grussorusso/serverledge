@@ -33,9 +33,9 @@ explains how to obtain and use the software, is available
 
 1. Check that Golang is correctly installed on your machine.
 
-1. Download a copy of the source code.
+2. Download a copy of the source code.
 
-1. Build the project:
+3. Build the project:
 
 ```
 $ make
