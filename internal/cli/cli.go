@@ -141,7 +141,15 @@ func invoke(cmd *cobra.Command, args []string) {
 	}
 	if len(paramsFile) > 0 {
 		jsonFile, err := os.Open(paramsFile)
-		defer jsonFile.Close()
+
+		defer func(jsonFile *os.File) {
+			err := jsonFile.Close()
+			if err != nil {
+				fmt.Printf("Could not close JSON file '%s'\n", jsonFile.Name())
+				os.Exit(1)
+			}
+		}(jsonFile)
+
 		byteValue, _ := io.ReadAll(jsonFile)
 		err = json.Unmarshal(byteValue, &paramsMap)
 		if err != nil {
@@ -228,9 +236,19 @@ func readSourcesAsTar(srcPath string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer os.Remove(file.Name())
+		defer func(name string) {
+			err := os.Remove(name)
+			if err != nil {
+				fmt.Printf("Error while trying to remove file '%s'\n", name)
+				os.Exit(1)
+			}
+		}(file.Name())
 
-		utils.Tar(srcPath, file)
+		err = utils.Tar(srcPath, file)
+		if err != nil {
+			fmt.Printf("Error while trying to tar file '%s'\n", srcPath)
+			os.Exit(1)
+		}
 		tarFileName = file.Name()
 	} else {
 		// this is already a tar file
