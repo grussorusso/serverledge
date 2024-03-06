@@ -73,7 +73,7 @@ func updateTargets(balancer middleware.ProxyBalancer, region string) {
 		}
 
 		toKeep := make([]bool, len(currentTargets))
-		for i, _ := range currentTargets {
+		for i := range currentTargets {
 			toKeep[i] = false
 		}
 		for _, t := range targets {
