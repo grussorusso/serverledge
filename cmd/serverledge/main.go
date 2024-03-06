@@ -116,14 +116,12 @@ func main() {
 	_, err := registry.GetAll(true)
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 
 	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 	node.NodeIdentifier = myKey
 
@@ -141,7 +139,6 @@ func main() {
 		err = registration.InitEdgeMonitoring(registry)
 		if err != nil {
 			log.Fatal(err)
-			os.Exit(1)
 		}
 	}
 
