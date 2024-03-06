@@ -108,11 +108,18 @@ func Init() {
 	}
 }
 
+func showHelpAndExit(cmd *cobra.Command) {
+	err := cmd.Help()
+	if err != nil {
+		fmt.Printf("Error while showing help for %s: %s", cmd.Use, err)
+	}
+	os.Exit(1)
+}
+
 func invoke(cmd *cobra.Command, args []string) {
 	if len(funcName) < 1 {
 		fmt.Printf("Invalid function name.\n")
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
 
 	// Parse parameters
@@ -127,8 +134,7 @@ func invoke(cmd *cobra.Command, args []string) {
 		for _, rawParam := range params {
 			tokens := strings.Split(rawParam, ":")
 			if len(tokens) < 2 {
-				cmd.Help()
-				return
+				showHelpAndExit(cmd)
 			}
 			paramsMap[tokens[0]] = strings.Join(tokens[1:], ":")
 		}
@@ -153,8 +159,7 @@ func invoke(cmd *cobra.Command, args []string) {
 		Async:           asyncInvocation}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
 
 	// Send invocation request
@@ -169,16 +174,12 @@ func invoke(cmd *cobra.Command, args []string) {
 
 func create(cmd *cobra.Command, args []string) {
 	if funcName == "" || runtime == "" {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
-
 	if runtime == "custom" && customImage == "" {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	} else if runtime != "custom" && src == "" {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
 
 	var encoded string
@@ -201,8 +202,7 @@ func create(cmd *cobra.Command, args []string) {
 	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
 
 	url := fmt.Sprintf("http://%s:%d/create", ServerConfig.Host, ServerConfig.Port)
@@ -279,8 +279,7 @@ func getStatus(cmd *cobra.Command, args []string) {
 
 func poll(cmd *cobra.Command, args []string) {
 	if len(requestId) < 1 {
-		cmd.Help()
-		os.Exit(1)
+		showHelpAndExit(cmd)
 	}
 
 	url := fmt.Sprintf("http://%s:%d/poll/%s", ServerConfig.Host, ServerConfig.Port, requestId)
