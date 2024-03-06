@@ -6,13 +6,13 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 )
 
-//EdgePolicy supports only Edge-Edge offloading
+// EdgePolicy supports only Edge-Edge offloading
 type EdgePolicy struct{}
 
 func (p *EdgePolicy) Init() {
 }
 
-func (p *EdgePolicy) OnCompletion(r *scheduledRequest) {
+func (p *EdgePolicy) OnCompletion(_ *scheduledRequest) {
 
 }
 

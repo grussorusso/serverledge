@@ -11,7 +11,7 @@ type Custom1Policy struct {
 func (p *Custom1Policy) Init() {
 }
 
-func (p *Custom1Policy) OnCompletion(r *scheduledRequest) {
+func (p *Custom1Policy) OnCompletion(_ *scheduledRequest) {
 
 }
 

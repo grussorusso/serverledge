@@ -5,7 +5,7 @@ type CloudOnlyPolicy struct{}
 func (p *CloudOnlyPolicy) Init() {
 }
 
-func (p *CloudOnlyPolicy) OnCompletion(r *scheduledRequest) {
+func (p *CloudOnlyPolicy) OnCompletion(_ *scheduledRequest) {
 
 }
 

@@ -10,7 +10,7 @@ type CloudEdgePolicy struct{}
 func (p *CloudEdgePolicy) Init() {
 }
 
-func (p *CloudEdgePolicy) OnCompletion(r *scheduledRequest) {
+func (p *CloudEdgePolicy) OnCompletion(_ *scheduledRequest) {
 
 }
 

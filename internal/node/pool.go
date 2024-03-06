@@ -60,7 +60,7 @@ func (fp *ContainerPool) putReadyContainer(contID container.ContainerID, expirat
 	})
 }
 
-func newFunctionPool(f *function.Function) *ContainerPool {
+func newFunctionPool(_ *function.Function) *ContainerPool {
 	fp := &ContainerPool{}
 	fp.busy = list.New()
 	fp.ready = list.New()

@@ -22,7 +22,7 @@ func (p *DefaultLocalPolicy) Init() {
 	}
 }
 
-func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
+func (p *DefaultLocalPolicy) OnCompletion(_ *scheduledRequest) {
 	if p.queue == nil {
 		return
 	}
