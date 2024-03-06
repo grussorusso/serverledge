@@ -61,7 +61,12 @@ func Offload(r *function.Request, serverUrl string) error {
 	}
 
 	var response function.Response
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error while closing offload response body: %s", err)
+		}
+	}(resp.Body)
 	body, _ := io.ReadAll(resp.Body)
 	if err = json.Unmarshal(body, &response); err != nil {
 		return err
