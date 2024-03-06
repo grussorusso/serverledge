@@ -22,10 +22,10 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
 		req = executor.InvocationRequest{
-			cmd,
-			r.Params,
-			r.Fun.Handler,
-			HANDLER_DIR,
+			Command:    cmd,
+			Params:     r.Params,
+			Handler:    r.Fun.Handler,
+			HandlerDir: HANDLER_DIR,
 		}
 	}
 
