@@ -186,7 +186,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 	} else {
 		runtime, ok := container.RuntimeToInfo[fun.Runtime]
 		if !ok {
-			log.Printf("Unknown runtime: %s", fun.Runtime)
+			log.Printf("Unknown runtime: %s\n", fun.Runtime)
 			return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
 		}
 		image = runtime.Image
@@ -198,7 +198,7 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 	})
 
 	if err != nil {
-		log.Printf("Failed container creation: %v", err)
+		log.Printf("Failed container creation: %v\n", err)
 	}
 
 	Resources.Lock()
@@ -291,9 +291,9 @@ func DeleteExpiredContainer() {
 				releaseResources(0, memory)
 				err := container.Destroy(warmed.contID)
 				if err != nil {
-					log.Printf("Error while destroying container %s: %s", warmed.contID, err)
+					log.Printf("Error while destroying container %s: %s\n", warmed.contID, err)
 				}
-				log.Printf("Released resources. Now: %v", &Resources)
+				log.Printf("Released resources. Now: %v\n", &Resources)
 			} else {
 				elem = elem.Next()
 			}
@@ -332,9 +332,9 @@ func ShutdownWarmContainersFor(f *function.Function) {
 		for _, contID := range contIDs {
 			// No need to update available resources here
 			if err := container.Destroy(contID); err != nil {
-				log.Printf("An error occurred while deleting %s: %v", contID, err)
+				log.Printf("An error occurred while deleting %s: %v\n", contID, err)
 			} else {
-				log.Printf("Deleted %s", contID)
+				log.Printf("Deleted %s\n", contID)
 			}
 		}
 	}(containersToDelete)

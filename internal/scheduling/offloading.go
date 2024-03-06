@@ -64,7 +64,7 @@ func Offload(r *function.Request, serverUrl string) error {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Printf("Error while closing offload response body: %s", err)
+			fmt.Printf("Error while closing offload response body: %s\n", err)
 		}
 	}(resp.Body)
 	body, _ := io.ReadAll(resp.Body)

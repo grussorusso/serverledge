@@ -17,7 +17,7 @@ import (
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
 	if err != nil {
-		log.Printf("Failed container creation")
+		log.Printf("Failed container creation\n")
 		return "", err
 	}
 
@@ -25,7 +25,7 @@ func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, e
 		decodedCode, _ := base64.StdEncoding.DecodeString(codeTar)
 		err = cf.CopyToContainer(contID, bytes.NewReader(decodedCode), "/app/")
 		if err != nil {
-			log.Printf("Failed code copy")
+			log.Printf("Failed code copy\n")
 			return "", err
 		}
 	}
@@ -56,7 +56,7 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			log.Printf("Error while closing response body")
+			log.Printf("Error while closing response body\n")
 		}
 	}(resp.Body)
 
@@ -94,7 +94,7 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 		} else if attempts > 3 {
 			// It is common to have a failure after a cold start, so
 			// we avoid logging failures on the first attempt(s)
-			log.Printf("Invocation POST failed (attempt %d): %v", attempts, err)
+			log.Printf("Invocation POST failed (attempt %d): %v\n", attempts, err)
 		}
 
 		time.Sleep(time.Duration(backoffMillis * int(time.Millisecond)))

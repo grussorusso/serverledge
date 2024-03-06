@@ -30,12 +30,12 @@ func UDPStatusServer() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("UDP server up and listening on port %d", port)
+	log.Printf("UDP server up and listening on port %d\n", port)
 
 	defer func(udpConn *net.UDPConn) {
 		err := udpConn.Close()
 		if err != nil {
-			log.Printf("Error while closing UDP connection: %s", err)
+			log.Printf("Error while closing UDP connection: %s\n", err)
 		}
 	}(udpConn)
 
@@ -88,7 +88,7 @@ func statusInfoRequest(hostname string) (info *StatusInformation, duration time.
 
 	remoteAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
-		log.Printf("Unreachable server %s", address)
+		log.Printf("Unreachable server %s\n", address)
 		return nil, 0
 	}
 
@@ -100,7 +100,7 @@ func statusInfoRequest(hostname string) (info *StatusInformation, duration time.
 	defer func(udpConn *net.UDPConn) {
 		err := udpConn.Close()
 		if err != nil {
-			log.Printf("Error while closing UDP connection: %s", err)
+			log.Printf("Error while closing UDP connection: %s\n", err)
 		}
 	}(udpConn)
 

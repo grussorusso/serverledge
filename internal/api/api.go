@@ -43,14 +43,14 @@ func InvokeFunction(c echo.Context) error {
 	funcName := c.Param("fun")
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
-		log.Printf("Dropping request for unknown fun '%s'", funcName)
+		log.Printf("Dropping request for unknown fun '%s'\n", funcName)
 		return c.JSON(http.StatusNotFound, "")
 	}
 
 	var invocationRequest client.InvocationRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse request: %v\n", err)
 		return fmt.Errorf("could not parse request: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func InvokeFunction(c echo.Context) error {
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
 	} else if err != nil {
-		log.Printf("Invocation failed: %v", err)
+		log.Printf("Invocation failed: %v\n", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
 		return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
@@ -120,17 +120,17 @@ func CreateFunction(c echo.Context) error {
 	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse request: %v\n", err)
 		return err
 	}
 
 	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if ok {
-		log.Printf("Dropping request for already existing function '%s'", f.Name)
+		log.Printf("Dropping request for already existing function '%s'\n", f.Name)
 		return c.JSON(http.StatusConflict, "")
 	}
 
-	log.Printf("New request: creation of %s", f.Name)
+	log.Printf("New request: creation of %s\n", f.Name)
 
 	// Check that the selected runtime exists
 	if f.Runtime != container.CUSTOM_RUNTIME {
@@ -142,7 +142,7 @@ func CreateFunction(c echo.Context) error {
 
 	err = f.SaveToEtcd()
 	if err != nil {
-		log.Printf("Failed creation: %v", err)
+		log.Printf("Failed creation: %v\n", err)
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 	response := struct{ Created string }{f.Name}
@@ -154,20 +154,20 @@ func DeleteFunction(c echo.Context) error {
 	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse request: %v\n", err)
 		return err
 	}
 
 	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if !ok {
-		log.Printf("Dropping request for non existing function '%s'", f.Name)
+		log.Printf("Dropping request for non existing function '%s'\n", f.Name)
 		return c.JSON(http.StatusNotFound, "")
 	}
 
-	log.Printf("New request: deleting %s", f.Name)
+	log.Printf("New request: deleting %s\n", f.Name)
 	err = f.Delete()
 	if err != nil {
-		log.Printf("Failed deletion: %v", err)
+		log.Printf("Failed deletion: %v\n", err)
 		return c.JSON(http.StatusServiceUnavailable, "")
 	}
 

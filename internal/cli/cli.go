@@ -111,7 +111,7 @@ func Init() {
 func showHelpAndExit(cmd *cobra.Command) {
 	err := cmd.Help()
 	if err != nil {
-		fmt.Printf("Error while showing help for %s: %s", cmd.Use, err)
+		fmt.Printf("Error while showing help for %s: %s\n", cmd.Use, err)
 	}
 	os.Exit(1)
 }
@@ -174,7 +174,7 @@ func invoke(cmd *cobra.Command, args []string) {
 	url := fmt.Sprintf("http://%s:%d/invoke/%s", ServerConfig.Host, ServerConfig.Port, funcName)
 	resp, err := utils.PostJson(url, invocationBody)
 	if err != nil {
-		fmt.Printf("Invocation failed: %v", err)
+		fmt.Printf("Invocation failed: %v\n", err)
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
@@ -194,7 +194,7 @@ func create(cmd *cobra.Command, args []string) {
 	if runtime != "custom" {
 		srcContent, err := readSourcesAsTar(src)
 		if err != nil {
-			fmt.Printf("%v", err)
+			fmt.Printf("%v\n", err)
 			os.Exit(3)
 		}
 		encoded = base64.StdEncoding.EncodeToString(srcContent)
@@ -262,7 +262,7 @@ func deleteFunction(cmd *cobra.Command, args []string) {
 	request := function.Function{Name: funcName}
 	requestBody, err := json.Marshal(request)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(2)
 	}
 

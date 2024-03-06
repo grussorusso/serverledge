@@ -34,7 +34,7 @@ func Init() {
 	http.Handle("/metrics", handler)
 	err := http.ListenAndServe(":2112", nil)
 	if err != nil {
-		log.Printf("Listen and serve terminated with error: %s", err)
+		log.Printf("Listen and serve terminated with error: %s\n", err)
 		return
 	}
 }

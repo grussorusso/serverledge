@@ -17,7 +17,7 @@ const paramsFile = "/tmp/_executor.params"
 func readExecutionResult(resultFile string) string {
 	content, err := os.ReadFile(resultFile)
 	if err != nil {
-		log.Printf("%v", err)
+		log.Printf("%v\n", err)
 		return ""
 	}
 
@@ -45,14 +45,14 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		paramsB, _ := json.Marshal(req.Params)
 		fileError := os.WriteFile(paramsFile, paramsB, 0644)
 		if fileError != nil {
-			log.Printf("Could not write parameters to %s", paramsFile)
+			log.Printf("Could not write parameters to %s\n", paramsFile)
 			http.Error(w, fileError.Error(), http.StatusInternalServerError)
 			return
 		}
 		err = errors.Join(err, os.Setenv("PARAMS_FILE", paramsFile))
 	}
 	if err != nil {
-		log.Printf("Error while setting environment variables: %s", err)
+		log.Printf("Error while setting environment variables: %s\n", err)
 	}
 
 	// Exec handler process
@@ -62,7 +62,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		// in the latter case, we find the command in the env
 		customCmd, ok := os.LookupEnv("CUSTOM_CMD")
 		if !ok {
-			log.Printf("Invalid request!")
+			log.Printf("Invalid request!\n")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

@@ -29,7 +29,7 @@ func publishAsyncResponse(reqId string, response function.Response) {
 	key := fmt.Sprintf("async/%s", reqId)
 	payload, err := json.Marshal(response)
 	if err != nil {
-		log.Printf("Could not marshal response: %v", err)
+		log.Printf("Could not marshal response: %v\n", err)
 		return
 	}
 

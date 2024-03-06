@@ -76,7 +76,7 @@ func monitoring() {
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			_, err := Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 			if err != nil {
-				log.Printf("Error while updating node coordinates: %s", err)
+				log.Printf("Error while updating node coordinates: %s\n", err)
 				return
 			}
 		}
@@ -138,7 +138,7 @@ func nearbyMonitoring() {
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			_, err := Reg.Client.Update("node", &newInfo.Coordinates, rtt)
 			if err != nil {
-				log.Printf("Error while updating node coordinates: %s", err)
+				log.Printf("Error while updating node coordinates: %s\n", err)
 			}
 		}
 	}
