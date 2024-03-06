@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// A serverless Function.
+// Function describes a serverless function.
 type Function struct {
 	Name            string
 	Runtime         string  // example: python310
@@ -30,7 +30,7 @@ func getEtcdKey(funcName string) string {
 	return fmt.Sprintf("/function/%s", funcName)
 }
 
-//GetFunction retrieves a Function given its name.
+// GetFunction retrieves a Function given its name.
 func GetFunction(name string) (*Function, bool) {
 
 	val, found := getFromCache(name)
