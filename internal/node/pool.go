@@ -290,7 +290,7 @@ func DeleteExpiredContainer() {
 				memory, _ := container.GetMemoryMB(warmed.contID)
 				releaseResources(0, memory)
 				container.Destroy(warmed.contID)
-				log.Printf("Released resources. Now: %v", Resources)
+				log.Printf("Released resources. Now: %v", &Resources)
 			} else {
 				elem = elem.Next()
 			}

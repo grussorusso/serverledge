@@ -34,7 +34,7 @@ func Run(p Policy) {
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	log.Printf("Current resources: %v", &node.Resources)
 
 	container.InitDockerContainerFactory()
 
