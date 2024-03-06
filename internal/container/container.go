@@ -102,14 +102,14 @@ func sendPostRequestWithRetries(url string, body *bytes.Buffer) (*http.Response,
 		attempts += 1
 
 		if backoffMillis < MAX_BACKOFF_MILLIS {
-			backoffMillis = min(backoffMillis*2, MAX_BACKOFF_MILLIS)
+			backoffMillis = minInt(backoffMillis*2, MAX_BACKOFF_MILLIS)
 		}
 	}
 
 	return nil, time.Duration(totalWaitMillis * int(time.Millisecond)), err
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a <= b {
 		return a
 	} else {
