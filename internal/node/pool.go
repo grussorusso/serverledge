@@ -356,7 +356,7 @@ func ShutdownAllContainers() {
 			Resources.AvailableMemMB += memory
 		}
 
-		function, _ := function.GetFunction(fun)
+		functionDescriptor, _ := function.GetFunction(fun)
 
 		elem = pool.busy.Front()
 		for ok := elem != nil; ok; ok = elem != nil {
@@ -369,7 +369,7 @@ func ShutdownAllContainers() {
 			memory, _ := container.GetMemoryMB(contID)
 			container.Destroy(contID)
 			Resources.AvailableMemMB += memory
-			Resources.AvailableCPUs += function.CPUDemand
+			Resources.AvailableCPUs += functionDescriptor.CPUDemand
 		}
 	}
 }

@@ -51,11 +51,11 @@ func getTargets(region string) ([]*middleware.ProxyTarget, error) {
 	for _, addr := range cloudNodes {
 		log.Printf("Found target: %v", addr)
 		// TODO: etcd should NOT contain URLs, but only host and port...
-		url, err := url.Parse(addr)
+		parsedUrl, err := url.Parse(addr)
 		if err != nil {
 			return nil, err
 		}
-		targets = append(targets, &middleware.ProxyTarget{Name: addr, URL: url})
+		targets = append(targets, &middleware.ProxyTarget{Name: addr, URL: parsedUrl})
 	}
 
 	log.Printf("Found %d targets", len(targets))
