@@ -22,7 +22,7 @@ type Function struct {
 	CustomImage     string  // used if custom runtime is chosen
 }
 
-func (f Function) getEtcdKey() string {
+func (f *Function) getEtcdKey() string {
 	return getEtcdKey(f.Name)
 }
 
