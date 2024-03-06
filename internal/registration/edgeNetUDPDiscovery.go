@@ -13,7 +13,7 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 )
 
-//UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
+// UDPStatusServer listen for incoming request from other edge-nodes which want to retrieve the status of this server
 // this listener should be called asynchronously in the main function
 func UDPStatusServer() {
 	hostname := utils.GetIpAddress().String()
@@ -31,7 +31,13 @@ func UDPStatusServer() {
 		log.Fatal(err)
 	}
 	log.Printf("UDP server up and listening on port %d", port)
-	defer udpConn.Close()
+
+	defer func(udpConn *net.UDPConn) {
+		err := udpConn.Close()
+		if err != nil {
+			log.Printf("Error while closing UDP connection: %s", err)
+		}
+	}(udpConn)
 
 	for {
 		// wait for UDP client to connect
@@ -91,7 +97,12 @@ func statusInfoRequest(hostname string) (info *StatusInformation, duration time.
 		log.Println(err)
 		return nil, 0
 	}
-	defer udpConn.Close()
+	defer func(udpConn *net.UDPConn) {
+		err := udpConn.Close()
+		if err != nil {
+			log.Printf("Error while closing UDP connection: %s", err)
+		}
+	}(udpConn)
 
 	// write a message to server, here 1 byte is enough
 	message := []byte("A")
