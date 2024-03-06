@@ -21,11 +21,24 @@ func PostJson(url string, body []byte) (*http.Response, error) {
 }
 
 func PrintJsonResponse(resp io.ReadCloser) {
-	defer resp.Close()
+	defer func(resp io.ReadCloser) {
+		err := resp.Close()
+		if err != nil {
+			fmt.Printf("Error while closing JSON reader: %s", err)
+		}
+	}(resp)
 	body, _ := io.ReadAll(resp)
 
 	// print indented JSON
 	var out bytes.Buffer
-	json.Indent(&out, body, "", "\t")
-	out.WriteTo(os.Stdout)
+	err := json.Indent(&out, body, "", "\t")
+	if err != nil {
+		fmt.Printf("Error while indenting JSON: %s", err)
+		return
+	}
+	_, err = out.WriteTo(os.Stdout)
+	if err != nil {
+		fmt.Printf("Error while writing indented JSON to stdout: %s", err)
+		return
+	}
 }
