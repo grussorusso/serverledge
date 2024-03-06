@@ -1,6 +1,7 @@
 package lb
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,7 +36,7 @@ func StartReverseProxy(e *echo.Echo, region string) {
 	go updateTargets(balancer, region)
 
 	portNumber := config.GetInt(config.API_PORT, 1323)
-	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && err != http.ErrServerClosed {
+	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		e.Logger.Fatal("shutting down the server")
 	}
 }
