@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/executor"
 )
 
-//NewContainer creates and starts a new container.
+// NewContainer creates and starts a new container.
 func NewContainer(image, codeTar string, opts *ContainerOptions) (ContainerID, error) {
 	contID, err := cf.Create(image, opts)
 	if err != nil {
@@ -52,7 +53,12 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 	if err != nil || resp == nil {
 		return nil, waitDuration, fmt.Errorf("Request to executor failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("Error while closing response body")
+		}
+	}(resp.Body)
 
 	d := json.NewDecoder(resp.Body)
 	response := &executor.InvocationResult{}
