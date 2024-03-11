@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os/exec"
 
@@ -34,17 +33,22 @@ func InitDockerContainerFactory() *DockerFactory {
 
 func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (ContainerID, error) {
 	if !cf.HasImage(image) {
-		log.Printf("Pulling image: %s", image)
+		log.Printf("Pulling image: %s\n", image)
 		pullResp, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
 		if err != nil {
-			log.Printf("Could not pull image: %s", image)
+			log.Printf("Could not pull image: %s\n", image)
 			// we do not return here, as a stale copy of the image
 			// could still be available locally
 		} else {
-			defer pullResp.Close()
+			defer func(pullResp io.ReadCloser) {
+				err := pullResp.Close()
+				if err != nil {
+					log.Printf("Could not close the docker image pull response\n")
+				}
+			}(pullResp)
 			// This seems to be necessary to wait for the image to be pulled:
-			io.Copy(ioutil.Discard, pullResp)
-			log.Printf("Pulled image: %s", image)
+			_, _ = io.Copy(io.Discard, pullResp)
+			log.Printf("Pulled image: %s\n", image)
 			refreshedImages[image] = true
 		}
 	}
@@ -65,7 +69,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 	id := resp.ID
 
 	r, err := cf.cli.ContainerInspect(cf.ctx, id)
-	log.Printf("Container %s has name %s", id, r.Name)
+	log.Printf("Container %s has name %s\n", id, r.Name)
 
 	return id, err
 }

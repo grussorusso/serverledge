@@ -74,7 +74,11 @@ func monitoring() {
 		}
 		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
-			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
+			_, err := Reg.Client.Update("node", &newInfo.Coordinates, rtt)
+			if err != nil {
+				log.Printf("Error while updating node coordinates: %s\n", err)
+				return
+			}
 		}
 	}
 	//deletes information about servers that haven't registered anymore
@@ -93,7 +97,7 @@ type dist struct {
 	distance time.Duration
 }
 
-//getRank finds servers nearby to the current one
+// getRank finds servers nearby to the current one
 func getRank(rank int) {
 	if rank > len(Reg.serversMap) {
 		for k, v := range Reg.serversMap {
@@ -132,7 +136,10 @@ func nearbyMonitoring() {
 		}
 		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
-			Reg.Client.Update("node", &newInfo.Coordinates, rtt)
+			_, err := Reg.Client.Update("node", &newInfo.Coordinates, rtt)
+			if err != nil {
+				log.Printf("Error while updating node coordinates: %s\n", err)
+			}
 		}
 	}
 }

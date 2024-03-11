@@ -1,6 +1,7 @@
 package lb
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,11 +24,11 @@ func newBalancer(targets []*middleware.ProxyTarget) middleware.ProxyBalancer {
 func StartReverseProxy(e *echo.Echo, region string) {
 	targets, err := getTargets(region)
 	if err != nil {
-		log.Printf("Cannot connect to registry to retrieve targets: %v", err)
+		log.Printf("Cannot connect to registry to retrieve targets: %v\n", err)
 		os.Exit(2)
 	}
 
-	log.Printf("Initializing with %d targets.", len(targets))
+	log.Printf("Initializing with %d targets.\n", len(targets))
 	balancer := newBalancer(targets)
 	currentTargets = targets
 	e.Use(middleware.Proxy(balancer))
@@ -35,7 +36,7 @@ func StartReverseProxy(e *echo.Echo, region string) {
 	go updateTargets(balancer, region)
 
 	portNumber := config.GetInt(config.API_PORT, 1323)
-	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && err != http.ErrServerClosed {
+	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		e.Logger.Fatal("shutting down the server")
 	}
 }
@@ -48,16 +49,16 @@ func getTargets(region string) ([]*middleware.ProxyTarget, error) {
 
 	targets := make([]*middleware.ProxyTarget, 0, len(cloudNodes))
 	for _, addr := range cloudNodes {
-		log.Printf("Found target: %v", addr)
+		log.Printf("Found target: %v\n", addr)
 		// TODO: etcd should NOT contain URLs, but only host and port...
-		url, err := url.Parse(addr)
+		parsedUrl, err := url.Parse(addr)
 		if err != nil {
 			return nil, err
 		}
-		targets = append(targets, &middleware.ProxyTarget{Name: addr, URL: url})
+		targets = append(targets, &middleware.ProxyTarget{Name: addr, URL: parsedUrl})
 	}
 
-	log.Printf("Found %d targets", len(targets))
+	log.Printf("Found %d targets\n", len(targets))
 
 	return targets, nil
 }
@@ -68,11 +69,11 @@ func updateTargets(balancer middleware.ProxyBalancer, region string) {
 
 		targets, err := getTargets(region)
 		if err != nil {
-			log.Printf("Cannot update targets: %v", err)
+			log.Printf("Cannot update targets: %v\n", err)
 		}
 
 		toKeep := make([]bool, len(currentTargets))
-		for i, _ := range currentTargets {
+		for i := range currentTargets {
 			toKeep[i] = false
 		}
 		for _, t := range targets {
@@ -84,7 +85,7 @@ func updateTargets(balancer middleware.ProxyBalancer, region string) {
 				}
 			}
 			if toAdd {
-				log.Printf("Adding %s", t.Name)
+				log.Printf("Adding %s\n", t.Name)
 				balancer.AddTarget(t)
 			}
 		}
@@ -92,7 +93,7 @@ func updateTargets(balancer middleware.ProxyBalancer, region string) {
 		toRemove := make([]string, 0)
 		for i, curr := range currentTargets {
 			if !toKeep[i] {
-				log.Printf("Removing %s", curr.Name)
+				log.Printf("Removing %s\n", curr.Name)
 				toRemove = append(toRemove, curr.Name)
 			}
 		}

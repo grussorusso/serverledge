@@ -29,7 +29,7 @@ const (
 	// DefaultExpiration For use with function that take an expiration time. Equivalent to
 	// passing in the same expiration duration as was given to New() or
 	// NewFrom() when the cache was created (e.g. 5 minutes.)
-	DefaultExpiration time.Duration = 2 * time.Second
+	DefaultExpiration = 2 * time.Second
 )
 
 type Cache struct {

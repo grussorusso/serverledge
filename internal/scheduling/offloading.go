@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -61,8 +61,13 @@ func Offload(r *function.Request, serverUrl string) error {
 	}
 
 	var response function.Response
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error while closing offload response body: %s\n", err)
+		}
+	}(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	if err = json.Unmarshal(body, &response); err != nil {
 		return err
 	}

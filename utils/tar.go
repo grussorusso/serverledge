@@ -22,7 +22,12 @@ func Tar(src string, of *os.File) error {
 	//defer of.Close()
 
 	tw := tar.NewWriter(of)
-	defer tw.Close()
+	defer func(tw *tar.Writer) {
+		err := tw.Close()
+		if err != nil {
+			fmt.Printf("Error while closing tar writer: %s\n", err)
+		}
+	}(tw)
 
 	return filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
 
@@ -72,7 +77,11 @@ func Tar(src string, of *os.File) error {
 			return err
 		}
 
-		f.Close()
+		err = f.Close()
+		if err != nil {
+			fmt.Printf("Error while closing file '%s': %s\n", f.Name(), err)
+			return err
+		}
 
 		return nil
 	})

@@ -18,7 +18,7 @@ type NodeResources struct {
 	ContainerPools map[string]*ContainerPool
 }
 
-func (n NodeResources) String() string {
+func (n *NodeResources) String() string {
 	return fmt.Sprintf("[CPUs: %f - Mem: %d]", n.AvailableCPUs, n.AvailableMemMB)
 }
 

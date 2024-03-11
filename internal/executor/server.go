@@ -2,23 +2,22 @@ package executor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-
-	"io/ioutil"
 )
 
 const resultFile = "/tmp/_executor_result.json"
 const paramsFile = "/tmp/_executor.params"
 
 func readExecutionResult(resultFile string) string {
-	content, err := ioutil.ReadFile(resultFile)
+	content, err := os.ReadFile(resultFile)
 	if err != nil {
-		log.Printf("%v", err)
+		log.Printf("%v\n", err)
 		return ""
 	}
 
@@ -36,21 +35,24 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set environment variables
-	os.Setenv("RESULT_FILE", resultFile)
-	os.Setenv("HANDLER", req.Handler)
-	os.Setenv("HANDLER_DIR", req.HandlerDir)
+	err = os.Setenv("RESULT_FILE", resultFile)
+	err = errors.Join(err, os.Setenv("HANDLER", req.Handler))
+	err = errors.Join(err, os.Setenv("HANDLER_DIR", req.HandlerDir))
 	params := req.Params
 	if params == nil {
-		os.Setenv("PARAMS_FILE", "")
+		err = errors.Join(err, os.Setenv("PARAMS_FILE", ""))
 	} else {
 		paramsB, _ := json.Marshal(req.Params)
-		err := os.WriteFile(paramsFile, paramsB, 0644)
-		if err != nil {
-			log.Printf("Could not write parameters to %s", paramsFile)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		fileError := os.WriteFile(paramsFile, paramsB, 0644)
+		if fileError != nil {
+			log.Printf("Could not write parameters to %s\n", paramsFile)
+			http.Error(w, fileError.Error(), http.StatusInternalServerError)
 			return
 		}
-		os.Setenv("PARAMS_FILE", paramsFile)
+		err = errors.Join(err, os.Setenv("PARAMS_FILE", paramsFile))
+	}
+	if err != nil {
+		log.Printf("Error while setting environment variables: %s\n", err)
 	}
 
 	// Exec handler process
@@ -60,7 +62,7 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 		// in the latter case, we find the command in the env
 		customCmd, ok := os.LookupEnv("CUSTOM_CMD")
 		if !ok {
-			log.Printf("Invalid request!")
+			log.Printf("Invalid request!\n")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -84,5 +86,9 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	respBody, _ := json.Marshal(resp)
-	w.Write(respBody)
+	_, err = w.Write(respBody)
+	if err != nil {
+		log.Printf("Error while writing response to HTTP %s\n", err)
+		return
+	}
 }

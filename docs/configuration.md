@@ -20,18 +20,18 @@ server:
 
 ## Frequently used options
 
-| Configuration key  | Description   | Example value(s) |
-| -------------      | ------------- | -----------------|
-| `etcd.address` | Hostname and port of the Etcd server acting as the Global Registry. | `127.0.0.1:2379` | 
-| `api.port` |Port number for the API server. | 1323| 
-| `cloud.server.url` |URL prefix for the remote Cloud node API. | `http://127.0.0.1:1326` | 
-| `factory.images.refresh` |Forces function runtime container images to be pulled from the Internet the first time they are used (to update them), even if they are available on the host.| `true` | 
-| `container.pool.memory` |Maximum amount of memory (in MB) that the container pool can use (must be not greater than the total memory available in the host).|4096| 
-| `janitor.interval` |Activation interval (in seconds) for the janitor thread that checks for expired containers.| 60| 
-| `container.expiration` |Expiration time (in seconds) for idle containers. | 600|
-| `registry.area` |Geographic area where this node is located.| `ROME`| 
-| `registry.udp.port` |UPD port used for peer-to-peer Edge monitoring.|| 
-| `scheduler.policy` |Scheduling policy to use. Possible values: `default`, `localonly`, `edgeonly`, `cloudonly`.|| 
+| Configuration key        | Description                                                                                                                                                    | Example value(s)        |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| `etcd.address`           | Hostname and port of the Etcd server acting as the Global Registry.                                                                                            | `127.0.0.1:2379`        | 
+| `api.port`               | Port number for the API server.                                                                                                                                | 1323                    | 
+| `cloud.server.url`       | URL prefix for the remote Cloud node API.                                                                                                                      | `http://127.0.0.1:1326` | 
+| `factory.images.refresh` | Forces function runtime container images to be pulled from the Internet the first time they are used (to update them), even if they are available on the host. | `true`                  | 
+| `container.pool.memory`  | Maximum amount of memory (in MB) that the container pool can use (must be not greater than the total memory available in the host).                            | 4096                    | 
+| `janitor.interval`       | Activation interval (in seconds) for the janitor thread that checks for expired containers.                                                                    | 60                      | 
+| `container.expiration`   | Expiration time (in seconds) for idle containers.                                                                                                              | 600                     |
+| `registry.area`          | Geographic area where this node is located.                                                                                                                    | `ROME`                  | 
+| `registry.udp.port`      | UPD port used for peer-to-peer Edge monitoring.                                                                                                                |                         | 
+| `scheduler.policy`       | Scheduling policy to use. Possible values: `default`, `localonly`, `edgeonly`, `cloudonly`.                                                                    |                         | 
 
 <!-- TODO:
 | `container.pool.cpus` ||| 

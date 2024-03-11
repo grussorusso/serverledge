@@ -32,7 +32,11 @@ func Init() {
 	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 		EnableOpenMetrics: true})
 	http.Handle("/metrics", handler)
-	http.ListenAndServe(":2112", nil)
+	err := http.ListenAndServe(":2112", nil)
+	if err != nil {
+		log.Printf("Listen and serve terminated with error: %s\n", err)
+		return
+	}
 }
 
 // Global metrics

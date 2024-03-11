@@ -15,14 +15,14 @@ type DefaultLocalPolicy struct {
 func (p *DefaultLocalPolicy) Init() {
 	queueCapacity := config.GetInt(config.SCHEDULER_QUEUE_CAPACITY, 0)
 	if queueCapacity > 0 {
-		log.Printf("Configured queue with capacity %d", queueCapacity)
+		log.Printf("Configured queue with capacity %d\n", queueCapacity)
 		p.queue = NewFIFOQueue(queueCapacity)
 	} else {
 		p.queue = nil
 	}
 }
 
-func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
+func (p *DefaultLocalPolicy) OnCompletion(_ *scheduledRequest) {
 	if p.queue == nil {
 		return
 	}
@@ -38,14 +38,14 @@ func (p *DefaultLocalPolicy) OnCompletion(completed *scheduledRequest) {
 	containerID, err := node.AcquireWarmContainer(req.Fun)
 	if err == nil {
 		p.queue.Dequeue()
-		log.Printf("[%s] Warm start from the queue (length=%d)", req, p.queue.Len())
+		log.Printf("[%s] Warm start from the queue (length=%d)\n", req, p.queue.Len())
 		execLocally(req, containerID, true)
 		return
 	}
 
 	if errors.Is(err, node.NoWarmFoundErr) {
 		if node.AcquireResources(req.Fun.CPUDemand, req.Fun.MemoryMB, true) {
-			log.Printf("[%s] Cold start from the queue", req)
+			log.Printf("[%s] Cold start from the queue\n", req)
 			p.queue.Dequeue()
 
 			// This avoids blocking the thread during the cold
@@ -93,7 +93,7 @@ func (p *DefaultLocalPolicy) OnArrival(r *scheduledRequest) {
 		p.queue.Lock()
 		defer p.queue.Unlock()
 		if p.queue.Enqueue(r) {
-			log.Printf("[%s] Added to queue (length=%d)", r, p.queue.Len())
+			log.Printf("[%s] Added to queue (length=%d)\n", r, p.queue.Len())
 			return
 		}
 	}

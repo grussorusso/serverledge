@@ -34,7 +34,7 @@ func Run(p Policy) {
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
 	node.Resources.ContainerPools = make(map[string]*node.ContainerPool)
-	log.Printf("Current resources: %v", node.Resources)
+	log.Printf("Current resources: %v\n", &node.Resources)
 
 	container.InitDockerContainerFactory()
 
@@ -147,7 +147,7 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return false
 	} else if err != nil {
-		log.Printf("Cold start failed: %v", err)
+		log.Printf("Cold start failed: %v\n", err)
 		return false
 	} else {
 		execLocally(r, newContainer, false)
