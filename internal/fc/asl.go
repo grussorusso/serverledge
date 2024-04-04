@@ -2,6 +2,7 @@ package fc
 
 import (
 	"fmt"
+
 	"github.com/buger/jsonparser"
 	"github.com/grussorusso/serverledge/internal/function"
 )
@@ -70,7 +71,7 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 			adj[k] = make([]string, 1)
 			fmt.Printf("Raw: %v\n", v)
 			fmt.Printf("Next: %v\n", v.Next)
-			adj[k] = append(adj[k], v.Default)
+			// TODO: adj[k] = append(adj[k], v.Default)
 		}
 	}
 	fmt.Println(adj)
