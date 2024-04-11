@@ -24,6 +24,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
+// FIXME: this function is not used.
 func startAPIServer(e *echo.Echo) {
 	e.Use(middleware.Recover())
 
@@ -44,6 +45,7 @@ func startAPIServer(e *echo.Echo) {
 	}
 }
 
+// FIXME: this function is not used. The function in server.go is used instead.
 func cacheSetup() {
 	//todo fix default values
 
@@ -64,6 +66,7 @@ func cacheSetup() {
 	cache.GetCacheInstance()
 }
 
+// FIXME: this function is not used. The function in server.go is used instead.
 func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt)
