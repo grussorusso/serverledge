@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/fc"
-
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"

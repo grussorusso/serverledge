@@ -3,18 +3,25 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/cache"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/grussorusso/serverledge/internal/api"
-	"github.com/grussorusso/serverledge/internal/node"
-	"github.com/grussorusso/serverledge/utils"
-
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/metrics"
+	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
+	"github.com/grussorusso/serverledge/utils"
+
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func startAPIServer(e *echo.Echo) {
