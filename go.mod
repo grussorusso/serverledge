@@ -1,6 +1,6 @@
 module github.com/grussorusso/serverledge
 
-go 1.19
+go 1.20
 
 require (
 	github.com/LK4D4/trylock v0.0.0-20191027065348-ff7e133a5c54
