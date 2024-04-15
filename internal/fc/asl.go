@@ -94,6 +94,10 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 	}
 
 	dag, err := builder.Build()
+	if err != nil {
+		return nil, err
+	}
+
 	comp := NewFC(name, *dag, funcs, false)
 	return &comp, nil
 }
