@@ -1,13 +1,12 @@
 module github.com/grussorusso/serverledge
 
-go 1.19
+go 1.20
 
 require (
 	github.com/LK4D4/trylock v0.0.0-20191027065348-ff7e133a5c54
 	github.com/buger/jsonparser v1.1.1
 	github.com/cornelk/hashmap v1.0.8
 	github.com/docker/docker v24.0.5+incompatible
-	github.com/enginyoyen/aslparser v0.2.0
 	github.com/hexablock/vivaldi v0.0.0-20180727225019-07adad3f2b5f
 	github.com/labstack/echo/v4 v4.6.1
 	github.com/labstack/gommon v0.3.0
@@ -60,9 +59,6 @@ require (
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
-	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
