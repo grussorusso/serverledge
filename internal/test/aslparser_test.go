@@ -22,12 +22,7 @@ func initializeIncFunction(t *testing.T) {
 	utils.AssertNil(t, err)
 }
 
-func TestParsingSimple(t *testing.T) {
-	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
-	}
-
+func parseFile(t *testing.T) *fc.FunctionComposition {
 	initializeIncFunction(t)
 
 	body, err := os.ReadFile("../../test/simple.json")
@@ -35,20 +30,33 @@ func TestParsingSimple(t *testing.T) {
 
 	comp, err := fc.FromASL("prova", body)
 	utils.AssertNilMsg(t, err, "unable to parse json")
-
-	fmt.Println(comp)
-	err = comp.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "unable to save parsed composition")
-
-	all, err := fc.GetAllFC()
-	fmt.Println(all)
+	return comp
 }
-func TestParsing(t *testing.T) {
+
+func TestParsingSimple(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
 	if !IntegrationTest {
 		t.Skip()
 	}
-	body, err := os.ReadFile("../../test/simple.json")
+
+	comp := parseFile(t)
+
+	fmt.Println(comp)
+	err := comp.SaveToEtcd()
+	utils.AssertNilMsg(t, err, "unable to save parsed composition")
+
+	all, err := fc.GetAllFC()
+	utils.AssertNil(t, err)
+
+	fmt.Println(all)
+}
+
+func TestParsingSequence(t *testing.T) {
+	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
+	if !IntegrationTest {
+		t.Skip()
+	}
+	body, err := os.ReadFile("../../test/sequence.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
 
 	sm, _ := fc.FromASL("prova", body)

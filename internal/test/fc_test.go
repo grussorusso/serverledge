@@ -21,6 +21,7 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 		Build())
 	u.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	u.AssertNil(t, err)
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
 
 	marshaledFunc, errMarshal := json.Marshal(composition)

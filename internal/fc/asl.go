@@ -7,6 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
+// State implements a state for Amazon state language
 type State struct {
 	Name     string
 	Type     string
@@ -24,28 +25,30 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 	//if err != nil {
 	//	return nil, fmt.Errorf("aslparser failed: %v", err)
 	//}
+	initialState, _, _, err := jsonparser.Get(aslSrc, "StartAt")
+	if err != nil {
+		return nil, fmt.Errorf("invalid ASL: missing StartAt key")
+	}
 
 	statesData, _, _, err := jsonparser.Get(aslSrc, "States")
 	if err != nil {
-		return nil, fmt.Errorf("Invalid ASL: %v", err)
+		return nil, fmt.Errorf("invalid ASL: missing States key")
 	}
 
 	states := make(map[string]State, 0)
 	err = jsonparser.ObjectEach(statesData, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
 		stateType, _, _, err2 := jsonparser.Get(value, "Type")
-		if err2 == nil {
-			s := State{Name: string(key), Type: string(stateType)}
-			states[s.Name] = s
-			return nil
-		} else {
+		if err2 != nil {
 			return err2
 		}
+		stateResource, _, _, err2 := jsonparser.Get(value, "Resource")
+		if err2 != nil {
+			return err2
+		}
+		s := State{Name: string(key), Type: string(stateType), Resource: string(stateResource)}
+		states[s.Name] = s
+		return nil
 	})
-	if err != nil {
-		return nil, fmt.Errorf("Invalid ASL: %v", err)
-	}
-
-	initialState, _, _, err := jsonparser.Get(aslSrc, "StartAt")
 	if err != nil {
 		return nil, fmt.Errorf("Invalid ASL: %v", err)
 	}
@@ -90,7 +93,7 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 		// get function
 		builder = builder.AddSimpleNode(f)
 		funcs = append(funcs, f)
-		fmt.Printf("Addded simple node with f: %s, funcs=%v", f, funcs)
+		fmt.Printf("Added simple node with f: %s, funcs=%v", f, funcs)
 	}
 
 	dag, err := builder.Build()
