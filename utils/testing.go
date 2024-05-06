@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+// AssertEquals verifies that the expected generic object T is equal to result T.
+// If expected differs from result in any way, the test will fail immediately.
+// The type of expected and result should be the same, and it should implement the comparable interface
+// All Assert functions defined in this project work for go 1.19+ because they use generic types.
 func AssertEquals[T comparable](t *testing.T, expected T, result T) {
 	if expected != result {
 		t.Logf("%s is failed. Got '%v', expected '%v'", t.Name(), result, expected)
@@ -13,6 +17,7 @@ func AssertEquals[T comparable](t *testing.T, expected T, result T) {
 	}
 }
 
+// AssertEqualsMsg is like AssertEquals, but it also prints a custom message when the test fails.
 func AssertEqualsMsg[T comparable](t *testing.T, expected T, result T, msg string) {
 	if expected != result {
 		t.Logf("%s is failed; %s - Got '%v', expected '%v'", t.Name(), msg, result, expected)
@@ -20,6 +25,8 @@ func AssertEqualsMsg[T comparable](t *testing.T, expected T, result T, msg strin
 	}
 }
 
+// AssertSliceEquals is like AssertEquals but works for slices
+// Each element of the expected slice must be equal to the corresponding element in the result slice, in the same order.
 func AssertSliceEquals[T comparable](t *testing.T, expected []T, result []T) {
 	if equal := slices.Equal(expected, result); !equal {
 		t.Logf("%s is failed Got '%v', expected '%v'", t.Name(), result, expected)
@@ -27,6 +34,7 @@ func AssertSliceEquals[T comparable](t *testing.T, expected []T, result []T) {
 	}
 }
 
+// AssertSliceEqualsMsg is like AssertSliceEquals, but it also prints a custom message when the test fails.
 func AssertSliceEqualsMsg[T comparable](t *testing.T, expected []T, result []T, msg string) {
 	if equal := slices.Equal(expected, result); !equal {
 		t.Logf("%s is failed; %s - Got '%v', expected '%v'", t.Name(), msg, result, expected)
@@ -34,6 +42,8 @@ func AssertSliceEqualsMsg[T comparable](t *testing.T, expected []T, result []T, 
 	}
 }
 
+// AssertMapEquals is like AssertEqualsMsg but works for maps with key of type K, and value of type V.
+// Both types must implement comparable. Every map should contain the same key-value pairs to make the test succeed.
 func AssertMapEquals[K comparable, V comparable](t *testing.T, expectedMap map[K]V, resultMap map[K]interface{}) {
 	typedMap := make(map[K]V)
 	for k, v := range resultMap {
@@ -45,6 +55,9 @@ func AssertMapEquals[K comparable, V comparable](t *testing.T, expectedMap map[K
 	}
 }
 
+// AssertNil checks that result is nil. Useful for checking that there are no errors.
+// If there is an error, it will fail the test immediately. It can also be used to expect nothing from a function
+// (but you should never return nil from a function unless you like SIGSEGV!)
 func AssertNil(t *testing.T, result interface{}) {
 	if nil != result {
 		t.Logf("%s is failed. Got '%v', expected nil", t.Name(), result)
@@ -52,6 +65,7 @@ func AssertNil(t *testing.T, result interface{}) {
 	}
 }
 
+// AssertNilMsg is like AssertNil, but it also prints a custom message when the test fails.
 func AssertNilMsg(t *testing.T, result interface{}, msg string) {
 	if nil != result {
 		t.Logf("%s is failed; %s - Got '%v', expected nil", t.Name(), result, msg)
@@ -59,6 +73,8 @@ func AssertNilMsg(t *testing.T, result interface{}, msg string) {
 	}
 }
 
+// AssertNonNil checks that result is non-nil. Useful for checking that there is some result,
+// but we are not interested in its details.
 func AssertNonNil(t *testing.T, result interface{}) {
 	if nil == result {
 		t.Logf("%s is failed. Got '%v', expected non-nil", t.Name(), result)
@@ -66,6 +82,7 @@ func AssertNonNil(t *testing.T, result interface{}) {
 	}
 }
 
+// AssertNonNilMsg is like AssertNonNil, but it also prints a custom message when the test fails.
 func AssertNonNilMsg(t *testing.T, result interface{}, msg string) {
 	if nil == result {
 		t.Logf("%s is failed; %s - Got '%v', expected non-nil", t.Name(), result, msg)
@@ -73,8 +90,8 @@ func AssertNonNilMsg(t *testing.T, result interface{}, msg string) {
 	}
 }
 
-// AssertNotEmptySlice asserts that a slice is not empty. Notice: here we use generics. Only works for go 1.19+
-func AssertNotEmptySlice[A any](t *testing.T, slice []*A) {
+// AssertNotEmptySlice asserts that a slice is non-nil and not empty, otherwise fails the test immediately.
+func AssertNotEmptySlice[A any](t *testing.T, slice []A) {
 	if slice == nil {
 		t.Logf("%s is failed. The slice is nil,", t.Name())
 		t.FailNow()
@@ -85,6 +102,7 @@ func AssertNotEmptySlice[A any](t *testing.T, slice []*A) {
 	}
 }
 
+// AssertEmptySlice asserts that a slice is empty, otherwise fails the test immediately.
 func AssertEmptySlice[T any](t *testing.T, slice []T) {
 	if slice == nil {
 		t.Logf("%s is failed. The slice is nil,", t.Name())
@@ -96,6 +114,7 @@ func AssertEmptySlice[T any](t *testing.T, slice []T) {
 	}
 }
 
+// AssertTrue verifies that given boolean is true, otherwise fails the test immediately
 func AssertTrue(t *testing.T, isTrue bool) {
 	if !isTrue {
 		t.Logf("%s is failed. Got false", t.Name())
@@ -103,6 +122,7 @@ func AssertTrue(t *testing.T, isTrue bool) {
 	}
 }
 
+// AssertTrueMsg verifies that given boolean is true, otherwise fails the test immediately and prints a custom message
 func AssertTrueMsg(t *testing.T, isTrue bool, msg string) {
 	if !isTrue {
 		t.Logf("%s is false - %s", t.Name(), msg)
@@ -110,6 +130,7 @@ func AssertTrueMsg(t *testing.T, isTrue bool, msg string) {
 	}
 }
 
+// AssertFalse verifies that given boolean is false, otherwise fails the test immediately
 func AssertFalse(t *testing.T, isTrue bool) {
 	if isTrue {
 		t.Logf("%s is failed. Got true", t.Name())
@@ -117,6 +138,7 @@ func AssertFalse(t *testing.T, isTrue bool) {
 	}
 }
 
+// AssertFalseMsg verifies that given boolean is false, otherwise fails the test immediately and prints a custom message
 func AssertFalseMsg(t *testing.T, isTrue bool, msg string) {
 	if isTrue {
 		t.Logf("%s is true - %s", t.Name(), msg)
