@@ -1,17 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/cache"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"time"
-
-	"golang.org/x/net/context"
-
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/metrics"
@@ -19,83 +9,11 @@ import (
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/grussorusso/serverledge/utils"
+	"log"
+	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
-
-// FIXME: this function is not used.
-func startAPIServer(e *echo.Echo) {
-	e.Use(middleware.Recover())
-
-	// Routes
-	e.POST("/invoke/:fun", api.InvokeFunction)
-	e.POST("/create", api.CreateFunction)
-	e.POST("/delete", api.DeleteFunction)
-	e.GET("/function", api.GetFunctions)
-	e.GET("/poll/:reqId", api.PollAsyncResult)
-	e.GET("/status", api.GetServerStatus)
-
-	// Start server
-	portNumber := config.GetInt(config.API_PORT, 1323)
-	e.HideBanner = true
-
-	if err := e.Start(fmt.Sprintf(":%d", portNumber)); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		e.Logger.Fatal("shutting down the server")
-	}
-}
-
-// FIXME: this function is not used. The function in server.go is used instead.
-func cacheSetup() {
-	//todo fix default values
-
-	// setup cache space
-	cache.Size = config.GetInt(config.CACHE_SIZE, 10)
-
-	//setup cleanup interval
-	d := config.GetInt(config.CACHE_CLEANUP, 60)
-	interval := time.Duration(d)
-	cache.CleanupInterval = interval * time.Second
-
-	//setup default expiration time
-	d = config.GetInt(config.CACHE_ITEM_EXPIRATION, 60)
-	expirationInterval := time.Duration(d)
-	cache.DefaultExp = expirationInterval * time.Second
-
-	//cache first creation
-	cache.GetCacheInstance()
-}
-
-// FIXME: this function is not used. The function in server.go is used instead.
-func registerTerminationHandler(r *registration.Registry, e *echo.Echo) {
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt)
-
-	go func() {
-		select {
-		case sig := <-c:
-			fmt.Printf("Got %s signal. Terminating...\n", sig)
-			node.ShutdownAllContainers()
-
-			// deregister from etcd; server should be unreachable
-			err := r.Deregister()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			//stop container janitor
-			node.StopJanitor()
-
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			if err := e.Shutdown(ctx); err != nil {
-				e.Logger.Fatal(err)
-			}
-
-			os.Exit(0)
-		}
-	}()
-}
 
 func main() {
 	configFileName := ""
