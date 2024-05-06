@@ -114,7 +114,8 @@ func AssertEmptySlice[T any](t *testing.T, slice []T) {
 	}
 }
 
-// AssertTrue verifies that given boolean is true, otherwise fails the test immediately
+// AssertTrue verifies that given boolean is true, otherwise fails the test immediately.
+// Useful when a function returns a boolean indicating its success or failure (for example when retrieving an item from a map).
 func AssertTrue(t *testing.T, isTrue bool) {
 	if !isTrue {
 		t.Logf("%s is failed. Got false", t.Name())

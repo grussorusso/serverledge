@@ -10,9 +10,19 @@
     "SecondState": {
       "Type": "Task",
       "Resource": "inc",
-      "Next": "Final"
+      "Next": "ThirdState"
     },
-    "Final": {
+    "ThirdState": {
+      "Type": "Task",
+      "Resource": "inc",
+      "Next": "FourthState"
+    },
+    "FourthState": {
+      "Type": "Task",
+      "Resource": "inc",
+      "Next": "FifthState"
+    },
+    "FifthState": {
       "Type": "Task",
       "Resource": "inc",
       "End": true

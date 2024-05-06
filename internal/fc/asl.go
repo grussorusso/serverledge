@@ -1,5 +1,6 @@
 package fc
 
+/*** Adapted from https://github.com/enginyoyen/aslparser ***/
 import (
 	"fmt"
 
@@ -7,17 +8,41 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
+type Retry struct {
+	ErrorEquals     []string
+	IntervalSeconds int
+	BackoffRate     int
+	MaxAttempts     int
+}
+
+type Catch struct {
+	ErrorEquals []string
+	ResultPath  string
+	Next        string
+}
+
 // State implements a state for Amazon state language
 type State struct {
-	Name     string
-	Type     string
-	Next     string
-	Resource string
+	Name             string
+	Comment          string
+	Type             string
+	Next             string
+	Default          string
+	Resource         string
+	End              bool
+	Parameters       map[string]interface{}
+	Retry            []Retry
+	Catch            []Catch
+	TimeoutSeconds   int
+	HeartbeatSeconds int
 }
 
 type StateMachine struct {
-	States       map[string]State
-	InitialState string
+	Comment string
+	States  map[string]State
+	StartAt string
+	Version string
+	// validationResult *gojsonschema.Result
 }
 
 func parseASL(aslSrc []byte) (*StateMachine, error) {
@@ -53,12 +78,14 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 		return nil, fmt.Errorf("Invalid ASL: %v", err)
 	}
 
-	stateMachine := &StateMachine{States: states, InitialState: string(initialState)}
+	stateMachine := &StateMachine{States: states, StartAt: string(initialState)}
 	fmt.Printf("Found state machine:  %v\n", stateMachine)
 
 	return stateMachine, nil
 }
 
+// FromASL parses a AWS State Language specification file and returns a Function Composition with the corresponding Serverledge Dag
+// The name of the composition should not be the file name by default, to avoid problems when adding the same composition multiple times.
 func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 	stateMachine, err := parseASL(aslSrc)
 	if err != nil {
@@ -93,7 +120,7 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 		// get function
 		builder = builder.AddSimpleNode(f)
 		funcs = append(funcs, f)
-		fmt.Printf("Added simple node with f: %s, funcs=%v", f, funcs)
+		fmt.Printf("Added simple node with f: %s, funcs=%v\n", f, funcs)
 	}
 
 	dag, err := builder.Build()

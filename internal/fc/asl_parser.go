@@ -8,41 +8,6 @@ import (
 	"io/ioutil"
 )
 
-type Retry struct {
-	ErrorEquals     []string
-	IntervalSeconds int
-	BackoffRate     int
-	MaxAttempts     int
-}
-
-type Catch struct {
-	ErrorEquals []string
-	ResultPath  string
-	Next        string
-}
-
-type State struct {
-	Comment          string
-	Type             string
-	Next             string
-	Default          string
-	Resource         string
-	End              bool
-	Parameters       map[string]interface{}
-	Retry            []Retry
-	Catch            []Catch
-	TimeoutSeconds   int
-	HeartbeatSeconds int
-}
-
-type StateMachine struct {
-	Comment          string
-	StartAt          string
-	Version          string
-	States           map[string]State
-	validationResult *gojsonschema.Result
-}
-
 // Given the file path validates and returns the StateMachine
 // strict argument defines whether Resource name must be AWS ARN pattern or not
 func ParseFile(filepath string, strict bool) (*StateMachine, error) {
@@ -145,4 +110,5 @@ func (s *StateMachine) targetStateRegistered(state string) bool {
 		}
 	}
 	return match
-}*/
+}
+*/
