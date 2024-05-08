@@ -200,11 +200,18 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(r)
+		shouldContinue, err = fc.Workflow.Execute(r, progress)
+
 		if err != nil {
 			progress.Print()
 			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed dag execution: %v", err)
 		}
+
+		err = SaveProgress(progress, cache.Persist)
+		if err != nil {
+			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to save progress: %v", err)
+		}
+
 	}
 	// retrieving output of  execution
 	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), cache.Persist)

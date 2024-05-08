@@ -556,12 +556,7 @@ func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequ
 	return false, nil // false because we want to stop when reaching the end
 }
 
-func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
-	requestId := ReqId(r.ReqId)
-	progress, found := RetrieveProgress(requestId, cache.Persist)
-	if !found {
-		return false, fmt.Errorf("progress not found")
-	}
+func (dag *Dag) Execute(r *CompositionRequest, progress *Progress) (bool, error) {
 	nextNodes, err := progress.NextNodes()
 	if err != nil {
 		return false, fmt.Errorf("failed to get next nodes from progress: %v", err)
@@ -599,10 +594,6 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		}
 	}
 
-	err = SaveProgress(progress, cache.Persist)
-	if err != nil {
-		return true, err
-	}
 	return shouldContinue, nil
 }
 
