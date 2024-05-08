@@ -228,7 +228,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if errDel != nil {
 		return CompositionExecutionReport{}, errDel
 	}
-	// fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
+	// fmt.Printf("Successfully deleted %d partial datas and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
 	//progress.NextGroup = -1
 	//r.ExecReport.Progress = progress
