@@ -396,7 +396,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	inputs := make([]map[string]interface{}, 0)
 	outputChannels := make([]chan map[string]interface{}, 0)
 	errorChannels := make([]chan error, 0)
-	partialDatas := make([]*PartialData, 0)
+	partialDataSlice := make([]*PartialData, 0)
 	requestId := ReqId(r.ReqId)
 	for _, nodeId := range nextNodes {
 		node, ok := dag.Find(nodeId)
@@ -468,7 +468,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	for i, output := range parallelOutputs {
 		node := parallelDagNodes[i]
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
-		partialDatas = append(partialDatas, pd)
+		partialDataSlice = append(partialDataSlice, pd)
 		pd.Data = output
 		err := SavePartialData(pd, persistPartialData)
 		if err != nil {
@@ -499,17 +499,17 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	})
 
 	// retrieving input before timeout
-	var partialDatas []*PartialData
+	var partialDataSlice []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId)
+		partialDataSlice, err = RetrievePartialData(requestId, nodeId)
 		if err != nil {
 			return false, err
 		}
-		if len(partialDatas) == fanIn.FanInDegree {
+		if len(partialDataSlice) == fanIn.FanInDegree {
 			break
 		}
-		fmt.Printf("fanin waiting partial datas: %d/%d\n", len(partialDatas), fanIn.FanInDegree)
+		fmt.Printf("fanin waiting partial data: %d/%d\n", len(partialDataSlice), fanIn.FanInDegree)
 		time.Sleep(fanIn.Timeout / 100)
 	}
 
@@ -517,17 +517,17 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	if !fired {
 		return false, fmt.Errorf("fan in timeout occurred")
 	}
-	faninInputs := make([]map[string]interface{}, 0)
-	for _, partialData := range partialDatas {
+	fanInInputs := make([]map[string]interface{}, 0)
+	for _, partialData := range partialDataSlice {
 		// err := fanIn.CheckInput(partialData.Data)
 		//if err != nil {
 		//	return false, err
 		//}
-		faninInputs = append(faninInputs, partialData.Data)
+		fanInInputs = append(fanInInputs, partialData.Data)
 	}
 
 	// merging input into one output
-	output, err := fanIn.Exec(r, faninInputs...)
+	output, err := fanIn.Exec(r, fanInInputs...)
 	if err != nil {
 		return false, err
 	}

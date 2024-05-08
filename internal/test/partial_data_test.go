@@ -48,11 +48,11 @@ func TestPartialDataCache(t *testing.T) {
 	data = make(map[string]interface{})
 	data["num"] = 3
 	partialData3 := initPartialData(request2, "start", "", data)
-	partialDatas := []*fc.PartialData{partialData1, partialData2, partialData3}
+	partialDataSlice := []*fc.PartialData{partialData1, partialData2, partialData3}
 
-	// saving and retrieving partial datas one by one
-	for i := 0; i < len(partialDatas); i++ {
-		partialData := partialDatas[i]
+	// saving and retrieving partial data one by one
+	for i := 0; i < len(partialDataSlice); i++ {
+		partialData := partialDataSlice[i]
 		err := fc.SavePartialData(partialData, cache.Persist)
 		u.AssertNilMsg(t, err, "failed to save partialData")
 

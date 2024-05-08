@@ -221,7 +221,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 		return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
-	// deleting progresses and partial datas from cache and etcd
+	// deleting progresses and partial data from cache and etcd
 	err = DeleteProgress(requestId, cache.Persist)
 	if err != nil {
 		return CompositionExecutionReport{}, err
@@ -230,7 +230,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if errDel != nil {
 		return CompositionExecutionReport{}, errDel
 	}
-	// fmt.Printf("Successfully deleted %d partial datas and progress for request %s\n", removed, requestId)
+	// fmt.Printf("Successfully deleted %d partial data and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
 	//progress.NextGroup = -1
 	//r.ExecReport.Progress = progress
