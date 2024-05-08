@@ -288,7 +288,7 @@ func (fc *FunctionComposition) Exists() bool {
 	if !found {
 		// cache miss
 		f, err := getFCFromEtcd(fc.Name)
-		if err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
+		if err != nil && err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
 			return false
 		} else if err != nil {
 			log.Error(err.Error())
