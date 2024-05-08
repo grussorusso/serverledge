@@ -207,6 +207,8 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed dag execution: %v", err)
 		}
 
+		/* TODO: we should persist progress and partial data (of this specific r.reqId) to etcd
+		only when moving workflow coordination to another node. */
 		err = SaveProgress(progress, cache.Persist)
 		if err != nil {
 			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to save progress: %v", err)
