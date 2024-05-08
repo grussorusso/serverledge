@@ -84,10 +84,10 @@ func SavePartialData(pd *PartialData, saveAlsoOnEtcd bool) error {
 	return nil
 }
 
-func RetrievePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool) ([]*PartialData, error) {
+func RetrievePartialData(reqId ReqId, nodeId DagNodeId) ([]*PartialData, error) {
 	// Get from cache if exists, otherwise from ETCD
 	partialDatas, err := getPartialDataFromCache(newPartialDataId(reqId), nodeId)
-	if err != nil && alsoFromEtcd {
+	if partialDatas == nil {
 		fmt.Printf("cache miss: %v\n", err)
 		// cache miss - retrieve partialData from ETCD
 		partialDatas, err = getPartialDataFromEtcd(reqId, nodeId)
@@ -108,8 +108,8 @@ func RetrievePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool) ([]*P
 	return partialDatas, err
 }
 
-func RetrieveSinglePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool) (*PartialData, error) {
-	pds, err := RetrievePartialData(reqId, nodeId, alsoFromEtcd)
+func RetrieveSinglePartialData(reqId ReqId, nodeId DagNodeId) (*PartialData, error) {
+	pds, err := RetrievePartialData(reqId, nodeId)
 	if err != nil {
 		return nil, fmt.Errorf("partial data not found: %v", err)
 	} else if len(pds) > 1 {

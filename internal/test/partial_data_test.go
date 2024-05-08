@@ -56,14 +56,14 @@ func TestPartialDataCache(t *testing.T) {
 		err := fc.SavePartialData(partialData, cache.Persist)
 		u.AssertNilMsg(t, err, "failed to save partialData")
 
-		retrievedPartialData, err := fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, cache.Persist)
+		retrievedPartialData, err := fc.RetrievePartialData(partialData.ReqId, partialData.ForNode)
 		u.AssertNilMsg(t, err, "partialData not found")
 		u.AssertTrueMsg(t, partialData.Equals(retrievedPartialData[0]), "progresses don't match")
 
 		_, err = fc.DeleteAllPartialData(partialData.ReqId, cache.Persist)
 		u.AssertNilMsg(t, err, "failed to delete partialData")
 
-		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode, cache.Persist)
+		_, err = fc.RetrievePartialData(partialData.ReqId, partialData.ForNode)
 		u.AssertNonNilMsg(t, err, "partialData should have been deleted")
 	}
 

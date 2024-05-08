@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"math"
@@ -233,7 +232,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
 
 	if err != nil {
 		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
@@ -279,7 +278,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	var pd *PartialData
 	nodeId := choice.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
 	if err != nil {
 		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
 	}
@@ -323,7 +322,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	var pd *PartialData
 	nodeId := fanOut.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId)
 	if err != nil {
 		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
 	}
@@ -408,7 +407,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		}
 		// for simple node we also retrieve the partial data and receive input
 		if simple, isSimple := node.(*SimpleNode); isSimple {
-			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, cache.Persist)
+			partialData, err := RetrieveSinglePartialData(requestId, simple.Id)
 			if err != nil {
 				return err
 			}
@@ -503,7 +502,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	var partialDatas []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId, cache.Persist)
+		partialDatas, err = RetrievePartialData(requestId, nodeId)
 		if err != nil {
 			return false, err
 		}
