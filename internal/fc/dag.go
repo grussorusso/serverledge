@@ -228,7 +228,7 @@ func (dag *Dag) executeStart(progress *Progress, node *StartNode, r *Composition
 	return true, nil
 }
 
-func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *CompositionRequest, persistPartialData bool) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
@@ -262,7 +262,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, cache.Persist)
+	err = SavePartialData(pd, persistPartialData)
 	if err != nil {
 		return false, err
 	}
@@ -274,7 +274,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	return true, nil
 }
 
-func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *CompositionRequest, persistPartialData bool) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := choice.GetId()
@@ -306,7 +306,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	}
 
 	// saving partial data and updating progress
-	err = SavePartialData(pd, cache.Persist)
+	err = SavePartialData(pd, persistPartialData)
 	if err != nil {
 		return false, err
 	}
@@ -318,7 +318,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	return true, nil
 }
 
-func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *CompositionRequest, persistPartialData bool) (bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := fanOut.GetId()
@@ -376,7 +376,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 			return false, fmt.Errorf("invalid fanout type %d", fanOut.Type)
 		}
 		// saving partial data
-		err = SavePartialData(pd, cache.Persist)
+		err = SavePartialData(pd, persistPartialData)
 		if err != nil {
 			return false, err
 		}
@@ -391,7 +391,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	return true, nil
 }
 
-func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest) error {
+func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest, persistPartialData bool) error {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
 	inputs := make([]map[string]interface{}, 0)
@@ -471,7 +471,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd := NewPartialData(requestId, node.GetNext()[0], node.GetId(), nil)
 		partialDatas = append(partialDatas, pd)
 		pd.Data = output
-		err := SavePartialData(pd, cache.Persist)
+		err := SavePartialData(pd, persistPartialData)
 		if err != nil {
 			return err
 		}
@@ -483,7 +483,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	return nil
 }
 
-func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *CompositionRequest, persistPartialData bool) (bool, error) {
 	nodeId := fanIn.GetId()
 	requestId := ReqId(r.ReqId)
 
@@ -534,7 +534,7 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	}
 	// saving merged outputs and updating progress
 	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
-	err = SavePartialData(pd, cache.Persist)
+	err = SavePartialData(pd, persistPartialData)
 	if err != nil {
 		return false, err
 	}
@@ -556,14 +556,14 @@ func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequ
 	return false, nil // false because we want to stop when reaching the end
 }
 
-func (dag *Dag) Execute(r *CompositionRequest, progress *Progress) (bool, error) {
+func (dag *Dag) Execute(r *CompositionRequest, progress *Progress, persistPartialData bool) (bool, error) {
 	nextNodes, err := progress.NextNodes()
 	if err != nil {
 		return false, fmt.Errorf("failed to get next nodes from progress: %v", err)
 	}
 	shouldContinue := true
 	if len(nextNodes) > 1 {
-		err := dag.executeParallel(progress, nextNodes, r)
+		err := dag.executeParallel(progress, nextNodes, r, persistPartialData)
 		if err != nil {
 			return true, err
 		}
@@ -575,15 +575,15 @@ func (dag *Dag) Execute(r *CompositionRequest, progress *Progress) (bool, error)
 
 		switch node := n.(type) {
 		case *SimpleNode:
-			shouldContinue, err = dag.executeSimple(progress, node, r)
+			shouldContinue, err = dag.executeSimple(progress, node, r, persistPartialData)
 		case *ChoiceNode:
-			shouldContinue, err = dag.executeChoice(progress, node, r)
+			shouldContinue, err = dag.executeChoice(progress, node, r, persistPartialData)
 		case *FanInNode:
-			shouldContinue, err = dag.executeFanIn(progress, node, r)
+			shouldContinue, err = dag.executeFanIn(progress, node, r, persistPartialData)
 		case *StartNode:
 			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
-			shouldContinue, err = dag.executeFanOut(progress, node, r)
+			shouldContinue, err = dag.executeFanOut(progress, node, r, persistPartialData)
 		case *EndNode:
 			shouldContinue, err = dag.executeEnd(progress, node, r)
 		}

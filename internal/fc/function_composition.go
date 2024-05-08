@@ -200,7 +200,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(r, progress)
+		shouldContinue, err = fc.Workflow.Execute(r, progress, cache.Persist)
 
 		if err != nil {
 			progress.Print()
