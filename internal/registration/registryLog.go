@@ -37,8 +37,8 @@ func InitEdgeMonitoring(r *Registry) (e error) {
 
 func runMonitor() {
 	//todo  adjust default values
-	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 30)) * time.Second)         //wake-up nearby monitoring
-	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 60)) * time.Second) // wake-up general-area monitoring
+	nearbyTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_NEARBY_INTERVAL, 20)) * time.Second)         //wake-up nearby monitoring
+	monitoringTicker := time.NewTicker(time.Duration(config.GetInt(config.REG_MONITORING_INTERVAL, 30)) * time.Second) // wake-up general-area monitoring
 	for {
 		select {
 		case <-Reg.etcdCh:
@@ -65,13 +65,10 @@ func monitoring() {
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
 
-	log.Printf("Etcd server map: %v", etcdServerMap)
-
 	for key, url := range etcdServerMap {
 		oldInfo, ok := Reg.serversMap[key]
 
 		ip := url[7 : len(url)-5]
-		log.Printf("ip = %v\n", ip)
 		// use udp socket to retrieve infos about the edge-node status and rtt
 		newInfo, rtt := statusInfoRequest(ip)
 		if newInfo == nil {
@@ -81,7 +78,6 @@ func monitoring() {
 			continue
 		}
 
-		log.Printf("Adding %v to serversMap\n")
 		Reg.serversMap[key] = newInfo
 		if (ok && !reflect.DeepEqual(oldInfo.Coordinates, newInfo.Coordinates)) || !ok {
 			_, err := Reg.Client.Update("node", &newInfo.Coordinates, rtt)
@@ -101,6 +97,7 @@ func monitoring() {
 
 	// Updates NearbyServersMap with the N closest nodes from serverMap
 	getRank(2) //todo change this value
+	log.Printf("Nearby map at the end of monitoring: %v\n", Reg.NearbyServersMap)
 }
 
 type dist struct {
@@ -111,13 +108,14 @@ type dist struct {
 // getRank finds servers nearby to the current one
 func getRank(rank int) {
 	if rank > len(Reg.serversMap) {
+		Reg.NearbyServersMap = make(map[string]*StatusInformation)
 		for k, v := range Reg.serversMap {
 			Reg.NearbyServersMap[k] = v
 		}
 		return
 	}
 
-	var distanceBuf = make([]dist, 0) //distances from current server
+	var distanceBuf = make([]dist, len(Reg.serversMap)) //distances from current server
 	for key, s := range Reg.serversMap {
 		distanceBuf = append(distanceBuf, dist{key, Reg.Client.DistanceTo(&s.Coordinates)})
 	}
@@ -131,18 +129,15 @@ func getRank(rank int) {
 
 // nearbyMonitoring check nearby server's status
 func nearbyMonitoring() {
-	log.Printf("Starting nearby monitoring\n")
-	log.Printf("Map: %v\n", Reg.NearbyServersMap)
+	log.Printf("Periodic nearby monitoring\n")
 
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
 	for key, info := range Reg.NearbyServersMap {
 		oldInfo, ok := Reg.serversMap[key]
-		log.Printf("Old info: %v\n", oldInfo)
 
 		ip := info.Url[7 : len(info.Url)-5]
 		newInfo, rtt := statusInfoRequest(ip)
-		log.Printf("new info: %v\n", oldInfo)
 
 		if newInfo == nil {
 			log.Printf("Unreachable neighbor: %s\n", key)
