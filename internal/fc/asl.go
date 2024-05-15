@@ -118,7 +118,7 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 			return nil, fmt.Errorf("non existing function in composition: %s", s.Resource)
 		}
 		// get function
-		builder = builder.AddSimpleNode(f)
+		builder = builder.AddSimpleNodeWithId(f, s.Name)
 		funcs = append(funcs, f)
 		fmt.Printf("Added simple node with f: %s, funcs=%v\n", f, funcs)
 	}

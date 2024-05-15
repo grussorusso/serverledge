@@ -50,57 +50,10 @@ func TestParsedCompositionName(t *testing.T) {
 	utils.AssertEquals(t, comp.Name, expectedName)
 }
 
-// TestParsingSimple verifies that a simple json with 2 state is correctly parsed and it is equal to a sequence dag with 2 simple nodes
-// then runs the composition and expect the correct result. At the end deletes the composition
-func TestParsingSimple(t *testing.T) {
-	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
-	}
-	// check the number of workflows before creating the new one
+func commonTest(t *testing.T, name string, expectedResult int) {
 	all, err := fc.GetAllFC()
 	utils.AssertNil(t, err)
 
-	comp, f := parseFileName(t, "simple")
-
-	err = comp.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "unable to save parsed composition")
-
-	all2, err := fc.GetAllFC()
-	utils.AssertNil(t, err)
-	utils.AssertTrue(t, len(all2) == len(all)+1)
-
-	expectedComp, ok := fc.GetFC("simple")
-	utils.AssertTrue(t, ok)
-
-	utils.AssertTrueMsg(t, comp.Equals(expectedComp), "parsed composition differs from expected composition")
-
-	// runs the workflow
-	params := make(map[string]interface{})
-	params[f.Signature.GetInputs()[0].Name] = 0
-	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
-	resultMap, err2 := comp.Invoke(request)
-	utils.AssertNil(t, err2)
-
-	// checks the result
-	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, 2, output.(int))
-	fmt.Println("Result: ", output)
-}
-
-// TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed (TODO)
-func TestParsingSequence(t *testing.T) {
-	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
-	}
-
-	all, err := fc.GetAllFC()
-	utils.AssertNil(t, err)
-
-	SequenceLen := 5 // Don't change, unless you change the number of task in the corresponding json file
-
-	name := "sequence"
 	comp, f := parseFileName(t, name)
 
 	// saving to etcd is not necessary to run the function composition, but is needed when offloading
@@ -116,6 +69,7 @@ func TestParsingSequence(t *testing.T) {
 		utils.AssertTrue(t, ok)
 
 		utils.AssertTrueMsg(t, comp.Equals(expectedComp), "parsed composition differs from expected composition")
+		fmt.Println(comp)
 	}
 
 	// runs the workflow
@@ -127,8 +81,30 @@ func TestParsingSequence(t *testing.T) {
 
 	// checks the result
 	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, SequenceLen, output.(int))
+	utils.AssertEquals(t, expectedResult, output.(int))
 	fmt.Println("Result: ", output)
+}
+
+// TestParsingSimple verifies that a simple json with 2 state is correctly parsed and it is equal to a sequence dag with 2 simple nodes
+// then runs the composition and expect the correct result. At the end deletes the composition
+func TestParsingSimple(t *testing.T) {
+	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
+	if !IntegrationTest {
+		t.Skip()
+	}
+
+	commonTest(t, "simple", 2)
+}
+
+// TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed (TODO)
+func TestParsingSequence(t *testing.T) {
+	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
+	if !IntegrationTest {
+		t.Skip()
+	}
+
+	commonTest(t, "sequence", 5)
+
 }
 
 // TestParsingMixedUpSequence verifies that a json file with 5 simple unordered task is parsed correctly and in order in a sequence DAG. TODO: create a
@@ -137,13 +113,8 @@ func TestParsingMixedUpSequence(t *testing.T) {
 	if !IntegrationTest {
 		t.Skip()
 	}
-	body, err := os.ReadFile("asl/mixed_sequence.json")
-	utils.AssertNilMsg(t, err, "unable to read file")
 
-	sm, _ := fc.FromASL("simple", body)
-	fmt.Printf("Found state machine:  %v\n", sm)
-
-	// TODO run the dag end expect the correct result
+	commonTest(t, "mixed_sequence", 5)
 }
 
 // / TestParsingMultipleFunctionSequence verifies that a json file with three different functions is correctly parsed from a DAG.
