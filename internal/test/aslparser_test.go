@@ -38,7 +38,7 @@ func parseFileName(t *testing.T, aslFileName string) (*fc.FunctionComposition, *
 	return comp, f
 }
 
-// / name of composition should be the same as the filename (without extension)
+// / TestParsedCompositionName verifies that the composition name matches the filename (without extension)
 func TestParsedCompositionName(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
 	if !IntegrationTest {
@@ -50,6 +50,8 @@ func TestParsedCompositionName(t *testing.T) {
 	utils.AssertEquals(t, comp.Name, expectedName)
 }
 
+// commonTest creates a function, parses a json AWS State Language file producing a function composition,
+// then checks if the composition is saved onto ETCD. Lastly, it runs the composition and expects the correct result.
 func commonTest(t *testing.T, name string, expectedResult int) {
 	all, err := fc.GetAllFC()
 	utils.AssertNil(t, err)
@@ -86,7 +88,7 @@ func commonTest(t *testing.T, name string, expectedResult int) {
 }
 
 // TestParsingSimple verifies that a simple json with 2 state is correctly parsed and it is equal to a sequence dag with 2 simple nodes
-// then runs the composition and expect the correct result. At the end deletes the composition
+
 func TestParsingSimple(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
 	if !IntegrationTest {

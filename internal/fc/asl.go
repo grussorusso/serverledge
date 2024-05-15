@@ -70,7 +70,8 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 		if err2 != nil {
 			return err2
 		}
-		s := State{Name: string(key), Type: string(stateType), Resource: string(stateResource)}
+		nextState, _, _, err2 := jsonparser.Get(value, "Next")
+		s := State{Name: string(key), Type: string(stateType), Resource: string(stateResource), Next: string(nextState)}
 		states[s.Name] = s
 		return nil
 	})
@@ -92,35 +93,43 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 		return nil, fmt.Errorf("could not parse the ASL file: %v", err)
 	}
 
-	adj := make(map[string][]string)
-	for k, v := range stateMachine.States {
-		if v.Type == "Task" {
-			adj[k] = make([]string, 1)
-			adj[k] = append(adj[k], v.Next)
-		} else if v.Type == "Choice" {
-			adj[k] = make([]string, 1)
-			fmt.Printf("Raw: %v\n", v)
-			fmt.Printf("Next: %v\n", v.Next)
-			// TODO: adj[k] = append(adj[k], v.Default)
-		}
-	}
-	fmt.Println(adj)
+	//adj := make(map[string][]string)
+	//for k, v := range stateMachine.States {
+	//	if v.Type == "Task" {
+	//		adj[k] = make([]string, 1)
+	//		adj[k] = append(adj[k], v.Next)
+	//	} else if v.Type == "Choice" {
+	//		adj[k] = make([]string, 1)
+	//		fmt.Printf("Raw: %v\n", v)
+	//		fmt.Printf("Next: %v\n", v.Next)
+	//		// TODO: adj[k] = append(adj[k], v.Default)
+	//	}
+	//}
+	//fmt.Println(adj)
 
 	// TODO: topological sorting
+
+	currentState, ok := stateMachine.States[stateMachine.StartAt]
+
+	// loops until we get to the End
 	funcs := make([]*function.Function, 0)
 	builder := NewDagBuilder()
-	for _, s := range stateMachine.States {
-		if s.Type != "Task" {
-			return nil, fmt.Errorf("unsupported task type: %s", s.Type) // TODO
+	for ok {
+		// TODO support other types of States
+		if currentState.Type != "Task" {
+			return nil, fmt.Errorf("unsupported task type: %s", currentState.Type) // TODO
 		}
-		f, found := function.GetFunction(s.Resource)
+
+		f, found := function.GetFunction(currentState.Resource)
 		if !found {
-			return nil, fmt.Errorf("non existing function in composition: %s", s.Resource)
+			return nil, fmt.Errorf("non existing function in composition: %s", currentState.Resource)
 		}
-		// get function
-		builder = builder.AddSimpleNodeWithId(f, s.Name)
+		builder = builder.AddSimpleNodeWithId(f, currentState.Name)
 		funcs = append(funcs, f)
 		fmt.Printf("Added simple node with f: %s, funcs=%v\n", f, funcs)
+
+		// if we are at the end, we close it
+		currentState, ok = stateMachine.States[currentState.Next]
 	}
 
 	dag, err := builder.Build()
