@@ -5,6 +5,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
+	"github.com/lithammer/shortuuid"
 	"os"
 	"testing"
 )
@@ -50,6 +51,7 @@ func TestParsedCompositionName(t *testing.T) {
 }
 
 // TestParsingSimple verifies that a simple json with 2 state is correctly parsed and it is equal to a sequence dag with 2 simple nodes
+// then runs the composition and expect the correct result. At the end deletes the composition
 func TestParsingSimple(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
 	if !IntegrationTest {
@@ -59,7 +61,7 @@ func TestParsingSimple(t *testing.T) {
 	all, err := fc.GetAllFC()
 	utils.AssertNil(t, err)
 
-	comp, _ := parseFileName(t, "simple")
+	comp, f := parseFileName(t, "simple")
 
 	err = comp.SaveToEtcd()
 	utils.AssertNilMsg(t, err, "unable to save parsed composition")
@@ -72,6 +74,18 @@ func TestParsingSimple(t *testing.T) {
 	utils.AssertTrue(t, ok)
 
 	utils.AssertTrueMsg(t, comp.Equals(expectedComp), "parsed composition differs from expected composition")
+
+	// runs the workflow
+	params := make(map[string]interface{})
+	params[f.Signature.GetInputs()[0].Name] = 0
+	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
+	resultMap, err2 := comp.Invoke(request)
+	utils.AssertNil(t, err2)
+
+	// checks the result
+	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, 2, output.(int))
+	fmt.Println("Result: ", output)
 }
 
 // TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed (TODO)
@@ -80,11 +94,66 @@ func TestParsingSequence(t *testing.T) {
 	if !IntegrationTest {
 		t.Skip()
 	}
-	body, err := os.ReadFile("asl/sequence.json")
+
+	all, err := fc.GetAllFC()
+	utils.AssertNil(t, err)
+
+	SequenceLen := 5 // Don't change, unless you change the number of task in the corresponding json file
+
+	name := "sequence"
+	comp, f := parseFileName(t, name)
+
+	// saving to etcd is not necessary to run the function composition, but is needed when offloading
+	{
+		err := comp.SaveToEtcd()
+		utils.AssertNilMsg(t, err, "unable to save parsed composition")
+
+		all2, err := fc.GetAllFC()
+		utils.AssertNil(t, err)
+		utils.AssertTrue(t, len(all2) == len(all)+1)
+
+		expectedComp, ok := fc.GetFC(name)
+		utils.AssertTrue(t, ok)
+
+		utils.AssertTrueMsg(t, comp.Equals(expectedComp), "parsed composition differs from expected composition")
+	}
+
+	// runs the workflow
+	params := make(map[string]interface{})
+	params[f.Signature.GetInputs()[0].Name] = 0
+	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
+	resultMap, err2 := comp.Invoke(request)
+	utils.AssertNil(t, err2)
+
+	// checks the result
+	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, SequenceLen, output.(int))
+	fmt.Println("Result: ", output)
+}
+
+// TestParsingMixedUpSequence verifies that a json file with 5 simple unordered task is parsed correctly and in order in a sequence DAG. TODO: create a
+func TestParsingMixedUpSequence(t *testing.T) {
+	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
+	if !IntegrationTest {
+		t.Skip()
+	}
+	body, err := os.ReadFile("asl/mixed_sequence.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
 
 	sm, _ := fc.FromASL("simple", body)
 	fmt.Printf("Found state machine:  %v\n", sm)
 
-	fmt.Println()
+	// TODO run the dag end expect the correct result
+}
+
+// / TestParsingMultipleFunctionSequence verifies that a json file with three different functions is correctly parsed from a DAG.
+func TestParsingMultipleFunctionSequence(t *testing.T) {
+	// TODO write json file with multiple functions
+	// TODO run the dag end expect the correct result
+}
+
+// / TestParsingChoiceFunctionDag verifies that a json file with three different choices is correctly parsed in a Dag with a Choice node and three simple nodes.
+func TestParsingChoiceFunctionDag(t *testing.T) {
+	// TODO write json file with Choice Task
+	// TODO run the dag end expect the correct result
 }
