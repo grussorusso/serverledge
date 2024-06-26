@@ -127,7 +127,7 @@ func CreateFunction(c echo.Context) error {
 	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if ok {
 		log.Printf("Dropping request for already existing function '%s'\n", f.Name)
-		return c.JSON(http.StatusConflict, "")
+		return c.String(http.StatusConflict, "")
 	}
 
 	log.Printf("New request: creation of %s\n", f.Name)
