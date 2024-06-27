@@ -136,10 +136,10 @@ The configuration file may look like this:
 
 ## Additional Documentation
 
-
+ - [API reference](./docs/api.md)
  - [Writing functions](./docs/writing-functions.md)
- - [Metrics](./docs/metrics.md)
  - [Serverledge Internals: Executor](./docs/executor.md)
+ - [Metrics](./docs/metrics.md)
 
 
 ## License
