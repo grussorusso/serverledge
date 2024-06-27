@@ -4,4 +4,4 @@ docker run -d --rm --name Etcd-server \
     --publish 2380:2380 \
     --env ALLOW_NONE_AUTHENTICATION=yes \
     --env ETCD_ADVERTISE_CLIENT_URLS=http://localhost:2379 \
-    bitnami/etcd:latest
+    bitnami/etcd:3.5.14-debian-12-r1

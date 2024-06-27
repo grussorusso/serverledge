@@ -12,7 +12,7 @@
 
 ### Registering a new function
 
- <code>POST</code> <code><b>/create</b></code> <code>(registers a new function)</code>
+ <code>POST</code> <code><b>/create</b></code> (registers a new function)
 
 ##### Parameters
 
@@ -39,5 +39,103 @@
 
 
 ------------------------------------------------------------------------------------------
+### Deleting a function
 
-#### Listing existing stubs & proxy configs as YAML string
+ <code>POST</code> <code><b>/delete</b></code> (deletes an existing function)
+
+##### Parameters
+
+> | name      |  required   | type               | description                                                           |
+> |-----------|-------------|-------------------------|------------|
+> | `Name`    |         yes | string  | Name of the function  |
+
+
+##### Responses
+
+> | http code     | content-type                      | response                        | comments                                    |
+> |---------------|-----------------------------------|---------------------------------|-----------------------------------|
+> | `200`         | `application/json`        | `{ "Deleted": "function_name" }`    |                            |
+> | `404`         | `text/plain`              | `Unknown function.` |    The function does not exist      |
+> | `503`         | `text/plain`              |  |    Creation failed                        |
+
+
+
+------------------------------------------------------------------------------------------
+
+### Invoking a function
+
+ <code>POST</code> <code><b>/invoke/<func></b></code> (invokes function `<func>`)
+
+##### Parameters
+
+> | name      |  required   | type               | description                                                           |
+> |-----------|-------------|-------------------------|------------|
+> | `Params`          | yes | dict    | Key-value specification of invocation parameters  |
+> | `CanDoOffloading` |     | boolean | Whether the request can be offloaded (default: true)  |
+> | `Async`           |     | boolean | Whether the invocation is asynchronous (default: false)  |
+> | `QoSClass`        |     | int     | ID of the QoS class for the request     |
+> | `QoSMaxRespT`     |     | float   | Desired max response time  |
+
+
+##### Responses
+
+> | http code     | content-type                      | response                        | comments                                    |
+> |---------------|-----------------------------------|---------------------------------|-----------------------------------|
+> | `200`         | `application/json`        | *See below.*    |                            |
+> | `404`         | `text/plain`              | `Function unknown.` |          |
+> | `429`         | `text/plain`              |  | Not served because of excessive load.         |
+> | `500`         | `text/plain`              |  |    Invocation failed.                        |
+
+An example response for a successful **synchronous** request:
+	
+	{
+	    "Success": true,
+	    "Result": "{\"IsPrime\": false}",
+	    "ResponseTime": 0.712851098,
+	    "IsWarmStart": false,
+	    "InitTime": 0.709491144,
+	    "OffloadLatency": 0,
+	    "Duration": 0.003351790000000021,
+	    "SchedAction": ""
+	}
+
+`Result` contains the object returned by the function upon completion.
+The other fields provide lower-level information. For instance, `Duration`
+reports the execution time of the function (in seconds), excluding all the
+communication and initialization overheads. `IsWarmStart` indicates whether
+a warm container has been used for the request.
+
+
+An example response for a successful **asynchronous** request:
+
+	{
+		"ReqId": "isprime-98330239242748"
+	}
+
+`ReqId` can be used later to poll the execution results.
+
+------------------------------------------------------------------------------------------
+### Polling for the results of an async request
+
+ <code>GET</code> <code><b>/poll/<reqId></b></code> (polls the results of `<reqId>`)
+
+##### Parameters
+
+`<reqId>` is the request identifier, as returned by `/invoke`.
+
+##### Responses
+
+> | http code     | content-type                      | response                        | comments                                    |
+> |---------------|-----------------------------------|---------------------------------|-----------------------------------|
+> | `200`         | `application/json`        | *See response to synchronous requests.*    |                            |
+> | `404`         | `text/plain`              | |   Results not found.        |
+> | `500`         | `text/plain`              | `Could not retrieve results` |    
+> | `500`         | `text/plain`              | `Failed to connect to Global Registry` |    
+
+
+------------------------------------------------------------------------------------------
+
+<!--
+status API
+function API
+-->

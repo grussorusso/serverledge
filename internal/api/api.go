@@ -44,7 +44,7 @@ func InvokeFunction(c echo.Context) error {
 	fun, ok := function.GetFunction(funcName)
 	if !ok {
 		log.Printf("Dropping request for unknown fun '%s'\n", funcName)
-		return c.JSON(http.StatusNotFound, "")
+		return c.String(http.StatusNotFound, "Function unknown")
 	}
 
 	var invocationRequest client.InvocationRequest
@@ -89,13 +89,13 @@ func InvokeFunction(c echo.Context) error {
 func PollAsyncResult(c echo.Context) error {
 	reqId := c.Param("reqId")
 	if len(reqId) < 0 {
-		return c.JSON(http.StatusNotFound, "")
+		return c.String(http.StatusNotFound, "")
 	}
 
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Println("Could not connect to Etcd")
-		return c.JSON(http.StatusInternalServerError, "")
+		return c.String(http.StatusInternalServerError, "Failed to connect to the Global Registry")
 	}
 
 	ctx := context.Background()
@@ -104,14 +104,14 @@ func PollAsyncResult(c echo.Context) error {
 	res, err := etcdClient.Get(ctx, key)
 	if err != nil {
 		log.Println(err)
-		return c.JSON(http.StatusInternalServerError, "")
+		return c.String(http.StatusInternalServerError, "Could not retrieve results")
 	}
 
 	if len(res.Kvs) == 1 {
 		payload := res.Kvs[0].Value
 		return c.JSONBlob(http.StatusOK, payload)
 	} else {
-		return c.JSON(http.StatusNotFound, "")
+		return c.String(http.StatusNotFound, "")
 	}
 }
 
@@ -161,14 +161,14 @@ func DeleteFunction(c echo.Context) error {
 	_, ok := function.GetFunction(f.Name) // TODO: we would need a system-wide lock here...
 	if !ok {
 		log.Printf("Dropping request for non existing function '%s'\n", f.Name)
-		return c.JSON(http.StatusNotFound, "")
+		return c.String(http.StatusNotFound, "Unknown function")
 	}
 
 	log.Printf("New request: deleting %s\n", f.Name)
 	err = f.Delete()
 	if err != nil {
 		log.Printf("Failed deletion: %v\n", err)
-		return c.JSON(http.StatusServiceUnavailable, "")
+		return c.String(http.StatusServiceUnavailable, "")
 	}
 
 	// Delete local warm containers
