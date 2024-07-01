@@ -33,24 +33,8 @@ func InitDockerContainerFactory() *DockerFactory {
 
 func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (ContainerID, error) {
 	if !cf.HasImage(image) {
-		log.Printf("Pulling image: %s\n", image)
-		pullResp, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
-		if err != nil {
-			log.Printf("Could not pull image: %s\n", image)
-			// we do not return here, as a stale copy of the image
-			// could still be available locally
-		} else {
-			defer func(pullResp io.ReadCloser) {
-				err := pullResp.Close()
-				if err != nil {
-					log.Printf("Could not close the docker image pull response\n")
-				}
-			}(pullResp)
-			// This seems to be necessary to wait for the image to be pulled:
-			_, _ = io.Copy(io.Discard, pullResp)
-			log.Printf("Pulled image: %s\n", image)
-			refreshedImages[image] = true
-		}
+		_ = cf.PullImage(image)
+		// error ignored, as we might still have a stale copy of the image
 	}
 
 	contResources := container.Resources{Memory: opts.MemoryMB * 1048576} // convert to bytes
@@ -107,6 +91,25 @@ func (cf *DockerFactory) HasImage(image string) bool {
 		}
 	}
 	return true
+}
+
+func (cf *DockerFactory) PullImage(image string) error {
+	pullResp, err := cf.cli.ImagePull(cf.ctx, image, types.ImagePullOptions{})
+	if err != nil {
+		return fmt.Errorf("Could not pull image '%s': %v", image, err)
+	}
+
+	defer func(pullResp io.ReadCloser) {
+		err := pullResp.Close()
+		if err != nil {
+			log.Printf("Could not close the docker image pull response\n")
+		}
+	}(pullResp)
+	// This seems to be necessary to wait for the image to be pulled:
+	_, _ = io.Copy(io.Discard, pullResp)
+	log.Printf("Pulled image: %s\n", image)
+	refreshedImages[image] = true
+	return nil
 }
 
 func (cf *DockerFactory) GetIPAddress(contID ContainerID) (string, error) {

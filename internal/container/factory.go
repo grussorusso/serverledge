@@ -1,6 +1,8 @@
 package container
 
-import "io"
+import (
+	"io"
+)
 
 // A Factory to create and manage container.
 type Factory interface {
@@ -9,6 +11,7 @@ type Factory interface {
 	Start(ContainerID) error
 	Destroy(ContainerID) error
 	HasImage(string) bool
+	PullImage(string) error
 	GetIPAddress(ContainerID) (string, error)
 	GetMemoryMB(id ContainerID) (int64, error)
 }
@@ -25,3 +28,10 @@ type ContainerID = string
 
 // cf is the container factory for the node
 var cf Factory
+
+func DownloadImage(image string, forceRefresh bool) error {
+	if forceRefresh || !cf.HasImage(image) {
+		return cf.PullImage(image)
+	}
+	return nil
+}

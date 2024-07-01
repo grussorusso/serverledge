@@ -29,6 +29,7 @@ func startAPIServer(e *echo.Echo) {
 
 	// Routes
 	e.POST("/invoke/:fun", api.InvokeFunction)
+	e.POST("/prewarm", api.PrewarmFunction)
 	e.POST("/create", api.CreateFunction)
 	e.POST("/delete", api.DeleteFunction)
 	e.GET("/function", api.GetFunctions)

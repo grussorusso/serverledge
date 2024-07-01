@@ -71,8 +71,8 @@
 > | name      |  required   | type               | description                                                           |
 > |-----------|-------------|-------------------------|------------|
 > | `Params`          | yes | dict    | Key-value specification of invocation parameters  |
-> | `CanDoOffloading` |     | boolean | Whether the request can be offloaded (default: true)  |
-> | `Async`           |     | boolean | Whether the invocation is asynchronous (default: false)  |
+> | `CanDoOffloading` |     | bool    | Whether the request can be offloaded (default: true)  |
+> | `Async`           |     | bool    | Whether the invocation is asynchronous (default: false)  |
 > | `QoSClass`        |     | int     | ID of the QoS class for the request     |
 > | `QoSMaxRespT`     |     | float   | Desired max response time  |
 
@@ -132,6 +132,27 @@ An example response for a successful **asynchronous** request:
 > | `500`         | `text/plain`              | `Could not retrieve results` |    
 > | `500`         | `text/plain`              | `Failed to connect to Global Registry` |    
 
+------------------------------------------------------------------------------------------
+### Prewarming a function
+
+ <code>POST</code> <code><b>/prewarm</b></code> (prewarms instances for a function)
+
+##### Parameters
+
+> | name      |  required   | type               | description                                                           |
+> |-----------|-------------|-------------------------|------------|
+> | `Function`    |         yes | string  | Name of the function  |
+> | `Instances`   |         yes | int  | Instances to spawn (0 to only pull the image)|
+> | `ForceImagePull`  |             | bool  | Always check for image updates, even if a local copy exists  |
+
+
+##### Responses
+
+> | http code     | content-type                      | response                        | comments                                    |
+> |---------------|-----------------------------------|---------------------------------|-----------------------------------|
+> | `200`         | `application/json`        | `{ "Prewarmed": N }`    |  The number of prewarmed instances is returned. **It might be less than `Instances`** due to resource shortage. 
+> | `404`         | `text/plain`              | `Unknown function.` |    The function does not exist      |
+> | `503`         | `text/plain`              |  |    Prewarming failed                        |
 
 ------------------------------------------------------------------------------------------
 

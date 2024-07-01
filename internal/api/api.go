@@ -206,3 +206,28 @@ func GetServerStatus(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+// PrewarmFunction handles a prewarming request.
+func PrewarmFunction(c echo.Context) error {
+	var req client.PrewarmingRequest
+	err := json.NewDecoder(c.Request().Body).Decode(&req)
+	if err != nil && err != io.EOF {
+		log.Printf("Could not parse request: %v\n", err)
+		return err
+	}
+
+	fun, ok := function.GetFunction(req.Function)
+	if !ok {
+		log.Printf("Dropping request for unknown fun '%s'\n", req.Function)
+		return c.String(http.StatusNotFound, "Function unknown")
+	}
+
+	count, err := node.PrewarmInstances(fun, req.Instances, req.ForceImagePull)
+
+	if err != nil && !errors.Is(err, node.OutOfResourcesErr) {
+		log.Printf("Failed prewarming: %v\n", err)
+		return c.JSON(http.StatusServiceUnavailable, "")
+	}
+	response := struct{ Prewarmed int64 }{count}
+	return c.JSON(http.StatusOK, response)
+}

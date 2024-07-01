@@ -7,3 +7,9 @@ type InvocationRequest struct {
 	CanDoOffloading bool
 	Async           bool
 }
+
+type PrewarmingRequest struct {
+	Function       string
+	Instances      int64
+	ForceImagePull bool
+}
