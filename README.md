@@ -31,7 +31,7 @@ explains how to obtain and use the software, is available
 
 ## Building from sources
 
-1. Check that Golang is correctly installed on your machine.
+1. Check that Golang 1.20+ is installed.
 
 2. Download a copy of the source code.
 
@@ -46,7 +46,7 @@ You will find executables in `./bin/`.
 ## Running (single-node deployment)
 
 As functions are executed within Docker containers, you need Docker to
-be installed on the host. Furthermore, the Serverledge node needs
+be installed on the host. Furthermore, Serverledge needs
 permissions to create containers.
 
 You also need an **etcd** server to run Serverledge. To quickly start a local
@@ -54,7 +54,7 @@ server:
 
 	$ ./scripts/start-etcd.sh   # stop it with ./scripts/stop-etcd.sh
 
-Start a Serverledge node:
+Start a local Serverledge node:
 
 	$ bin/serverledge
 
@@ -62,7 +62,7 @@ Start a Serverledge node:
 
 Register a function `func` from example code:
 
-	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler" 
+	$ bin/serverledge-cli create -f func --memory 200 --src examples/hello.py --runtime python310 --handler "hello.handler" 
 
 Invoke `func` with arguments `a=2` and `b=3`:
 

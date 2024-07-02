@@ -15,6 +15,7 @@ type Request struct {
 	RequestQoS
 	CanDoOffloading bool
 	Async           bool
+	ReturnOutput    bool
 }
 
 type RequestQoS struct {
@@ -30,6 +31,7 @@ type ExecutionReport struct {
 	OffloadLatency float64
 	Duration       float64
 	SchedAction    string
+	Output         string
 }
 
 type Response struct {

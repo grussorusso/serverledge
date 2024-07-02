@@ -63,6 +63,7 @@ func InvokeFunction(c echo.Context) error {
 	r.MaxRespT = invocationRequest.QoSMaxRespT
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	r.Async = invocationRequest.Async
+	r.ReturnOutput = invocationRequest.ReturnOutput
 	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""

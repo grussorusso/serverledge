@@ -35,12 +35,15 @@ http.createServer(async (request, response) => {
 			resp = {}
 			resp["Result"] = JSON.stringify(result);
 			resp["Success"] = true
+			resp["Output"] = "Output capture not supported for this runtime yet."
+
 
 			response.writeHead(200, { 'Content-Type': contentType });
 			response.end(JSON.stringify(resp), 'utf-8');
 		} catch (error) {
 			resp = {}
 			resp["Success"] = false
+			resp["Output"] = "Output capture not supported for this runtime yet."
 			response.writeHead(500, { 'Content-Type': contentType });
 			response.end(JSON.stringify(resp), 'utf-8');
 		}

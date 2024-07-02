@@ -6,6 +6,7 @@ type InvocationRequest struct {
 	QoSMaxRespT     float64
 	CanDoOffloading bool
 	Async           bool
+	ReturnOutput    bool
 }
 
 type PrewarmingRequest struct {

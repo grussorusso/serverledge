@@ -9,8 +9,37 @@ import json
 hostName = "0.0.0.0"
 serverPort = 8080
 
-executed_modules = {}
+#executed_modules = {}
 added_dirs = {}
+
+from io import StringIO
+import sys
+
+class CaptureOutput:
+    def __enter__(self):
+        self._stdout_output = ''
+        self._stderr_output = ''
+
+        self._stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        self._stderr = sys.stderr
+        sys.stderr = StringIO()
+
+        return self
+
+    def __exit__(self, *args):
+        self._stdout_output = sys.stdout.getvalue()
+        sys.stdout = self._stdout
+
+        self._stderr_output = sys.stderr.getvalue()
+        sys.stderr = self._stderr
+
+    def get_stdout(self):
+        return self._stdout_output
+
+    def get_stderr(self):
+        return self._stderr_output
 
 class Executor(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -43,18 +72,24 @@ class Executor(BaseHTTPRequestHandler):
         # Get module name
         module,func_name = os.path.splitext(handler)
         func_name = func_name[1:] # strip initial dot
+        loaded_mod = None
+
+        return_output = bool(request["ReturnOutput"])
 
         response = {}
 
         try:
-            # Import module
-            if not module in executed_modules:
-                exec(f"import {module}")
-                executed_modules[module] = True
-
             # Call function
-            mod = importlib.import_module(module)
-            result = getattr(mod, func_name)(params, context)
+            if loaded_mod is None:
+                loaded_mod = importlib.import_module(module)
+
+            if not return_output:
+                result = getattr(loaded_mod, func_name)(params, context)
+                response["Output"] = ""
+            else:
+                with CaptureOutput() as capturer:
+                    result = getattr(loaded_mod, func_name)(params, context)
+                response["Output"] = str(capturer.get_stdout()) + "\n" + str(capturer.get_stderr())
 
             response["Result"] = json.dumps(result)
             response["Success"] = True

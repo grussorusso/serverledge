@@ -20,10 +20,11 @@ An `InvocationRequest` has the following fields:
 
 ```
 type InvocationRequest struct {
-	Command    []string
-	Params     map[string]interface{}
-	Handler    string
-	HandlerDir string
+	Command      []string
+	Params       map[string]interface{}
+	Handler      string
+	HandlerDir   string
+	ReturnOutput bool
 }
 ```
 
@@ -37,6 +38,8 @@ type InvocationRequest struct {
 E.g., for Python runtimes, `<module_name>.<function_name>`.
 
 - `HandlerDir`: directory where the function code has been copied.
+
+- `ReturnOutput`: whether function standard output and error should be returned.
 
 The following object is returned upon function completion (or failure):
 

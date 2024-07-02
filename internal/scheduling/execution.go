@@ -17,15 +17,17 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	var req executor.InvocationRequest
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
 		req = executor.InvocationRequest{
-			Params: r.Params,
+			Params:       r.Params,
+			ReturnOutput: r.ReturnOutput,
 		}
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
 		req = executor.InvocationRequest{
-			Command:    cmd,
-			Params:     r.Params,
-			Handler:    r.Fun.Handler,
-			HandlerDir: HANDLER_DIR,
+			Command:      cmd,
+			Params:       r.Params,
+			Handler:      r.Fun.Handler,
+			HandlerDir:   HANDLER_DIR,
+			ReturnOutput: r.ReturnOutput,
 		}
 	}
 
@@ -45,6 +47,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	}
 
 	r.ExecReport.Result = response.Result
+	r.ExecReport.Output = response.Output
 	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 
