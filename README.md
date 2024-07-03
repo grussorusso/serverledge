@@ -80,6 +80,8 @@ where `input.json` may contain:
 		"b": 3
 	}
 
+#### Asynchronous Invocation
+
 Functions can be also invoked asynchronously using the `--async` flag:
 
 	$ bin/serverledge-cli invoke -f func --async
@@ -89,6 +91,14 @@ poll for the execution result:
 
 	$ bin/serverledge-cli poll --request <requestID>
 
+
+#### Getting function standard output
+
+You may want to see the content printed by the function to its standard output/error. To do so, add the `--return_output` flag (`-o` for short):
+
+	$ bin/serverledge-cli invoke -f func -p "a:2" -p "b:3" --return_output
+
+Note that we currently support output capture only for some runtimes (e.g., Python supports it).
 
 ## Distributed Deployment
 
