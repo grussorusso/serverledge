@@ -47,11 +47,14 @@ The following object is returned upon function completion (or failure):
 type InvocationResult struct {
 	Success  bool
 	Result   string
+	Output   string
 }
 ```
 
 - `Success`: whether the function has been successfully executed.
 
 - `Result`: what the function returned.
+
+- `Output`: function combined std. output and error (if captured)
 
 

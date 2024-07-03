@@ -75,6 +75,7 @@
 > | `Async`           |     | bool    | Whether the invocation is asynchronous (default: false)  |
 > | `QoSClass`        |     | int     | ID of the QoS class for the request     |
 > | `QoSMaxRespT`     |     | float   | Desired max response time  |
+> | `ReturnOutput`    |     | bool    | Whether function std. output and error should be collected (if supported by the function runtime)  |
 
 
 ##### Responses
