@@ -1,18 +1,27 @@
 BIN=bin
 GO=go
+ifeq ($(OS),Windows_NT)     # is Windows_NT on XP, 2000, 7, Vista, 10, 11...
+    # detected_OS := Windows
+    BINARY_EXT := .exe
+else
+    # no extension for binaries in unix-like OSes
+    BINARY_EXT := ""
+endif
+
 all: serverledge executor serverledge-cli lb
 
+# compila serverledge e produce il file eseguibile in bin/serverledge.exe
 serverledge:
-	$(GO) build -o $(BIN)/$@ cmd/$@/main.go
+	$(GO) build -o $(BIN)/$@$(BINARY_EXT) cmd/$@/main.go
 
 lb:
-	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/main.go
+	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@$(BINARY_EXT) cmd/$@/main.go
 
 serverledge-cli:
-	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/cli/main.go
+	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@$(BINARY_EXT) cmd/cli/main.go
 
 executor:
-	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@ cmd/$@/executor.go
+	CGO_ENABLED=0 $(GO) build -o $(BIN)/$@$(BINARY_EXT) cmd/$@/executor.go
 
 proto:
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/scheduling/protobuf/solver.proto

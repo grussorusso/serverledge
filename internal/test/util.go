@@ -11,6 +11,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -245,4 +246,8 @@ func newCompositionRequestTest() *fc.CompositionRequest {
 			Reports: hashmap.New[fc.ExecutionReportId, *function.ExecutionReport](), // make(map[fc.ExecutionReportId]*function.ExecutionReport),
 		},
 	}
+}
+
+func IsWindows() bool {
+	return os.PathSeparator == '\\' && os.PathListSeparator == ';'
 }

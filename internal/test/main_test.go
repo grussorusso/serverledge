@@ -24,6 +24,22 @@ const HOST = "127.0.0.1"
 const PORT = 1323
 const AREA = "ROME"
 
+func getShell() string {
+	if IsWindows() {
+		return "powershell.exe"
+	} else {
+		return "/bin/sh"
+	}
+}
+
+func getShellExt() string {
+	if IsWindows() {
+		return ".bat"
+	} else {
+		return ".sh"
+	}
+}
+
 var IntegrationTest bool
 
 func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
@@ -106,15 +122,15 @@ func TestMain(m *testing.M) {
 
 // startReliably can start the containers, or restart them if needed
 func startReliably(startScript string, stopScript string, msg string) error {
-	cmd := exec.CommandContext(context.Background(), "/bin/sh", startScript)
+	cmd := exec.CommandContext(context.Background(), getShell(), startScript)
 	err := cmd.Run()
 	if err != nil {
-		antiCmd := exec.CommandContext(context.Background(), "/bin/sh", stopScript)
+		antiCmd := exec.CommandContext(context.Background(), getShell(), stopScript)
 		err = antiCmd.Run()
 		if err != nil {
 			return fmt.Errorf("stopping of %s failed", msg)
 		}
-		cmd = exec.CommandContext(context.Background(), "/bin/sh", startScript)
+		cmd = exec.CommandContext(context.Background(), getShell(), startScript)
 		err = cmd.Run()
 	}
 	if err == nil {
@@ -125,14 +141,14 @@ func startReliably(startScript string, stopScript string, msg string) error {
 
 // run the bash script to initialize serverledge
 func setupServerledge() (*registration.Registry, *echo.Echo, error) {
-	err1 := startReliably("../../scripts/start-etcd.sh", "../../scripts/stop-etcd.sh", "ETCD")
+	err1 := startReliably("../../scripts/start-etcd"+getShellExt(), "../../scripts/stop-etcd"+getShellExt(), "ETCD")
 	registry, echoServer := testStartServerledge(false)
 	return registry, echoServer, u.ReturnNonNilErr(err1)
 }
 
 // run the bash script to stop serverledge
 func teardownServerledge(registry *registration.Registry, e *echo.Echo) error {
-	cmd1 := exec.CommandContext(context.Background(), "/bin/sh", "../../scripts/remove-etcd.sh")
+	cmd1 := exec.CommandContext(context.Background(), getShell(), "../../scripts/remove-etcd"+getShellExt())
 
 	node.Resources.Lock()
 	nContainers := len(node.Resources.ContainerPools)
