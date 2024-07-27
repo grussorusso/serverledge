@@ -11,7 +11,7 @@ import (
 
 func TestDagMarshaling(t *testing.T) {
 	f, _ := initializeExamplePyFunction()
-
+	u.AssertNonNil(t, f)
 	dag1, _ := fc.CreateEmptyDag()
 	dag2, _ := fc.CreateSequenceDag(f, f, f)
 	dag3, _ := fc.CreateChoiceDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) })

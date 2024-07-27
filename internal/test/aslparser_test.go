@@ -41,8 +41,8 @@ func parseFileName(t *testing.T, aslFileName string) (*fc.FunctionComposition, *
 // / TestParsedCompositionName verifies that the composition name matches the filename (without extension)
 func TestParsedCompositionName(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	expectedName := "simple"
 	comp, _ := parseFileName(t, expectedName)
@@ -91,8 +91,8 @@ func commonTest(t *testing.T, name string, expectedResult int) {
 
 func TestParsingSimple(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	commonTest(t, "simple", 2)
@@ -101,8 +101,8 @@ func TestParsingSimple(t *testing.T) {
 // TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed (TODO)
 func TestParsingSequence(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	commonTest(t, "sequence", 5)
@@ -112,8 +112,8 @@ func TestParsingSequence(t *testing.T) {
 // TestParsingMixedUpSequence verifies that a json file with 5 simple unordered task is parsed correctly and in order in a sequence DAG. TODO: create a
 func TestParsingMixedUpSequence(t *testing.T) {
 	// This does not check the value, the only important thing is to define the INTEGRATION environment variable
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	commonTest(t, "mixed_sequence", 5)
