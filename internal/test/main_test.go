@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/config"
@@ -76,7 +77,9 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 // current dir is ./serverledge/internal/fc
 func TestMain(m *testing.M) {
 	_, Experiment = os.LookupEnv("EXPERIMENT")
-	_, IntegrationTest = os.LookupEnv("INTEGRATION")
+	// Parsing the test flags. Needed to ensure that the -short flag is parsed, so testing.Short() returns a nonNil bool
+	flag.Parse()
+	IntegrationTest = !testing.Short()
 	// spin up container with serverledge infrastructure
 	if IntegrationTest {
 

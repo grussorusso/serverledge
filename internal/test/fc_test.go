@@ -36,8 +36,8 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 // TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition
 func TestComposeFC(t *testing.T) {
 
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	// GET1 - initially we do not have any function composition
@@ -90,8 +90,8 @@ func TestComposeFC(t *testing.T) {
 // TestInvokeFC executes a Sequential Dag of length N, where each node executes a simple increment function.
 func TestInvokeFC(t *testing.T) {
 
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	fcName := "test"
@@ -130,8 +130,8 @@ func TestInvokeFC(t *testing.T) {
 
 // TestInvokeChoiceFC executes a Choice Dag with N alternatives, and it executes only the second one. The functions are all the same increment function
 func TestInvokeChoiceFC(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	fcName := "test"
 	// CREATE - we create a test function composition
@@ -183,8 +183,8 @@ func TestInvokeChoiceFC(t *testing.T) {
 
 // TestInvokeFC_DifferentFunctions executes a Sequential Dag of length 2, with two different functions (in different languages)
 func TestInvokeFC_DifferentFunctions(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	fcName := "test"
@@ -245,8 +245,8 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 // TestInvokeFC_BroadcastFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_BroadcastFanOut(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	//for i := 0; i < 1; i++ {
 
@@ -289,8 +289,8 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 // TestInvokeFC_Concurrent executes concurrently m times a Sequential Dag of length N, where each node executes a simple increment function.
 func TestInvokeFC_Concurrent(t *testing.T) {
 
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	fcName := "test"
@@ -375,8 +375,8 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 // TestInvokeFC_Complex_Concurrent executes concurrently m times a complex Dag of length N, where each node executes a different function
 func TestInvokeFC_Complex_Concurrent(t *testing.T) {
 
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	// CREATE - we create a test function composition
@@ -466,8 +466,8 @@ func TestInvokeFC_Complex_Concurrent(t *testing.T) {
 
 // TestInvokeFC_DifferentBranches executes a Parallel broadcast Dag with N parallel DIFFERENT branches.
 func TestInvokeFC_DifferentBranches(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	//for i := 0; i < 1; i++ {
 
@@ -515,8 +515,8 @@ func TestInvokeFC_DifferentBranches(t *testing.T) {
 
 // TestInvokeFC_ScatterFanOut executes a Parallel Dag with N parallel branches
 func TestInvokeFC_ScatterFanOut(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	//for i := 0; i < 1; i++ {
 
@@ -562,8 +562,8 @@ func TestInvokeFC_ScatterFanOut(t *testing.T) {
 }
 
 func TestInvokeSieveChoice(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	fcName := "test"
 	input := 13
@@ -626,8 +626,8 @@ func TestInvokeSieveChoice(t *testing.T) {
 }
 
 func TestInvokeCompositionError(t *testing.T) {
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 	fcName := "error"
 

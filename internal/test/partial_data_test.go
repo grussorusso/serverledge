@@ -32,8 +32,8 @@ func TestPartialDataMarshaling(t *testing.T) {
 
 func TestPartialDataCache(t *testing.T) {
 	// it's an integration test because it needs etcd
-	if !IntegrationTest {
-		t.Skip()
+	if testing.Short() {
+		t.Skip("Skipping integration test")
 	}
 
 	request1 := fc.ReqId("abc")

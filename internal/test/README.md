@@ -7,8 +7,8 @@
 - If a test requires serverledge to be running, use:
 
 ```go
-    if !IntegrationTest {
-        t.Skip()
+    if testing.Short() {
+        t.Skip("Skipping integration test")
     }
 ```
 - All test utility functions should be into util.go and should be private (to this folder)
@@ -16,6 +16,11 @@
 
 ```sh
 make test
+```
+- To run only short tests, use:
+
+```sh
+make test -short
 ```
 - You can run a test individually with
  
