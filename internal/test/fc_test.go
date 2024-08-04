@@ -33,14 +33,14 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 	u.AssertTrueMsg(t, retrieved.Equals(&composition), fmt.Sprintf("retrieved composition is not equal to initial composition. Retrieved : %s, Expected %s ", retrieved.String(), composition.String()))
 }
 
-// TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition
+// TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition //TODO when using go test, doesn't work
 func TestComposeFC(t *testing.T) {
 
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
 
-	// GET1 - initially we do not have any function composition
+	// GET1 - initially we do not have any function composition FIXME: not necessarily are there 0 functions
 	funcs, err := fc.GetAllFC()
 	fmt.Println(funcs)
 	lenFuncs := len(funcs)

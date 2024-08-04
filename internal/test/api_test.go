@@ -259,6 +259,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	// wait until the result is available
 	i := 0
 	for {
+		// FIXME: poll is broken in some commit
 		pollResult := pollCompositionTest(t, reqIdStruct.ReqId, HOST, PORT)
 		fmt.Println(pollResult)
 
@@ -268,7 +269,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 		result := compExecReport.GetSingleResult()
 		if errUnmarshalExecResult != nil {
 			i++
-			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms\n", i)
+			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms: %v\n", i, errUnmarshalExecResult)
 			time.Sleep(200 * time.Millisecond)
 		} else {
 			utils.AssertEquals(t, "4", result)
