@@ -214,10 +214,7 @@ func NewContainer(fun *function.Function) (container.ContainerID, error) {
 	return NewContainerWithAcquiredResources(fun)
 }
 
-// NewContainerWithAcquiredResources spawns a new container for the given
-// function, assuming that the required CPU and memory resources have been
-// already been acquired.
-func NewContainerWithAcquiredResources(fun *function.Function) (container.ContainerID, error) {
+func getImageForFunction(fun *function.Function) (string, error) {
 	var image string
 	if fun.Runtime == container.CUSTOM_RUNTIME {
 		image = fun.CustomImage
@@ -228,6 +225,17 @@ func NewContainerWithAcquiredResources(fun *function.Function) (container.Contai
 			return "", fmt.Errorf("Invalid runtime: %s", fun.Runtime)
 		}
 		image = runtime.Image
+	}
+	return image, nil
+}
+
+// NewContainerWithAcquiredResources spawns a new container for the given
+// function, assuming that the required CPU and memory resources have been
+// already been acquired.
+func NewContainerWithAcquiredResources(fun *function.Function) (container.ContainerID, error) {
+	image, err := getImageForFunction(fun)
+	if err != nil {
+		return "", err
 	}
 
 	contID, err := container.NewContainer(image, fun.TarFunctionCode, &container.ContainerOptions{
@@ -436,4 +444,27 @@ func WarmStatus() map[string]int {
 	}
 
 	return warmPool
+}
+
+func PrewarmInstances(f *function.Function, count int64, forcePull bool) (int64, error) {
+	image, err := getImageForFunction(f)
+	if err != nil {
+		return 0, err
+	}
+	err = container.DownloadImage(image, forcePull)
+	if err != nil {
+		return 0, err
+	}
+
+	var spawned int64 = 0
+	for spawned < count {
+		_, err = NewContainer(f)
+		if err != nil {
+			log.Printf("Prespawning failed: %v\n", err)
+			return spawned, err
+		}
+		spawned += 1
+	}
+
+	return spawned, nil
 }

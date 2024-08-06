@@ -19,6 +19,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 		req = executor.InvocationRequest{
 			Params:          r.Params,
 			IsInComposition: fromComposition,
+			ReturnOutput: r.ReturnOutput,
 		}
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
@@ -28,13 +29,13 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 			Handler:         r.Fun.Handler,
 			HandlerDir:      HANDLER_DIR,
 			IsInComposition: fromComposition,
+			ReturnOutput: r.ReturnOutput,
 		}
 	}
 
 	t0 := time.Now()
 
 	response, invocationWait, err := container.Execute(contID, &req)
-
 	if err != nil {
 		// notify scheduler
 		completions <- &completion{scheduledRequest: r, contID: contID} // error != nil
@@ -51,6 +52,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 	}
 
 	r.ExecReport.Result = response.Result
+	r.ExecReport.Output = response.Output
 	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 

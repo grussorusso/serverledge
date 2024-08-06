@@ -7,9 +7,11 @@ type InvocationRequest struct {
 	Handler         string
 	HandlerDir      string
 	IsInComposition bool
+	ReturnOutput bool
 }
 
 type InvocationResult struct {
 	Success bool
 	Result  string
+	Output  string // TODO what's the difference with Result?
 }
