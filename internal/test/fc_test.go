@@ -33,19 +33,30 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 	u.AssertTrueMsg(t, retrieved.Equals(&composition), fmt.Sprintf("retrieved composition is not equal to initial composition. Retrieved : %s, Expected %s ", retrieved.String(), composition.String()))
 }
 
-// TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition //TODO when using go test, doesn't work
+func TestUnmarshalFunctionCompositionResult(t *testing.T) {
+	composition := "{\n\t\"Reports\": {\n\t\t\"End_9TUZZdXNwgroNYp4akDKQ6\": {\n\t\t\t\"Result\": \"end\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_JyzhDkLuBzUVSmPEUiEWVm\": {\n\t\t\t\"Result\": \"3\",\n\t\t\t\"ResponseTime\": 0.00283594,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000029114,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002802751,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_c7A3CSJ9efgnW2uCvgWt3Y\": {\n\t\t\t\"Result\": \"4\",\n\t\t\t\"ResponseTime\": 0.002977264,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000020023,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002953664,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_z4Jp4LXWFoPnEFFNhJQ64j\": {\n\t\t\t\"Result\": \"2\",\n\t\t\t\"ResponseTime\": 15.901950313,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 12.705640725,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 3.196273017,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Start_wxrH86t6zc2T2menLrUgYm\": {\n\t\t\t\"Result\": \"start\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t}\n\t},\n\t\"ResponseTime\": 0,\n\t\"Result\": {\n\t\t\"result\": 4\n\t}\n}"
+	var retrieved fc.CompositionExecutionReport
+	errUnmarshal := json.Unmarshal([]byte(composition), &retrieved)
+	fmt.Println(retrieved)
+	u.AssertNilMsg(t, errUnmarshal, "failed to unmarshal composition result")
+	u.AssertNonNilMsg(t, retrieved.Result, "the unmarshalled composition result should not have been nil")
+	u.AssertNonNilMsg(t, retrieved.Reports, "the unmarshalled composition result should not have been nil")
+
+}
+
+// TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition
 func TestComposeFC(t *testing.T) {
 
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
 
-	// GET1 - initially we do not have any function composition FIXME: not necessarily are there 0 functions
+	// GET1 - initially we do not have any function composition
 	funcs, err := fc.GetAllFC()
 	fmt.Println(funcs)
 	lenFuncs := len(funcs)
 	u.AssertNil(t, err)
-	u.AssertEquals(t, 0, lenFuncs)
+	u.AssertEqualsMsg(t, 0, lenFuncs, "There are more than 0 registered function compositions. Maybe some other test has failed")
 
 	fcName := "test"
 	// CREATE - we create a test function composition

@@ -279,12 +279,15 @@ func (fc *FunctionComposition) Exists() bool {
 	if !found {
 		// cache miss
 		f, err := getFCFromEtcd(fc.Name)
-		if err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
-			return false
-		} else if err != nil {
-			log.Error(err.Error())
-			return false
+		if err != nil {
+			if err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
+				return false
+			} else {
+				log.Error(err.Error())
+				return false
+			}
 		}
+
 		//insert a new element to the cache
 		cache.GetCacheInstance().Set(f.Name, f, cache.DefaultExp)
 		return true
@@ -312,7 +315,7 @@ func (fc *FunctionComposition) Equals(cmp types.Comparable) bool {
 func (fc *FunctionComposition) String() string {
 	functions := "["
 	i := 0
-	for name, _ := range fc.Functions {
+	for name := range fc.Functions {
 		functions += name
 		if i < len(fc.Functions)-1 {
 			functions += ", "
@@ -330,7 +333,7 @@ func (fc *FunctionComposition) String() string {
 }
 
 // MarshalJSON for CompositionExecutionReport is necessary as the hashmap cannot be directly marshaled
-func (cer CompositionExecutionReport) MarshalJSON() ([]byte, error) {
+func (cer *CompositionExecutionReport) MarshalJSON() ([]byte, error) {
 	// Create a map to hold the JSON representation of the FunctionComposition
 	data := make(map[string]interface{})
 	data["Result"] = cer.Result // al posto del nome potrebbe essere un id da mettere in etcd
@@ -347,7 +350,7 @@ func (cer CompositionExecutionReport) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func (cer CompositionExecutionReport) UnmarshalJSON(data []byte) error {
+func (cer *CompositionExecutionReport) UnmarshalJSON(data []byte) error {
 	var tempMap map[string]json.RawMessage
 	if err := json.Unmarshal(data, &tempMap); err != nil {
 		return err

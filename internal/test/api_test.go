@@ -230,7 +230,6 @@ func TestDeleteComposition(t *testing.T) {
 
 // TestAsyncInvokeComposition tests the REST API that executes a given function composition
 func TestAsyncInvokeComposition(t *testing.T) {
-	t.Skip("NON FUNZIONA") // FIXME: non funziona anche da solo
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -250,9 +249,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	invocationResult := invokeCompositionApiTest(t, params, fcName, HOST, PORT, true)
 	fmt.Println(invocationResult)
 
-	reqIdStruct := &struct {
-		ReqId string
-	}{}
+	reqIdStruct := &function.AsyncResponse{}
 
 	errUnmarshal := json.Unmarshal([]byte(invocationResult), reqIdStruct)
 	utils.AssertNil(t, errUnmarshal)
@@ -260,19 +257,18 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	// wait until the result is available
 	i := 0
 	for {
-		// FIXME: poll is broken in some commit
 		pollResult := pollCompositionTest(t, reqIdStruct.ReqId, HOST, PORT)
 		fmt.Println(pollResult)
 
-		compExecReport := &fc.CompositionExecutionReport{}
-		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), compExecReport)
+		var compExecReport fc.CompositionExecutionReport
+		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), &compExecReport)
 
-		result := compExecReport.GetSingleResult()
 		if errUnmarshalExecResult != nil {
 			i++
 			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms: %v\n", i, errUnmarshalExecResult)
 			time.Sleep(200 * time.Millisecond)
 		} else {
+			result := compExecReport.GetSingleResult()
 			utils.AssertEquals(t, "4", result)
 			break
 		}
