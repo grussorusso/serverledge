@@ -249,9 +249,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 	invocationResult := invokeCompositionApiTest(t, params, fcName, HOST, PORT, true)
 	fmt.Println(invocationResult)
 
-	reqIdStruct := &struct {
-		ReqId string
-	}{}
+	reqIdStruct := &function.AsyncResponse{}
 
 	errUnmarshal := json.Unmarshal([]byte(invocationResult), reqIdStruct)
 	utils.AssertNil(t, errUnmarshal)
@@ -262,15 +260,15 @@ func TestAsyncInvokeComposition(t *testing.T) {
 		pollResult := pollCompositionTest(t, reqIdStruct.ReqId, HOST, PORT)
 		fmt.Println(pollResult)
 
-		compExecReport := &fc.CompositionExecutionReport{}
-		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), compExecReport)
+		var compExecReport fc.CompositionExecutionReport
+		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), &compExecReport)
 
-		result := compExecReport.GetSingleResult()
 		if errUnmarshalExecResult != nil {
 			i++
-			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms\n", i)
+			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms: %v\n", i, errUnmarshalExecResult)
 			time.Sleep(200 * time.Millisecond)
 		} else {
+			result := compExecReport.GetSingleResult()
 			utils.AssertEquals(t, "4", result)
 			break
 		}
