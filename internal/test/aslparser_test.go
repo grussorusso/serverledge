@@ -56,7 +56,10 @@ func commonTest(t *testing.T, name string, expectedResult int) {
 	utils.AssertNil(t, err)
 
 	comp, f := parseFileName(t, name)
-
+	defer func() {
+		err = comp.Delete()
+		utils.AssertNilMsg(t, err, "failed to delete composition")
+	}()
 	// saving to etcd is not necessary to run the function composition, but is needed when offloading
 	{
 		err := comp.SaveToEtcd()
