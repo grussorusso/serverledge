@@ -11,6 +11,13 @@ type InvocationRequest struct {
 	QoSMaxRespT     float64
 	CanDoOffloading bool
 	Async           bool
+	ReturnOutput    bool
+}
+
+type PrewarmingRequest struct {
+	Function       string
+	Instances      int64
+	ForceImagePull bool
 }
 
 // CompositionInvocationRequest is an external invocation of a function composition (from API or CLI)

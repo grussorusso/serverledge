@@ -32,7 +32,7 @@ explains how to obtain and use the software, is available
 
 ## Building from sources
 
-1. Check that Golang is correctly installed on your machine.
+1. Check that Golang 1.20+ is installed.
 
 2. Download a copy of the source code.
 
@@ -47,7 +47,7 @@ You will find executables in `./bin/`.
 ## Running (single-node deployment)
 
 As functions are executed within Docker containers, you need Docker to
-be installed on the host. Furthermore, the Serverledge node needs
+be installed on the host. Furthermore, Serverledge needs
 permissions to create containers.
 
 If you have more than one context (docker context ls), be sure to set up the DOCKER_HOST environment variable to the correct Host context.
@@ -64,20 +64,20 @@ server:
 
 	$ ./scripts/start-etcd.sh   # stop it with ./scripts/stop-etcd.sh
 
-Start a Serverledge node:
+Start a local Serverledge node:
 
 	$ bin/serverledge
 
 ### Creating and invoking functions
 
-Register a function `func` from example python code (the handler is formatted like this: $(filename).$(functionName)):
+Register a function `func` from example Python code (the handler is formatted like this: $(filename).$(functionName)):
 
-	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.py --runtime python310 --handler "hello.handler"
+	$ bin/serverledge-cli create -f func --memory 200 --src examples/hello.py --runtime python310 --handler "hello.handler"
 
-Register a function `func` from example javascript code (the handler is formatted like this: $(filename) and the name of the function is "handler"):
+Register a function `func` from example JS code (the handler is formatted like this: $(filename) and the name of the function is "handler"):
 
-	$ bin/serverledge-cli create -f func --memory 600 --src examples/hello.js --runtime nodejs17 --handler "hello"
-    $ bin/serverledge-cli create -f func --memory 600 --src examples/inc.js --runtime nodejs17 --handler "inc"
+	$ bin/serverledge-cli create -f func --memory 200 --src examples/hello.js --runtime nodejs17 --handler "hello"
+    $ bin/serverledge-cli create -f func --memory 200 --src examples/inc.js --runtime nodejs17 --handler "inc"
 
 Invoke `func` with arguments `a=2` and `b=3`:
 
@@ -95,6 +95,8 @@ where `input.json` may contain:
 		"b": 3
 	}
 
+#### Asynchronous Invocation
+
 Functions can be also invoked asynchronously using the `--async` flag:
 
 	$ bin/serverledge-cli invoke -f func --async
@@ -104,6 +106,14 @@ poll for the execution result:
 
 	$ bin/serverledge-cli poll --request <requestID>
 
+
+#### Getting function standard output
+
+You may want to see the content printed by the function to its standard output/error. To do so, add the `--return_output` flag (`-o` for short):
+
+	$ bin/serverledge-cli invoke -f func -p "a:2" -p "b:3" --return_output
+
+Note that we currently support output capture only for some runtimes (e.g., Python supports it).
 
 ## Distributed Deployment
 
@@ -151,10 +161,10 @@ The configuration file may look like this:
 
 ## Additional Documentation
 
-
+- [API reference](./docs/api.md)
 - [Writing functions](./docs/writing-functions.md)
-- [Metrics](./docs/metrics.md)
 - [Serverledge Internals: Executor](./docs/executor.md)
+- [Metrics](./docs/metrics.md)
 
 
 ## License

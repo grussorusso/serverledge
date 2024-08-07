@@ -3,7 +3,6 @@ package executor
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -75,13 +74,19 @@ func InvokeHandler(w http.ResponseWriter, r *http.Request) {
 	out, err := execCmd.CombinedOutput()
 	if err != nil {
 		log.Printf("cmd.Run() failed with %s\n", err)
-		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
-		resp = &InvocationResult{Success: false}
+		if req.ReturnOutput {
+			resp = &InvocationResult{Success: false, Output: string(out)}
+		} else {
+			resp = &InvocationResult{Success: false, Output: ""}
+		}
 	} else {
 		result := readExecutionResult(resultFile)
 
-		resp = &InvocationResult{true, result}
-		fmt.Printf("Function output:\n%s\n", string(out)) // TODO: do something with output
+		if req.ReturnOutput {
+			resp = &InvocationResult{true, result, string(out)}
+		} else {
+			resp = &InvocationResult{true, result, ""}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

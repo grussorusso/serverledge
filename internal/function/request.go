@@ -16,6 +16,7 @@ type Request struct {
 	CanDoOffloading bool
 	Async           bool
 	IsInComposition bool // not currently used
+	ReturnOutput    bool
 }
 
 type RequestQoS struct {
@@ -31,6 +32,7 @@ type ExecutionReport struct {
 	OffloadLatency float64 // time spent offloading the request
 	Duration       float64 // execution (service) time
 	SchedAction    string
+	Output         string
 }
 
 type Response struct {

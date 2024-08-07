@@ -18,7 +18,8 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
 		req = executor.InvocationRequest{
 			Params:          r.Params,
-			IsInComposition: fromComposition,
+			IsInComposition: fromComposition, // TODO: is needed?
+			ReturnOutput:    r.ReturnOutput,
 		}
 	} else {
 		cmd := container.RuntimeToInfo[r.Fun.Runtime].InvocationCmd
@@ -27,7 +28,8 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 			Params:          r.Params,
 			Handler:         r.Fun.Handler,
 			HandlerDir:      HANDLER_DIR,
-			IsInComposition: fromComposition,
+			IsInComposition: fromComposition, // TODO: is needed?
+			ReturnOutput:    r.ReturnOutput,
 		}
 	}
 
@@ -51,6 +53,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest, fromComposition 
 	}
 
 	r.ExecReport.Result = response.Result
+	r.ExecReport.Output = response.Output
 	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
 	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
 
