@@ -64,14 +64,16 @@ func InvokeFunction(c echo.Context) error {
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	r.Async = invocationRequest.Async
 	r.ReturnOutput = invocationRequest.ReturnOutput
-	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	// init fields if possibly not overwritten later
 	r.ExecReport.SchedAction = ""
 	r.ExecReport.OffloadLatency = 0.0
 
+	reqId := fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
+	r.Ctx = context.WithValue(context.Background(), "ReqId", reqId)
+
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
-		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
+		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.Id()})
 	}
 
 	err = scheduling.SubmitRequest(r)

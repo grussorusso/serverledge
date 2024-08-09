@@ -120,25 +120,25 @@ func SubmitAsyncRequest(r *function.Request) {
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		publishAsyncResponse(r.Id(), function.Response{Success: false})
 		return
 	}
 
 	var err error
 	if schedDecision.action == DROP {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		publishAsyncResponse(r.Id(), function.Response{Success: false})
 	} else if schedDecision.action == EXEC_REMOTE {
 		//log.Printf("Offloading request")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			publishAsyncResponse(r.Id(), function.Response{Success: false})
 		}
 	} else {
 		err = Execute(schedDecision.contID, &schedRequest)
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			publishAsyncResponse(r.Id(), function.Response{Success: false})
 		}
-		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		publishAsyncResponse(r.Id(), function.Response{Success: true, ExecutionReport: r.ExecReport})
 	}
 }
 
