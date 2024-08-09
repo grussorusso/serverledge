@@ -3,10 +3,10 @@ package config
 // Etcd server hostname
 const ETCD_ADDRESS = "etcd.address"
 
-//exposed port for serverledge APIs
+// exposed port for serverledge APIs
 const API_PORT = "api.port"
 
-//REMOTE SERVER URL
+// REMOTE SERVER URL
 const CLOUD_URL = "cloud.server.url"
 
 // Forces runtime container images to be pulled the first time they are used,
@@ -28,10 +28,10 @@ const CONTAINER_EXPIRATION_TIME = "container.expiration"
 // cache capacity
 const CACHE_SIZE = "cache.size"
 
-//cache janitor interval (Seconds) : deletes expired items
+// cache janitor interval (Seconds) : deletes expired items
 const CACHE_CLEANUP = "cache.cleanup"
 
-//default expiration time assigned to a cache item (Seconds)
+// default expiration time assigned to a cache item (Seconds)
 const CACHE_ITEM_EXPIRATION = "cache.expiration"
 
 // true if the current server is a remote cloud server
@@ -64,3 +64,6 @@ const SCHEDULING_POLICY = "scheduler.policy"
 
 // Capacity of the queue (possibly) used by the scheduler
 const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
+
+// Enables tracing
+const TRACING_ENABLED = "tracing.enabled"

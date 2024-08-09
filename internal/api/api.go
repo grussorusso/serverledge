@@ -17,7 +17,9 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/internal/telemetry"
 	"github.com/grussorusso/serverledge/utils"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
@@ -70,6 +72,12 @@ func InvokeFunction(c echo.Context) error {
 
 	reqId := fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
 	r.Ctx = context.WithValue(context.Background(), "ReqId", reqId)
+
+	// Tracing
+	_, span := telemetry.DefaultTracer.Start(r.Ctx, "invocation")
+	span.SetAttributes(attribute.String("function", r.Fun.Name))
+	//span.AddEvent("Acquiring lock")
+	defer span.End()
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
