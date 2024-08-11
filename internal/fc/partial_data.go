@@ -84,32 +84,32 @@ func SavePartialData(pd *PartialData, saveAlsoOnEtcd bool) error {
 	return nil
 }
 
-func RetrievePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool) ([]*PartialData, error) {
+func RetrievePartialData(reqId ReqId, nodeId DagNodeId) ([]*PartialData, error) {
 	// Get from cache if exists, otherwise from ETCD
-	partialDatas, err := getPartialDataFromCache(newPartialDataId(reqId), nodeId)
-	if err != nil && alsoFromEtcd {
+	partialDataSlice, err := getPartialDataFromCache(newPartialDataId(reqId), nodeId)
+	if partialDataSlice == nil {
 		fmt.Printf("cache miss: %v\n", err)
 		// cache miss - retrieve partialData from ETCD
-		partialDatas, err = getPartialDataFromEtcd(reqId, nodeId)
+		partialDataSlice, err = getPartialDataFromEtcd(reqId, nodeId)
 		if err != nil {
 			return nil, fmt.Errorf("partial data not found in cache and in etcd: %v\n", err)
 		}
 		// insert a new element to the cache
-		ok := savePartialDataInCache(partialDatas...)
+		ok := savePartialDataInCache(partialDataSlice...)
 		if !ok {
 			return nil, fmt.Errorf("failed to save in cache a found partial data")
 		}
-		return partialDatas, nil
+		return partialDataSlice, nil
 	}
-	if len(partialDatas) == 0 {
+	if len(partialDataSlice) == 0 {
 		return nil, fmt.Errorf("partial data are empty")
 	}
 
-	return partialDatas, err
+	return partialDataSlice, err
 }
 
-func RetrieveSinglePartialData(reqId ReqId, nodeId DagNodeId, alsoFromEtcd bool) (*PartialData, error) {
-	pds, err := RetrievePartialData(reqId, nodeId, alsoFromEtcd)
+func RetrieveSinglePartialData(reqId ReqId, nodeId DagNodeId) (*PartialData, error) {
+	pds, err := RetrievePartialData(reqId, nodeId)
 	if err != nil {
 		return nil, fmt.Errorf("partial data not found: %v", err)
 	} else if len(pds) > 1 {
@@ -268,20 +268,20 @@ func getPartialDataFromEtcd(requestId ReqId, nodeId DagNodeId) ([]*PartialData, 
 	getResponse, err := cli.Get(ctx, key)
 	if err != nil || len(getResponse.Kvs) < 1 {
 		pdEtcdMutex.Unlock()
-		return nil, fmt.Errorf("failed to retrieve partialDatas for requestId: %s", key)
+		return nil, fmt.Errorf("failed to retrieve partialData for requestId: %s", key)
 	}
 	pdEtcdMutex.Unlock()
-	partialDatas := make([]*PartialData, 0, len(getResponse.Kvs))
+	partialDataSlice := make([]*PartialData, 0, len(getResponse.Kvs))
 	for _, v := range getResponse.Kvs {
 		var partialData *PartialData
 		err = json.Unmarshal(v.Value, &partialData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal partialDatas json: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal partialData json: %v", err)
 		}
-		partialDatas = append(partialDatas, partialData)
+		partialDataSlice = append(partialDataSlice, partialData)
 	}
 
-	return partialDatas, nil
+	return partialDataSlice, nil
 }
 
 func getAllPartialDataFromEtcd(requestId ReqId) (map[DagNodeId][]*PartialData, error) {

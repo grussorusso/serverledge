@@ -38,7 +38,7 @@ func (i InputDef) CheckInput(inputMap map[string]interface{}) error {
 		return fmt.Errorf("data type is too complex. Available types are Int, Text, Float, Bool, ArrayInt, ArrayText, ArrayFloat, ArrayBool, ArrayArrayInt, ArrayArrayFloat")
 	}
 
-	return StringToDataType(i.Type).TypeCheck(val)
+	return t.TypeCheck(val)
 }
 
 func (i InputDef) FindEntryThatTypeChecks(outputMap map[string]interface{}) (string, bool) {
@@ -63,7 +63,7 @@ type OutputDef struct {
 	Type string // the type of the output parameter
 }
 
-// CheckInput evaluates all given outputs and if there is no output that type-checks, with the given name and the current type, returns an error
+// CheckOutput evaluates all given outputs and if there is no output that type-checks, with the given name and the current type, returns an error
 func (o OutputDef) CheckOutput(inputMap map[string]interface{}) error {
 	val, exists := inputMap[o.Name]
 	if !exists {

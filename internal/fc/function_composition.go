@@ -200,19 +200,28 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	shouldContinue := true
 	for shouldContinue {
 		// executing dag
-		shouldContinue, err = fc.Workflow.Execute(r)
+		shouldContinue, err = fc.Workflow.Execute(r, progress, cache.Persist)
+
 		if err != nil {
 			progress.Print()
 			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed dag execution: %v", err)
 		}
+
+		/* TODO: we should persist progress and partial data (of this specific r.reqId) to etcd
+		only when moving workflow coordination to another node. */
+		err = SaveProgress(progress, cache.Persist)
+		if err != nil {
+			return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to save progress: %v", err)
+		}
+
 	}
 	// retrieving output of  execution
-	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId(), cache.Persist)
+	result, err := RetrieveSinglePartialData(requestId, fc.Workflow.End.GetId())
 	if err != nil {
 		return CompositionExecutionReport{Result: nil, Progress: progress}, fmt.Errorf("failed to retrieve composition result (partial data) %v", err)
 	}
 
-	// deleting progresses and partial datas from cache and etcd
+	// deleting progresses and partial data from cache and etcd
 	err = DeleteProgress(requestId, cache.Persist)
 	if err != nil {
 		return CompositionExecutionReport{}, err
@@ -221,7 +230,7 @@ func (fc *FunctionComposition) Invoke(r *CompositionRequest) (CompositionExecuti
 	if errDel != nil {
 		return CompositionExecutionReport{}, errDel
 	}
-	// fmt.Printf("Succesfully deleted %d partial datas and progress for request %s\n", removed, requestId)
+	// fmt.Printf("Successfully deleted %d partial data and progress for request %s\n", removed, requestId)
 	r.ExecReport.Result = result.Data
 	//progress.NextGroup = -1
 	//r.ExecReport.Progress = progress
@@ -279,7 +288,7 @@ func (fc *FunctionComposition) Exists() bool {
 	if !found {
 		// cache miss
 		f, err := getFCFromEtcd(fc.Name)
-		if err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
+		if err != nil && err.Error() == fmt.Sprintf("failed to retrieve value for key %s", getEtcdKey(fc.Name)) {
 			return false
 		} else if err != nil {
 			log.Error(err.Error())
