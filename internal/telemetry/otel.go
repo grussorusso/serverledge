@@ -3,7 +3,7 @@ package telemetry
 import (
 	"context"
 	"errors"
-	"fmt"
+	"os"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -16,7 +16,7 @@ var DefaultTracer trace.Tracer = nil
 
 // setupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
-func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(ctx context.Context, outputFilename string) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	// shutdown calls cleanup functions registered via shutdownFuncs.
@@ -41,16 +41,26 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTraceProvider()
+	f, err := os.OpenFile(outputFilename, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		handleErr(err)
 		return
 	}
+	traceExporter, err := stdouttrace.New(stdouttrace.WithWriter(f))
+	if err != nil {
+		handleErr(err)
+		return
+	}
+	shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
+		return f.Close()
+	})
+
+	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExporter))
+
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 	// Finally, set the tracer that can be used for this package.
 	DefaultTracer = tracerProvider.Tracer("github.com/grussorusso/serverledge")
-	fmt.Printf("Tracer: %v", DefaultTracer)
 
 	// NOTE: could boostrap metric provider as well
 
@@ -62,22 +72,4 @@ func newPropagator() propagation.TextMapPropagator {
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	)
-}
-
-func newTraceProvider() (*sdktrace.TracerProvider, error) {
-	//	r, err := resource.Merge(
-	//		resource.Default(),
-	//		resource.NewWithAttributes(
-	//			semconv.SchemaURL,
-	//			semconv.ServiceName("Serverledge"),
-	//		),
-	//	)
-
-	traceExporter, err := stdouttrace.New()
-	if err != nil {
-		return nil, err
-	}
-
-	traceProvider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExporter))
-	return traceProvider, nil
 }

@@ -134,8 +134,12 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer stop()
 
-		log.Println("Enabling tracing")
-		otelShutdown, err := telemetry.SetupOTelSDK(ctx)
+		tracesOutfile := config.GetString(config.TRACING_OUTFILE, "")
+		if len(tracesOutfile) < 1 {
+			tracesOutfile = fmt.Sprintf("traces-%s.json", time.Now().Format("20060102-150405"))
+		}
+		log.Printf("Enabling tracing to %s\n", tracesOutfile)
+		otelShutdown, err := telemetry.SetupOTelSDK(ctx, tracesOutfile)
 		if err != nil {
 			log.Fatal(err)
 		}

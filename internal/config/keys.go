@@ -67,3 +67,6 @@ const SCHEDULER_QUEUE_CAPACITY = "scheduler.queue.capacity"
 
 // Enables tracing
 const TRACING_ENABLED = "tracing.enabled"
+
+// Custom output file for traces
+const TRACING_OUTFILE = "tracing.outfile"
