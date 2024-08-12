@@ -3,9 +3,9 @@ package fc
 /*** Adapted from https://github.com/enginyoyen/aslparser ***/
 import (
 	"fmt"
-
 	"github.com/buger/jsonparser"
 	"github.com/grussorusso/serverledge/internal/function"
+	"strconv"
 )
 
 type Retry struct {
@@ -21,7 +21,7 @@ type Catch struct {
 	Next        string
 }
 
-// State implements a state for Amazon state language
+// State implements a state for Amazon state language TODO: separate states in single files and make State an interface
 type State struct {
 	Name             string
 	Comment          string
@@ -35,6 +35,13 @@ type State struct {
 	Catch            []Catch
 	TimeoutSeconds   int
 	HeartbeatSeconds int
+	Choices          []Match
+}
+
+type Match struct {
+	Variable  string
+	Operation Condition
+	Next      string
 }
 
 type StateMachine struct {
@@ -66,13 +73,89 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 		if err2 != nil {
 			return err2
 		}
-		stateResource, _, _, err2 := jsonparser.Get(value, "Resource")
-		if err2 != nil {
-			return err2
+		switch string(stateType) {
+		case "Task":
+			stateResource, _, _, errTask := jsonparser.Get(value, "Resource")
+			if errTask != nil {
+				return errTask
+			}
+			stateEnd, dType, _, errTask := jsonparser.Get(value, "End")
+			if dType != jsonparser.NotExist && errTask != nil {
+				return errTask
+			}
+			if dType == jsonparser.NotExist || string(stateEnd) != "true" {
+				nextState, _, _, errTask := jsonparser.Get(value, "Next")
+				if errTask != nil {
+					return errTask
+				}
+				s := State{Name: string(key), Type: string(stateType), Resource: string(stateResource), Next: string(nextState)}
+				states[s.Name] = s
+				fmt.Println("Created state: ", s.Name)
+			}
+
+		case "Choice":
+			choices, _, _, errChoice := jsonparser.Get(value, "Choices")
+			if errChoice != nil {
+				return errChoice
+			}
+			matches := make([]Match, 0)
+
+			_, errArr := jsonparser.ArrayEach(choices, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+				matchVariable, _, _, errMatch := jsonparser.Get(value, "Variable")
+				if errMatch != nil {
+					return
+				}
+				matchCondition, _, _, errMatch := jsonparser.Get(value, "NumericEquals") // TODO: only checks NumericEquals
+				if errMatch != nil {
+					return
+				}
+				num, errNum := strconv.Atoi(string(matchCondition))
+				if errNum != nil {
+					return
+				}
+				matchNext, _, _, errMatch := jsonparser.Get(value, "Next")
+				if errMatch != nil {
+					return
+				}
+				m := Match{
+					Variable:  string(matchVariable),
+					Operation: NewEqCondition(NewParam(string(matchVariable)), NewValue(num)),
+					Next:      string(matchNext),
+				}
+				matches = append(matches, m)
+			})
+			if errArr != nil {
+				return errArr
+			}
+
+			defaultMatch, _, _, errChoice := jsonparser.Get(value, "Default")
+			if errChoice != nil {
+				return err
+			}
+
+			s := State{Name: string(key), Type: string(stateType), Choices: matches, Default: string(defaultMatch)}
+			states[s.Name] = s
+			fmt.Println("Created state: ", s.Name)
+			//"Choices": [
+			//	{
+			//		"Variable": "$.input",
+			//		"NumericEquals": 1,
+			//		"Next": "FirstMatchState"
+			//	},
+			//	{
+			//		"Variable": "$.input",
+			//		"NumericEquals": 2,
+			//		"Next": "SecondMatchState"
+			//	}
+			//],
+			//"Default": "DefaultState"
+			break
+		case "Fail":
+			fmt.Println("Created state fail")
+			return nil
+		default:
+			return fmt.Errorf("invalid ASL: unknown state '%s'", string(stateType))
 		}
-		nextState, _, _, err2 := jsonparser.Get(value, "Next")
-		s := State{Name: string(key), Type: string(stateType), Resource: string(stateResource), Next: string(nextState)}
-		states[s.Name] = s
 		return nil
 	})
 	if err != nil {
@@ -93,50 +176,73 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 		return nil, fmt.Errorf("could not parse the ASL file: %v", err)
 	}
 
-	//adj := make(map[string][]string)
-	//for k, v := range stateMachine.States {
-	//	if v.Type == "Task" {
-	//		adj[k] = make([]string, 1)
-	//		adj[k] = append(adj[k], v.Next)
-	//	} else if v.Type == "Choice" {
-	//		adj[k] = make([]string, 1)
-	//		fmt.Printf("Raw: %v\n", v)
-	//		fmt.Printf("Next: %v\n", v.Next)
-	//		// TODO: adj[k] = append(adj[k], v.Default)
-	//	}
-	//}
-	//fmt.Println(adj)
-
-	// TODO: topological sorting
-
-	currentState, ok := stateMachine.States[stateMachine.StartAt]
-
+	startingState, ok := stateMachine.States[stateMachine.StartAt]
+	if !ok {
+		return nil, fmt.Errorf("could not find starting state")
+	}
 	// loops until we get to the End
 	funcs := make([]*function.Function, 0)
-	builder := NewDagBuilder()
-	for ok {
-		// TODO support other types of States
-		if currentState.Type != "Task" {
-			return nil, fmt.Errorf("unsupported task type: %s", currentState.Type) // TODO
-		}
-
-		f, found := function.GetFunction(currentState.Resource)
-		if !found {
-			return nil, fmt.Errorf("non existing function in composition: %s", currentState.Resource)
-		}
-		builder = builder.AddSimpleNodeWithId(f, currentState.Name)
-		funcs = append(funcs, f)
-		fmt.Printf("Added simple node with f: %s, funcs=%v\n", f, funcs)
-
-		// if we are at the end, we close it
-		currentState, ok = stateMachine.States[currentState.Next]
-	}
-
-	dag, err := builder.Build()
+	dag, funcs, err := dagBuilding(funcs, startingState, NewDagBuilder(), nil, stateMachine)
 	if err != nil {
 		return nil, err
 	}
 
 	comp := NewFC(name, *dag, funcs, false)
 	return &comp, nil
+}
+
+func dagBuilding(funcs []*function.Function, currentState State, builder *DagBuilder, condBuilder *ChoiceBranchBuilder, stateMachine *StateMachine) (*Dag, []*function.Function, error) {
+	switch currentState.Type {
+	case "Task":
+		f, found := function.GetFunction(currentState.Resource)
+		if !found {
+			return nil, nil, fmt.Errorf("non existing function in composition: %s", currentState.Resource)
+		}
+		builder = builder.AddSimpleNodeWithId(f, currentState.Name)
+		funcs = append(funcs, f)
+		fmt.Printf("Added simple node with f: %s, funcs=%v\n", f, funcs)
+
+		// if we are at the end, we close it
+		nextState, ok := stateMachine.States[currentState.Next]
+		if !ok && currentState.End == false {
+			// we have an error
+			return nil, funcs, fmt.Errorf("could not find next state in composition: %s", currentState.Next)
+		} else if ok && currentState.End == true {
+			// we ended the parsing correctly
+			dag, err := builder.Build()
+			return dag, funcs, err
+		} else {
+			// we should continue to parse
+			return dagBuilding(funcs, nextState, builder, nil, stateMachine)
+		}
+
+	case "Choice":
+		// gets the conditions from matches
+		conds := make([]Condition, 0)
+		for _, c := range currentState.Choices {
+			conds = append(conds, c.Operation)
+		}
+		if condBuilder == nil {
+			condBuilder = builder.AddChoiceNode(conds...)
+		}
+
+		i := 0
+		for condBuilder.HasNextBranch() {
+			nextState := stateMachine.States[currentState.Choices[i].Next]
+			subDag, _, errSub := dagBuilding(funcs, nextState, NewDagBuilder(), condBuilder, stateMachine)
+			if errSub != nil {
+				return nil, nil, errSub
+			}
+			// assign the function (Task state) to the next branch
+			condBuilder.NextBranch(subDag, nil)
+			i++
+		}
+		dag, err := condBuilder.EndChoiceAndBuild()
+		return dag, funcs, err
+	case "Fail":
+		dag, err := builder.Build()
+		return dag, funcs, err
+	default:
+		return nil, nil, fmt.Errorf("unsupported task type: %s", currentState.Type) // TODO
+	}
 }
