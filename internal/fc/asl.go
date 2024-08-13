@@ -82,7 +82,7 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 			stateEnd, dType, _, errTask := jsonparser.Get(value, "End")
 			if dType != jsonparser.NotExist && errTask != nil {
 				return errTask
-			}
+			} // Retrieve the next state, otherwise return nil
 			if dType == jsonparser.NotExist || string(stateEnd) != "true" {
 				nextState, _, _, errTask := jsonparser.Get(value, "Next")
 				if errTask != nil {
@@ -92,7 +92,7 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 				states[s.Name] = s
 				fmt.Println("Created state: ", s.Name)
 			}
-
+			return nil
 		case "Choice":
 			choices, _, _, errChoice := jsonparser.Get(value, "Choices")
 			if errChoice != nil {

@@ -1,0 +1,13 @@
+package asl
+
+type TaskState struct{}
+
+func (t *TaskState) GetNext() State {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *TaskState) GetType() int {
+	//TODO implement me
+	panic("implement me")
+}
