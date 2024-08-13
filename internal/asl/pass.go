@@ -2,7 +2,7 @@ package asl
 
 type PassState struct{}
 
-func (p *PassState) GetNext() State {
+func (p *PassState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

@@ -2,7 +2,7 @@ package asl
 
 type TaskState struct{}
 
-func (t *TaskState) GetNext() State {
+func (t *TaskState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

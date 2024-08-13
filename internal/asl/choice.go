@@ -6,7 +6,7 @@ type ChoiceState struct {
 	matches []Match
 }
 
-func (c *ChoiceState) GetNext() State {
+func (c *ChoiceState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

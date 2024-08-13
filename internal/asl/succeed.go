@@ -2,7 +2,7 @@ package asl
 
 type SucceedState struct{}
 
-func (s *SucceedState) GetNext() State {
+func (s *SucceedState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

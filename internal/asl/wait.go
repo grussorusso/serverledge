@@ -2,7 +2,7 @@ package asl
 
 type WaitState struct{}
 
-func (w *WaitState) GetNext() State {
+func (w *WaitState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

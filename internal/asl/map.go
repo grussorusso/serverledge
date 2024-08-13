@@ -2,7 +2,7 @@ package asl
 
 type MapState struct{}
 
-func (m *MapState) GetNext() State {
+func (m *MapState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

@@ -2,7 +2,7 @@ package asl
 
 type ParallelState struct{}
 
-func (p *ParallelState) GetNext() State {
+func (p *ParallelState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }
