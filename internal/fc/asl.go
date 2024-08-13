@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// DEPRECATED
 type Retry struct {
 	ErrorEquals     []string
 	IntervalSeconds int
@@ -15,6 +16,7 @@ type Retry struct {
 	MaxAttempts     int
 }
 
+// DEPRECATED
 type Catch struct {
 	ErrorEquals []string
 	ResultPath  string
@@ -22,6 +24,7 @@ type Catch struct {
 }
 
 // State implements a state for Amazon state language TODO: separate states in single files and make State an interface
+// DEPRECATED
 type State struct {
 	Name             string
 	Comment          string
@@ -38,12 +41,14 @@ type State struct {
 	Choices          []Match
 }
 
+// DEPRECATED
 type Match struct {
 	Variable  string
 	Operation Condition
 	Next      string
 }
 
+// DEPRECATED
 type StateMachine struct {
 	Comment string
 	States  map[string]State
