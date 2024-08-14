@@ -7,7 +7,6 @@ func (s *SucceedState) GetNext() []State {
 	panic("implement me")
 }
 
-func (s *SucceedState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (s *SucceedState) GetType() StateType {
+	return Succeed
 }

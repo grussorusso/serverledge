@@ -175,6 +175,7 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 
 // FromASL parses a AWS State Language specification file and returns a Function Composition with the corresponding Serverledge Dag
 // The name of the composition should not be the file name by default, to avoid problems when adding the same composition multiple times.
+// DEPRECATED
 func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 	stateMachine, err := parseASL(aslSrc)
 	if err != nil {

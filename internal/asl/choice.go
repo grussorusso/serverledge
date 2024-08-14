@@ -11,9 +11,8 @@ func (c *ChoiceState) GetNext() []State {
 	panic("implement me")
 }
 
-func (c *ChoiceState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (c *ChoiceState) GetType() StateType {
+	return Choice
 }
 
 type Match struct {

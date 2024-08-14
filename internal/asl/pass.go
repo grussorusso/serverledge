@@ -7,7 +7,6 @@ func (p *PassState) GetNext() []State {
 	panic("implement me")
 }
 
-func (p *PassState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (p *PassState) GetType() StateType {
+	return Pass
 }

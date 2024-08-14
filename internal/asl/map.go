@@ -7,7 +7,6 @@ func (m *MapState) GetNext() []State {
 	panic("implement me")
 }
 
-func (m *MapState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (m *MapState) GetType() StateType {
+	return Map
 }

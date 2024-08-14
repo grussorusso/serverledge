@@ -7,7 +7,6 @@ func (t *TaskState) GetNext() []State {
 	panic("implement me")
 }
 
-func (t *TaskState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (t *TaskState) GetType() StateType {
+	return Task
 }

@@ -7,7 +7,6 @@ func (w *WaitState) GetNext() []State {
 	panic("implement me")
 }
 
-func (w *WaitState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (w *WaitState) GetType() StateType {
+	return Wait
 }

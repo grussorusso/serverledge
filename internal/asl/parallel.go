@@ -7,7 +7,6 @@ func (p *ParallelState) GetNext() []State {
 	panic("implement me")
 }
 
-func (p *ParallelState) GetType() int {
-	//TODO implement me
-	panic("implement me")
+func (p *ParallelState) GetType() StateType {
+	return Parallel
 }
