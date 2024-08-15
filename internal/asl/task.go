@@ -7,16 +7,18 @@ import (
 )
 
 type TaskState struct {
-	Type             StateType       // Necessary
-	Resource         Path            // Necessary
-	Next             string          // Necessary when End = false
-	Parameters       PayloadTemplate // Optional
-	ResultSelector   PayloadTemplate // Optional
-	Retry            *Retry          // Optional
-	Catch            *Catch          // Optional
-	TimeoutSeconds   uint32          // Optional, in seconds
-	HeartbeatSeconds uint32          // Optional, in seconds. Smaller than timeoutSeconds
-	End              bool            // default false
+	Type                 StateType       // Necessary
+	Resource             string          // Necessary
+	Next                 string          // Necessary when End = false
+	Parameters           PayloadTemplate // Optional
+	ResultSelector       PayloadTemplate // Optional
+	Retry                *Retry          // Optional
+	Catch                *Catch          // Optional
+	TimeoutSeconds       uint32          // Optional, in seconds
+	TimeoutSecondsPath   Path            // Optional, in seconds
+	HeartbeatSeconds     uint32          // Optional, in seconds. Smaller than timeoutSeconds
+	HeartbeatSecondsPath Path            // Optional, in seconds. Smaller than timeoutSeconds
+	End                  bool            // default false
 }
 
 func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
@@ -26,12 +28,7 @@ func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resource field is mandatory for a task state, but it is not defined")
 	}
-
-	resourcePath, err := NewPath(resource)
-	if err != nil {
-		return nil, err
-	}
-	t.Resource = resourcePath
+	t.Resource = resource
 
 	t.End = utils.JsonExtractBool(jsonData, "End")
 	if !t.End {
@@ -47,8 +44,17 @@ func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 	t.Retry = utils.JsonExtractObjectOrDefault(jsonData, "Retry", &Retry{}).(*Retry)
 	t.Catch = utils.JsonExtractObjectOrDefault(jsonData, "Catch", &Catch{}).(*Catch)
 	t.TimeoutSeconds = uint32(utils.JsonExtractIntOrDefault(jsonData, "TimeoutSeconds", 0))
+	timeoutSecondsPath, errT := NewReferencePath(utils.JsonExtractStringOrDefault(jsonData, "TimeoutSecondsPath", ""))
+	if errT != nil {
+		return nil, errT
+	}
+	t.TimeoutSecondsPath = timeoutSecondsPath
 	t.HeartbeatSeconds = uint32(utils.JsonExtractIntOrDefault(jsonData, "HeartbeatSeconds", 0))
-
+	heartbeatSecondsPath, errH := NewReferencePath(utils.JsonExtractStringOrDefault(jsonData, "HeartbeatSecondsPath", ""))
+	if errH != nil {
+		return nil, errH
+	}
+	t.HeartbeatSecondsPath = heartbeatSecondsPath
 	if t.HeartbeatSeconds > t.TimeoutSeconds {
 		return nil, fmt.Errorf("HeartbeatSeconds %d exceeds timeout %d", t.HeartbeatSeconds, t.TimeoutSeconds)
 	}
@@ -56,48 +62,54 @@ func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 	return t, nil
 }
 
-func NewTerminalTask(resource Path) *TaskState {
+func NewTerminalTask(resource string) *TaskState {
 	return &TaskState{
-		Type:             Task,
-		Resource:         resource,
-		Next:             "",
-		Parameters:       PayloadTemplate{""},
-		ResultSelector:   PayloadTemplate{""},
-		Retry:            NoRetry(),
-		Catch:            NoCatch(),
-		TimeoutSeconds:   0,
-		HeartbeatSeconds: 0,
-		End:              true,
+		Type:                 Task,
+		Resource:             resource,
+		Next:                 "",
+		Parameters:           PayloadTemplate{""},
+		ResultSelector:       PayloadTemplate{""},
+		Retry:                NoRetry(),
+		Catch:                NoCatch(),
+		TimeoutSeconds:       0,
+		TimeoutSecondsPath:   "",
+		HeartbeatSeconds:     0,
+		HeartbeatSecondsPath: "",
+		End:                  true,
 	}
 }
 
-func NewNonTerminalTask(resource Path, next string) *TaskState {
+func NewNonTerminalTask(resource string, next string) *TaskState {
 	return &TaskState{
-		Type:             Task,
-		Resource:         resource,
-		Next:             next,
-		Parameters:       PayloadTemplate{""},
-		ResultSelector:   PayloadTemplate{""},
-		Retry:            NoRetry(),
-		Catch:            NoCatch(),
-		TimeoutSeconds:   0,
-		HeartbeatSeconds: 0,
-		End:              false,
+		Type:                 Task,
+		Resource:             resource,
+		Next:                 next,
+		Parameters:           PayloadTemplate{""},
+		ResultSelector:       PayloadTemplate{""},
+		Retry:                NoRetry(),
+		Catch:                NoCatch(),
+		TimeoutSeconds:       0,
+		TimeoutSecondsPath:   "",
+		HeartbeatSeconds:     0,
+		HeartbeatSecondsPath: "",
+		End:                  false,
 	}
 }
 
 func NewEmptyTask() *TaskState {
 	return &TaskState{
-		Type:             Task,
-		Resource:         "",
-		Next:             "",
-		Parameters:       PayloadTemplate{""},
-		ResultSelector:   PayloadTemplate{""},
-		Retry:            nil,
-		Catch:            nil,
-		TimeoutSeconds:   0,
-		HeartbeatSeconds: 0,
-		End:              true,
+		Type:                 Task,
+		Resource:             "",
+		Next:                 "",
+		Parameters:           PayloadTemplate{""},
+		ResultSelector:       PayloadTemplate{""},
+		Retry:                nil,
+		Catch:                nil,
+		TimeoutSeconds:       0,
+		TimeoutSecondsPath:   "",
+		HeartbeatSeconds:     0,
+		HeartbeatSecondsPath: "",
+		End:                  true,
 	}
 }
 
@@ -120,7 +132,9 @@ func (t *TaskState) Equals(cmp types.Comparable) bool {
 		t.Retry.Equals(t2.Retry) &&
 		t.Catch.Equals(t2.Catch) &&
 		t.TimeoutSeconds == t2.TimeoutSeconds &&
+		t.TimeoutSecondsPath == t2.TimeoutSecondsPath &&
 		t.HeartbeatSeconds == t2.HeartbeatSeconds &&
+		t.HeartbeatSecondsPath == t2.HeartbeatSecondsPath &&
 		t.End == t2.End
 }
 
@@ -150,8 +164,14 @@ func (t *TaskState) String() string {
 	if t.TimeoutSeconds != 0 {
 		str += fmt.Sprintf("\t\t\t\tTimeoutSeconds: %d\n", t.TimeoutSeconds)
 	}
+	if t.TimeoutSeconds != 0 {
+		str += fmt.Sprintf("\t\t\t\tTimeoutSecondsPath: %s\n", t.TimeoutSecondsPath)
+	}
 	if t.HeartbeatSeconds != 0 {
 		str += fmt.Sprintf("\t\t\t\tHeartbeatSeconds: %d\n", t.HeartbeatSeconds)
+	}
+	if t.HeartbeatSeconds != 0 {
+		str += fmt.Sprintf("\t\t\t\tHeartbeatSecondsPath: %s\n", t.HeartbeatSecondsPath)
 	}
 	if t.End != false {
 		str += fmt.Sprintf("\t\t\t\tEnd: %v\n", t.End)

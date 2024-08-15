@@ -12,23 +12,29 @@ import (
 func TestDagMarshaling(t *testing.T) {
 	f, _ := initializeExamplePyFunction()
 	u.AssertNonNil(t, f)
-	dag1, _ := fc.CreateEmptyDag()
-	dag2, _ := fc.CreateSequenceDag(f, f, f)
-	dag3, _ := fc.CreateChoiceDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) })
-	dag4, _ := fc.CreateBroadcastDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) }, 4)
-	dag5, _ := fc.CreateScatterSingleFunctionDag(f, 5)
-	dag6, _ := fc.CreateBroadcastMultiFunctionDag(
+	dag1, err := fc.CreateEmptyDag()
+	u.AssertNilMsg(t, err, "Failed to create dag 1")
+	dag2, err := fc.CreateSequenceDag(f, f, f)
+	u.AssertNilMsg(t, err, "Failed to create dag 2")
+	dag3, err := fc.CreateChoiceDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) })
+	u.AssertNilMsg(t, err, "Failed to create dag 3")
+	dag4, err := fc.CreateBroadcastDag(func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) }, 4)
+	u.AssertNilMsg(t, err, "Failed to create dag 4")
+	dag5, err := fc.CreateScatterSingleFunctionDag(f, 5)
+	u.AssertNilMsg(t, err, "Failed to create dag 5")
+	dag6, err := fc.CreateBroadcastMultiFunctionDag(
 		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f) },
 		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f) },
 		func() (*fc.Dag, error) { return fc.CreateSequenceDag(f, f, f) },
 	)
+	u.AssertNilMsg(t, err, "Failed to create dag 6")
 	dags := []*fc.Dag{dag1, dag2, dag3, dag4, dag5, dag6}
 	for i, dag := range dags {
 		marshal, errMarshal := json.Marshal(dag)
-		u.AssertNilMsg(t, errMarshal, "error during marshaling "+string(rune(i)))
+		u.AssertNilMsg(t, errMarshal, fmt.Sprintf("error during marshaling %d\n", i+1))
 		var retrieved fc.Dag
 		errUnmarshal := json.Unmarshal(marshal, &retrieved)
-		u.AssertNilMsg(t, errUnmarshal, "failed composition unmarshal "+string(rune(i)))
+		u.AssertNilMsg(t, errUnmarshal, fmt.Sprintf("failed composition unmarshal %d\n", i+1))
 		u.AssertTrueMsg(t, retrieved.Equals(dag), fmt.Sprintf("retrieved dag is not equal to initial dag. Retrieved:\n%s,\nExpected:\n%s ", retrieved.String(), dag.String()))
 	}
 }

@@ -295,7 +295,7 @@ func (c *ChoiceBranchBuilder) EndChoiceAndBuild() (*Dag, error) {
 }
 
 // ForEachBranch chains each (remaining) output of a choice node to the same subsequent node, then returns the DagBuilder
-func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *DagBuilder {
+func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *ChoiceBranchBuilder {
 	choiceNode := c.dagBuilder.prevNode.(*ChoiceNode)
 	// we suppose the branches 0, ..., (completed-1) are already completed
 	// once := true
@@ -333,7 +333,7 @@ func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *DagBui
 					errEnd := c.dagBuilder.dag.ChainToEndNode(n)
 					if errEnd != nil {
 						c.dagBuilder.appendError(errEnd)
-						return c.dagBuilder
+						return c
 					}
 				}
 			}
@@ -343,7 +343,7 @@ func (c *ChoiceBranchBuilder) ForEachBranch(dagger func() (*Dag, error)) *DagBui
 		c.completed++
 		c.dagBuilder.branches--
 	}
-	return c.dagBuilder
+	return c
 }
 
 func (p *ParallelBroadcastBranchBuilder) ForEachParallelBranch(dagger func() (*Dag, error)) *ParallelBroadcastBranchBuilder {
@@ -581,7 +581,7 @@ func CreateChoiceDag(dagger func() (*Dag, error), condArr ...Condition) (*Dag, e
 	return NewDagBuilder().
 		AddChoiceNode(condArr...).
 		ForEachBranch(dagger).
-		Build()
+		EndChoiceAndBuild()
 }
 
 // CreateScatterSingleFunctionDag if successful, returns a dag with one fan out, N simple node with the same function
