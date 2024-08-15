@@ -11,12 +11,16 @@ type Path string
 
 // NewPath creates a new Reference Path, that starts with a $ character, separated by "." characters and
 // that does not contain the following characters '@' ',' ':' '?'. Used to define input or output parameters.
-func NewPath(s string) (*Path, error) {
-	if !strings.HasPrefix(s, "$") {
-		return nil, fmt.Errorf("A JSONPath should start with a $ character")
+func NewPath(s string) (Path, error) {
+	if !strings.HasPrefix(s, "$.") {
+		return "", fmt.Errorf("A JSONPath should start with a $. prefix")
 	}
 	if strings.Contains(s, "@") || strings.Contains(s, "@") {
-		return nil, fmt.Errorf("A reference path should not contain any of the following characters: '@' ',' ':' '?' ")
+		return "", fmt.Errorf("A reference path should not contain any of the following characters: '@' ',' ':' '?' ")
 	}
-	return (*Path)(&s), nil
+	after, found := strings.CutPrefix(s, "$.")
+	if !found {
+		return "", fmt.Errorf("A JSONPath should start with a $. prefix")
+	}
+	return Path(after), nil
 }
