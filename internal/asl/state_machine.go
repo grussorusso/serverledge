@@ -189,6 +189,6 @@ func (sm *StateMachine) Equals(comparer types.Comparable) bool {
 	}
 	return sm.StartAt == sm2.StartAt &&
 		sm.Name == sm2.Name &&
-		sm.Comment == sm2.Comment &&
+		// sm.Comment == sm2.Comment &&
 		sm.Version == sm2.Version
 }

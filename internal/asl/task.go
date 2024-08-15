@@ -71,6 +71,21 @@ func NewTerminalTask(resource Path) *TaskState {
 	}
 }
 
+func NewNonTerminalTask(resource Path, next string) *TaskState {
+	return &TaskState{
+		Type:             Task,
+		Resource:         resource,
+		Next:             next,
+		Parameters:       PayloadTemplate{""},
+		ResultSelector:   PayloadTemplate{""},
+		Retry:            NoRetry(),
+		Catch:            NoCatch(),
+		TimeoutSeconds:   0,
+		HeartbeatSeconds: 0,
+		End:              false,
+	}
+}
+
 func NewEmptyTask() *TaskState {
 	return &TaskState{
 		Type:             Task,
