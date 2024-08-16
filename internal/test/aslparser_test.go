@@ -40,7 +40,6 @@ func parseFileName(t *testing.T, aslFileName string) (*fc.FunctionComposition, *
 
 // / TestParsedCompositionName verifies that the composition name matches the filename (without extension)
 func TestParsedCompositionName(t *testing.T) {
-	t.Skip("Skipping test")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}

@@ -19,19 +19,29 @@ type EndNode struct {
 	Id       DagNodeId
 	NodeType DagNodeType
 	Result   map[string]interface{}
+	Reason   Reason
 }
 
 func NewEndNode() *EndNode {
 	return &EndNode{
 		Id:       DagNodeId(shortuuid.New()),
 		NodeType: End,
+		Reason:   Success,
+	}
+}
+
+func NewFailingEndNode() *EndNode {
+	return &EndNode{
+		Id:       DagNodeId(shortuuid.New()),
+		NodeType: End,
+		Reason:   Failure,
 	}
 }
 
 func (e *EndNode) Equals(cmp types.Comparable) bool {
 	switch cmp.(type) {
 	case *EndNode:
-		return true
+		return e.Reason == cmp.(*EndNode).Reason
 	default:
 		return false
 	}

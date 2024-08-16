@@ -618,7 +618,7 @@ func CreateBroadcastMultiFunctionDag(dagger ...func() (*Dag, error)) (*Dag, erro
 }
 
 // ============== Build from ASL States ===================
-
+// BuildFromTaskState adds a SimpleNode to the previous Node
 func BuildFromTaskState(builder *DagBuilder, t *asl.TaskState) (*DagBuilder, error) {
 	f, found := function.GetFunction(t.Resource)
 	if !found {
@@ -626,5 +626,49 @@ func BuildFromTaskState(builder *DagBuilder, t *asl.TaskState) (*DagBuilder, err
 	}
 	builder = builder.AddSimpleNodeWithId(f, f.Name)
 	fmt.Printf("Added simple node with f: %s\n", f.Name)
+	return builder, nil
+}
+
+// BuildFromChoiceState adds a ChoiceNode as defined in the ChoiceState and connects it to the previous Node
+func BuildFromChoiceState(builder *DagBuilder, c *asl.ChoiceState) (*DagBuilder, error) {
+	// TODO: implement me
+	return builder, nil
+}
+
+// BuildFromParallelState adds a FanOutNode and a FanInNode and as many branches as defined in the ParallelState
+func BuildFromParallelState(builder *DagBuilder, c *asl.ParallelState) (*DagBuilder, error) {
+	// TODO: implement me
+	return builder, nil
+}
+
+// BuildFromMapState is not compatible with Serverledge at the moment
+func BuildFromMapState(builder *DagBuilder, c *asl.MapState) (*DagBuilder, error) {
+	// TODO: implement me
+	// TODO: implement MapNode
+	panic("not compatible with serverledge currently")
+	// return builder, nil
+}
+
+// BuildFromPassState adds a SimpleNode with an identity function
+func BuildFromPassState(builder *DagBuilder, p *asl.PassState) (*DagBuilder, error) {
+	// TODO: implement me
+	return builder, nil
+}
+
+// BuildFromWaitState adds a Simple node with a sleep function for the specified time as described in the WaitState
+func BuildFromWaitState(builder *DagBuilder, w *asl.WaitState) (*DagBuilder, error) {
+	// TODO: implement me
+	return builder, nil
+}
+
+// BuildFromSucceedState is not fully compatible with serverledge, but it adds an EndNode
+func BuildFromSucceedState(builder *DagBuilder, s *asl.SucceedState) (*DagBuilder, error) {
+	// TODO: implement me
+	return builder, nil
+}
+
+// BuildFromFailState is not fully compatible with serverledge, but it adds an EndNode
+func BuildFromFailState(builder *DagBuilder, s *asl.FailState) (*DagBuilder, error) {
+	// TODO: implement me
 	return builder, nil
 }
