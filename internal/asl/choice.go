@@ -6,40 +6,20 @@ import (
 )
 
 type ChoiceState struct {
-	Type           StateType
-	Matches        []*Match
-	InputPath      Path
-	OutputPath     Path
-	ResultPath     Path
-	Parameters     string
-	ResultSelector string
-	Retry          *Retry
-	Catch          *Catch
-	Next           string
-	End            bool
+	Type       StateType     // Necessary
+	Choices    []*ChoiceRule // Necessary. All ChoiceRule must be State Machine with an end, like fc.ChoiceNode(s).
+	InputPath  Path          // Optional
+	OutputPath Path          // Optional
+	Default    string        // Optional, but to avoid errors it is highly recommended
 }
 
-func (c *ChoiceState) IsEndState() bool {
-	return c.End
-}
-
-func (c *ChoiceState) Equals(cmp types.Comparable) bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func NewEmptyChoice() *ChoiceState {
-	return &ChoiceState{
-		Type: Choice,
-	}
-}
-
+// TODO
 func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
 	/*choices, _, _, errChoice := jsonparser.Get(value, "Choices")
 	if errChoice != nil {
 		return errChoice
 	}
-	matches := make([]Match, 0)
+	matches := make([]ChoiceRule, 0)
 
 	_, errArr := jsonparser.ArrayEach(choices, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		matchVariable, _, _, errMatch := jsonparser.Get(value, "Variable")
@@ -58,7 +38,7 @@ func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
 		if errMatch != nil {
 			return
 		}
-		m := Match{
+		m := ChoiceRule{
 			Variable:  string(matchVariable),
 			Operation: NewEqCondition(NewParam(string(matchVariable)), NewValue(num)),
 			Next:      string(matchNext),
@@ -76,31 +56,97 @@ func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
 	return nil, nil
 }
 
-func (c *ChoiceState) GetNext() (string, bool) {
-	if c.End == false {
-		return c.Next, true
+func NewEmptyChoice() *ChoiceState {
+	return &ChoiceState{
+		Type:       Choice,
+		Choices:    []*ChoiceRule{},
+		InputPath:  "",
+		OutputPath: "",
+		Default:    "",
 	}
-	return "", false
 }
 
 func (c *ChoiceState) GetType() StateType {
 	return Choice
 }
 
-type Match struct {
+// GetNext for ChoiceState returns the Default branch instead of next
+func (c *ChoiceState) GetNext() (string, bool) {
+	if c.Default != "" {
+		return c.Default, true
+	}
+	return "", false
+}
+
+// IsEndState always returns false for a ChoiceState, because it is never a terminal state.
+func (c *ChoiceState) IsEndState() bool {
+	return false
+}
+
+func (c *ChoiceState) Equals(cmp types.Comparable) bool {
+	c2 := cmp.(*ChoiceState)
+
+	for _, c1 := range c.Choices {
+		if !c1.Equals(c2) {
+			return false
+		}
+	}
+
+	return c.Type == c2.Type &&
+		c.InputPath == c2.InputPath &&
+		c.OutputPath == c2.OutputPath &&
+		c.Default == c2.Default
+}
+
+// FIXME: improve
+func (c *ChoiceState) String() string {
+	str := fmt.Sprint("{",
+		"\n\t\t\t\tType: ", c.Type,
+		"\n\t\t\t\tDefault: ", c.Default,
+		"\n\t\t\t\tChoices: [")
+	for i, c1 := range c.Choices {
+		str += c1.String()
+		if i < len(c.Choices)-1 {
+			str += ","
+		}
+	}
+	str += "]"
+
+	if c.InputPath != "" {
+		str += fmt.Sprintf("\t\t\t\tInputPath: %s\n", c.InputPath)
+	}
+	if c.OutputPath != "" {
+		str += fmt.Sprintf("\t\t\t\tOutputPath: %s\n", c.OutputPath)
+	}
+	str += "\t\t\t}\n"
+	return str
+}
+
+type ChoiceRule struct {
 	Variable  string
 	Operation string // FIXME: come up with a better type (Do not use fc.Condition, or you will have an import cycle)
 	Next      string
 }
 
-func (m *Match) Equals(cmp types.Comparable) bool {
-	m2 := cmp.(*Match)
-	return m.Next == m2.Next &&
-		m.Operation == m2.Operation &&
-		m.Variable == m2.Variable
+// FIXME: improve
+func (cr *ChoiceRule) String() string {
+	str := "\n\t\t\t\t\t{"
+
+	if cr.Variable != "" {
+		str += fmt.Sprintf("\t\t\t\t\t\tVariable: %s\n", cr.Variable)
+	}
+	if cr.Operation != "" {
+		str += fmt.Sprintf("\t\t\t\t\t\tOperation: %s\n", cr.Operation)
+	}
+	if cr.Next != "" {
+		str += fmt.Sprintf("\t\t\t\t\t\tNext: %s\n", cr.Next)
+	}
+	return str + "\n\t\t\t\t\t}"
 }
 
-// FIXME: improve
-func (c *ChoiceState) String() string {
-	return fmt.Sprintf("%v", c.Matches)
+func (cr *ChoiceRule) Equals(cmp types.Comparable) bool {
+	cr2 := cmp.(*ChoiceRule)
+	return cr.Next == cr2.Next &&
+		cr.Operation == cr2.Operation &&
+		cr.Variable == cr2.Variable
 }

@@ -3,7 +3,9 @@ package asl
 import "github.com/grussorusso/serverledge/internal/types"
 
 type SucceedState struct {
-	Type StateType
+	Type       StateType // Necessary
+	InputPath  Path      // Optional, default $
+	OutputPath Path      // Optional, default $
 }
 
 func (s *SucceedState) IsEndState() bool {
@@ -12,7 +14,9 @@ func (s *SucceedState) IsEndState() bool {
 
 func (s *SucceedState) Equals(cmp types.Comparable) bool {
 	s2 := cmp.(*SucceedState)
-	return s.Type == s2.Type
+	return s.Type == s2.Type &&
+		s.InputPath == s2.InputPath &&
+		s.OutputPath == s2.OutputPath
 }
 
 func NewEmptySucceed() *SucceedState {
@@ -22,11 +26,6 @@ func NewEmptySucceed() *SucceedState {
 }
 
 func (s *SucceedState) ParseFrom(jsonData []byte) (State, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *SucceedState) GetNext() []State {
 	//TODO implement me
 	panic("implement me")
 }

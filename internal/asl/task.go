@@ -24,14 +24,6 @@ type TaskState struct {
 	End                  bool            // default false
 }
 
-func (t *TaskState) IsEndState() bool {
-	return t.End
-}
-
-func (t *TaskState) GetResources() []string {
-	return []string{t.Resource}
-}
-
 func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 
 	var err error
@@ -155,6 +147,10 @@ func NewEmptyTask() *TaskState {
 	}
 }
 
+func (t *TaskState) GetType() StateType {
+	return Task
+}
+
 func (t *TaskState) GetNext() (string, bool) {
 	if t.End == false {
 		return t.Next, true
@@ -162,8 +158,12 @@ func (t *TaskState) GetNext() (string, bool) {
 	return "", false
 }
 
-func (t *TaskState) GetType() StateType {
-	return Task
+func (t *TaskState) GetResources() []string {
+	return []string{t.Resource}
+}
+
+func (t *TaskState) IsEndState() bool {
+	return t.End
 }
 
 func (t *TaskState) Equals(cmp types.Comparable) bool {
@@ -187,7 +187,7 @@ func (t *TaskState) Equals(cmp types.Comparable) bool {
 
 func (t *TaskState) String() string {
 	str := fmt.Sprint("{",
-		"\n\t\t\t\tType: ", t.GetType(),
+		"\n\t\t\t\tType: ", t.Type,
 		"\n\t\t\t\tResource: ", t.Resource,
 		"\n")
 

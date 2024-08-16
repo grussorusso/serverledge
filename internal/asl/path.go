@@ -12,8 +12,8 @@ type Path string
 // NewReferencePath creates a new Reference Path, that starts with a $ character, separated by "." characters and
 // that does not contain the following characters '@' ',' ':' '?'. Used to define input or output parameters.
 func NewReferencePath(s string) (Path, error) {
-	if s == "" {
-		return "", nil
+	if s == "" || s == "$" {
+		return Path(s), nil
 	}
 	if !strings.HasPrefix(s, "$.") {
 		s = "$." + s

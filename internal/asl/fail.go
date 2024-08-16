@@ -4,6 +4,12 @@ import "github.com/grussorusso/serverledge/internal/types"
 
 type FailState struct {
 	Type StateType
+	// Error is a error identifier to be used in a retry State
+	Error     string
+	ErrorPath Path
+	// Cause is a human-readable message
+	Cause     string
+	CausePath Path
 }
 
 func (f *FailState) IsEndState() bool {
@@ -12,7 +18,11 @@ func (f *FailState) IsEndState() bool {
 
 func (f *FailState) Equals(cmp types.Comparable) bool {
 	f2 := cmp.(*FailState)
-	return f.Type == f2.Type
+	return f.Type == f2.Type &&
+		f.Error == f2.Error &&
+		f.ErrorPath == f2.ErrorPath &&
+		f.Cause == f2.Cause &&
+		f.CausePath == f2.CausePath
 }
 
 func NewEmptyFail() *FailState {
