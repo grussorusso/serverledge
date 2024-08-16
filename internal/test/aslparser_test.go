@@ -92,7 +92,6 @@ func commonTest(t *testing.T, name string, expectedResult int) {
 // TestParsingSimple verifies that a simple json with 2 state is correctly parsed and it is equal to a sequence dag with 2 simple nodes
 
 func TestParsingSimple(t *testing.T) {
-	t.Skip("Skipping test")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -100,9 +99,8 @@ func TestParsingSimple(t *testing.T) {
 	commonTest(t, "simple", 2)
 }
 
-// TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed (TODO)
+// TestParsingSequence verifies that a json with 5 simple nodes is correctly parsed
 func TestParsingSequence(t *testing.T) {
-	t.Skip("Skipping test")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -113,7 +111,6 @@ func TestParsingSequence(t *testing.T) {
 
 // TestParsingMixedUpSequence verifies that a json file with 5 simple unordered task is parsed correctly and in order in a sequence DAG.
 func TestParsingMixedUpSequence(t *testing.T) {
-	t.Skip("Skipping test")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}

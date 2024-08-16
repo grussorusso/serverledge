@@ -419,86 +419,75 @@ func FromStateMachine(sm *asl.StateMachine, removeFnOnDeletion bool) (*FunctionC
 		switch nextState.GetType() {
 		case asl.Task:
 			taskState := nextState.(*asl.TaskState)
-			b, err := BuildFromTaskState(builder, taskState)
+			b, err := BuildFromTaskState(builder, taskState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
-			isTerminal = taskState.End
-			if !isTerminal {
-				nextStateName2, ok := taskState.GetNext()
-				if !ok {
-					return nil, fmt.Errorf("failed to find next state\n")
-				}
-				nextState = sm.States[nextStateName2]
-			}
+			nextState, nextStateName, isTerminal = findNextOrTerminate(taskState, sm)
 			break
 		case asl.Parallel:
 			parallelState := nextState.(*asl.ParallelState)
-			b, err := BuildFromParallelState(builder, parallelState)
+			b, err := BuildFromParallelState(builder, parallelState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
-			isTerminal = parallelState.End
-			if !isTerminal {
-				nextStateName2, ok := parallelState.GetNext()
-				if !ok {
-					return nil, fmt.Errorf("failed to find next state\n")
-				}
-				nextState = sm.States[nextStateName2]
-			}
+			nextState, nextStateName, isTerminal = findNextOrTerminate(parallelState, sm)
 			break
 		case asl.Map:
 			mapState := nextState.(*asl.MapState)
-			b, err := BuildFromMapState(builder, mapState)
+			b, err := BuildFromMapState(builder, mapState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
-			isTerminal = mapState.End
-			if !isTerminal {
-				nextStateName2, ok := mapState.GetNext()
-				if !ok {
-					return nil, fmt.Errorf("failed to find next state\n")
-				}
-				nextState = sm.States[nextStateName2]
-			}
+			nextState, nextStateName, isTerminal = findNextOrTerminate(mapState, sm)
 			break
 		case asl.Pass:
-			b, err := BuildFromPassState(builder, nextState.(*asl.PassState))
+			passState := nextState.(*asl.PassState)
+			b, err := BuildFromPassState(builder, passState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(passState, sm)
 			break
 		case asl.Wait:
-			b, err := BuildFromWaitState(builder, nextState.(*asl.WaitState))
+			waitState := nextState.(*asl.WaitState)
+			b, err := BuildFromWaitState(builder, waitState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(waitState, sm)
 			break
 		case asl.Choice:
-			b, err := BuildFromChoiceState(builder, nextState.(*asl.ChoiceState))
+			choiceState := nextState.(*asl.ChoiceState)
+			b, err := BuildFromChoiceState(builder, choiceState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(choiceState, sm)
 			break
 		case asl.Succeed:
-			b, err := BuildFromSucceedState(builder, nextState.(*asl.SucceedState))
+			succeed := nextState.(*asl.SucceedState)
+			b, err := BuildFromSucceedState(builder, succeed, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(succeed, sm)
 			break
 		case asl.Fail:
-			b, err := BuildFromFailState(builder, nextState.(*asl.FailState))
+			failState := nextState.(*asl.FailState)
+			b, err := BuildFromFailState(builder, failState, nextStateName)
 			if err != nil {
 				return nil, err
 			}
 			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(failState, sm)
 			break
 		default:
 			return nil, fmt.Errorf("unknown state type %s", nextState.GetType())
@@ -513,15 +502,18 @@ func FromStateMachine(sm *asl.StateMachine, removeFnOnDeletion bool) (*FunctionC
 	return &comp, nil
 }
 
-func findNextOrTerminate(state asl.CanEnd, sm *asl.StateMachine) (asl.State, bool) {
+// findNextOrTerminate returns the State, its name and if it is terminal or not
+func findNextOrTerminate(state asl.CanEnd, sm *asl.StateMachine) (asl.State, string, bool) {
 	isTerminal := state.IsEndState()
 	var nextState asl.State = nil
+	var nextStateName string = ""
 	if !isTerminal {
-		nextStateName2, ok := state.(asl.HasNext).GetNext()
+		nextName, ok := state.(asl.HasNext).GetNext()
 		if !ok {
-			return nil, true
+			return nil, "", true
 		}
-		nextState = sm.States[nextStateName2]
+		nextStateName = nextName
+		nextState = sm.States[nextStateName]
 	}
-	return nextState, true
+	return nextState, nextStateName, isTerminal
 }
