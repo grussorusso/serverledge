@@ -4,6 +4,7 @@ package fc
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
+	"github.com/grussorusso/serverledge/internal/asl"
 	"github.com/grussorusso/serverledge/internal/function"
 	"strconv"
 )
@@ -175,26 +176,25 @@ func parseASL(aslSrc []byte) (*StateMachine, error) {
 
 // FromASL parses a AWS State Language specification file and returns a Function Composition with the corresponding Serverledge Dag
 // The name of the composition should not be the file name by default, to avoid problems when adding the same composition multiple times.
-// DEPRECATED
 func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
-	stateMachine, err := parseASL(aslSrc)
+	stateMachine, err := asl.ParseFrom(name, aslSrc)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse the ASL file: %v", err)
 	}
-
-	startingState, ok := stateMachine.States[stateMachine.StartAt]
-	if !ok {
-		return nil, fmt.Errorf("could not find starting state")
-	}
-	// loops until we get to the End
-	funcs := make([]*function.Function, 0)
-	dag, funcs, err := dagBuilding(funcs, startingState, NewDagBuilder(), nil, stateMachine)
-	if err != nil {
-		return nil, err
-	}
-
-	comp := NewFC(name, *dag, funcs, false)
-	return &comp, nil
+	return stateMachine.ToFunctionComposition(false)
+	//startingState, ok := stateMachine.States[stateMachine.StartAt]
+	//if !ok {
+	//	return nil, fmt.Errorf("could not find starting state")
+	//}
+	//// loops until we get to the End
+	//funcs := make([]*function.Function, 0)
+	//dag, funcs, err := dagBuilding(funcs, startingState, NewDagBuilder(), nil, stateMachine)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//comp := NewFC(name, *dag, funcs, false)
+	//return &comp, nil
 }
 
 func dagBuilding(funcs []*function.Function, currentState State, builder *DagBuilder, condBuilder *ChoiceBranchBuilder, stateMachine *StateMachine) (*Dag, []*function.Function, error) {

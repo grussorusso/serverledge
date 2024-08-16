@@ -35,11 +35,10 @@ type OutputPath = string
 // HasNext is an interface for non-terminal states.
 // Fail, Succeed and any other state with End=true are terminal states.
 // Fail and Succeed should not implement this interface
+// Should be implemented by Task, Parallel,	Map, Pass and Wait
 type HasNext interface {
-	// HasSingleNext return true for all states except Choice.
-	HasSingleNext() bool
-	// Next returns the next state, if exists. Otherwise returns an error. For the Choice state returns an error.
-	Next() (string, error)
+	// GetNext returns the next state, if exists. Otherwise, returns an empty string and false
+	GetNext() (string, bool)
 }
 
 // CanEnd is an interface with a boolean method. If true, marks the state machine end. Valid for Task, Parallel, Map, Pass and Wait states
@@ -60,7 +59,8 @@ type HasParameters interface {
 type ResultSelector = string // TODO: what is that
 
 type HasResources interface {
-	GetResource() string
+	// GetResources returns all function names present in the State. The implementation could return duplicate functions
+	GetResources() []string
 }
 
 type Parseable interface {

@@ -11,6 +11,9 @@ type TaskState struct {
 	Resource             string          // Necessary
 	Next                 string          // Necessary when End = false
 	Parameters           PayloadTemplate // Optional
+	InputPath            Path            // Optional
+	OutputPath           Path            // Optional
+	ResultPath           Path            // Optional
 	ResultSelector       PayloadTemplate // Optional
 	Retry                *Retry          // Optional
 	Catch                *Catch          // Optional
@@ -19,6 +22,10 @@ type TaskState struct {
 	HeartbeatSeconds     uint32          // Optional, in seconds. Smaller than timeoutSeconds
 	HeartbeatSecondsPath Path            // Optional, in seconds. Smaller than timeoutSeconds
 	End                  bool            // default false
+}
+
+func (t *TaskState) GetResources() []string {
+	return []string{t.Resource}
 }
 
 func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
@@ -40,6 +47,28 @@ func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 	}
 
 	t.Parameters.json = utils.JsonExtractStringOrDefault(jsonData, "Parameters", "")
+
+	iInputPath := utils.JsonExtractStringOrDefault(jsonData, "InputPath", "")
+	inputPath, errI := NewReferencePath(iInputPath)
+	if errI != nil {
+		return nil, errI
+	}
+	t.InputPath = inputPath
+
+	iOutputPath := utils.JsonExtractStringOrDefault(jsonData, "OutputPath", "")
+	outputPath, errO := NewReferencePath(iOutputPath)
+	if errO != nil {
+		return nil, errO
+	}
+	t.OutputPath = outputPath
+
+	iResultPath := utils.JsonExtractStringOrDefault(jsonData, "ResultPath", "")
+	resultPath, errR := NewReferencePath(iResultPath)
+	if errR != nil {
+		return nil, errR
+	}
+	t.ResultPath = resultPath
+
 	t.ResultSelector.json = utils.JsonExtractStringOrDefault(jsonData, "ResultSelector", "")
 	t.Retry = utils.JsonExtractObjectOrDefault(jsonData, "Retry", &Retry{}).(*Retry)
 	t.Catch = utils.JsonExtractObjectOrDefault(jsonData, "Catch", &Catch{}).(*Catch)
@@ -68,6 +97,9 @@ func NewTerminalTask(resource string) *TaskState {
 		Resource:             resource,
 		Next:                 "",
 		Parameters:           PayloadTemplate{""},
+		InputPath:            "",
+		OutputPath:           "",
+		ResultPath:           "",
 		ResultSelector:       PayloadTemplate{""},
 		Retry:                NoRetry(),
 		Catch:                NoCatch(),
@@ -85,6 +117,9 @@ func NewNonTerminalTask(resource string, next string) *TaskState {
 		Resource:             resource,
 		Next:                 next,
 		Parameters:           PayloadTemplate{""},
+		InputPath:            "",
+		OutputPath:           "",
+		ResultPath:           "",
 		ResultSelector:       PayloadTemplate{""},
 		Retry:                NoRetry(),
 		Catch:                NoCatch(),
@@ -102,6 +137,9 @@ func NewEmptyTask() *TaskState {
 		Resource:             "",
 		Next:                 "",
 		Parameters:           PayloadTemplate{""},
+		InputPath:            "",
+		OutputPath:           "",
+		ResultPath:           "",
 		ResultSelector:       PayloadTemplate{""},
 		Retry:                nil,
 		Catch:                nil,
@@ -109,13 +147,15 @@ func NewEmptyTask() *TaskState {
 		TimeoutSecondsPath:   "",
 		HeartbeatSeconds:     0,
 		HeartbeatSecondsPath: "",
-		End:                  true,
+		End:                  false,
 	}
 }
 
-func (t *TaskState) GetNext() []State {
-	//TODO implement me
-	panic("implement me")
+func (t *TaskState) GetNext() (string, bool) {
+	if t.End == false {
+		return t.Next, true
+	}
+	return "", false
 }
 
 func (t *TaskState) GetType() StateType {
@@ -128,6 +168,9 @@ func (t *TaskState) Equals(cmp types.Comparable) bool {
 		t.Resource == t2.Resource &&
 		t.Next == t2.Next &&
 		t.Parameters.json == t2.Parameters.json &&
+		t.InputPath == t2.InputPath &&
+		t.OutputPath == t2.OutputPath &&
+		t.ResultPath == t2.ResultPath &&
 		t.ResultSelector.json == t2.ResultSelector.json &&
 		t.Retry.Equals(t2.Retry) &&
 		t.Catch.Equals(t2.Catch) &&
@@ -150,6 +193,16 @@ func (t *TaskState) String() string {
 
 	if t.Parameters.json != "" {
 		str += fmt.Sprintf("\t\t\t\tParameters: %s\n", t.Parameters.json)
+	}
+
+	if t.InputPath != "" {
+		str += fmt.Sprintf("\t\t\t\tInputPath: %s\n", t.InputPath)
+	}
+	if t.OutputPath != "" {
+		str += fmt.Sprintf("\t\t\t\tOutputPath: %s\n", t.OutputPath)
+	}
+	if t.ResultPath != "" {
+		str += fmt.Sprintf("\t\t\t\tResultPath: %s\n", t.ResultPath)
 	}
 
 	if t.ResultSelector.json != "" {

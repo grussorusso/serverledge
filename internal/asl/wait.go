@@ -4,6 +4,8 @@ import "github.com/grussorusso/serverledge/internal/types"
 
 type WaitState struct {
 	Type StateType
+	Next string
+	End  bool
 }
 
 func (w *WaitState) Equals(cmp types.Comparable) bool {
@@ -27,9 +29,11 @@ func (w *WaitState) ParseFrom(jsonData []byte) (State, error) {
 	panic("implement me")
 }
 
-func (w *WaitState) GetNext() []State {
-	//TODO implement me
-	panic("implement me")
+func (w *WaitState) GetNext() (string, bool) {
+	if w.End == false {
+		return w.Next, true
+	}
+	return "", false
 }
 
 func (w *WaitState) GetType() StateType {

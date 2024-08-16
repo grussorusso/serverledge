@@ -75,7 +75,7 @@ func emptyParsableFromType(t StateType) Parseable {
 func parseStates(statesData string) (map[string]State, error) {
 	states := make(map[string]State)
 	err := jsonparser.ObjectEach([]byte(statesData), func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-		stateType, _, _, err2 := jsonparser.Get(value, "Type")
+		stateType, err2 := utils.JsonExtract(value, "Type")
 		if err2 != nil {
 			return err2
 		}
@@ -141,27 +141,27 @@ func (sm *StateMachine) String() string {
 	}
 
 }*/
-
-func (sm *StateMachine) getFunctions() []string {
+// getFunctionNames retrieves all functions defined in the StateMachine, and duplicates are allowed
+func (sm *StateMachine) getFunctionNames() []string {
 	funcs := make([]string, 0)
 	for _, v := range sm.States {
 		res, ok := v.(HasResources)
 		if ok {
-			funcName := res.GetResource()
-			funcs = append(funcs, funcName)
+			funcName := res.GetResources()
+			funcs = append(funcs, funcName...)
 		}
 	}
 
 	return funcs
 }
 
-func (sm *StateMachine) ToFunctionComposition() (*fc.FunctionComposition, error) {
+func (sm *StateMachine) ToFunctionComposition(removeFnOnDeletion bool) (*fc.FunctionComposition, error) {
 	dag, err := fc.NewDagBuilder().Build() //TODO: build dag
 	if err != nil {
 		return nil, fmt.Errorf("could not build sm: %v", err)
 	}
-
-	funcNames := sm.getFunctions()
+	// we do not care whether function names are duplicate, we handle this in the composition
+	funcNames := sm.getFunctionNames()
 	funcs := make([]*function.Function, 0)
 	for _, f := range funcNames {
 		funcObj, ok := function.GetFunction(f)
@@ -171,7 +171,7 @@ func (sm *StateMachine) ToFunctionComposition() (*fc.FunctionComposition, error)
 		funcs = append(funcs, funcObj)
 	}
 
-	comp := fc.NewFC(sm.Name, *dag, funcs, false)
+	comp := fc.NewFC(sm.Name, *dag, funcs, removeFnOnDeletion)
 	return &comp, nil
 }
 

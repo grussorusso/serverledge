@@ -7,8 +7,17 @@ import (
 )
 
 type ChoiceState struct {
-	Type    StateType
-	Matches []*Match
+	Type           StateType
+	Matches        []*Match
+	InputPath      Path
+	OutputPath     Path
+	ResultPath     Path
+	Parameters     string
+	ResultSelector string
+	Retry          *Retry
+	Catch          *Catch
+	Next           string
+	End            bool
 }
 
 func (c *ChoiceState) Equals(cmp types.Comparable) bool {
@@ -64,9 +73,11 @@ func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
 	return nil, nil
 }
 
-func (c *ChoiceState) GetNext() []State {
-	//TODO implement me (maybe not for choice)
-	panic("implement me")
+func (c *ChoiceState) GetNext() (string, bool) {
+	if c.End == false {
+		return c.Next, true
+	}
+	return "", false
 }
 
 func (c *ChoiceState) GetType() StateType {
