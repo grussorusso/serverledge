@@ -2,7 +2,6 @@ package asl
 
 import (
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/types"
 )
 
@@ -86,14 +85,14 @@ func (c *ChoiceState) GetType() StateType {
 
 type Match struct {
 	Variable  string
-	Operation *fc.Condition
+	Operation string // FIXME: come up with a better type (Do not use fc.Condition, or you will have an import cycle)
 	Next      string
 }
 
 func (m *Match) Equals(cmp types.Comparable) bool {
 	m2 := cmp.(*Match)
 	return m.Next == m2.Next &&
-		m.Operation.Equals(*m2.Operation) &&
+		m.Operation == m2.Operation &&
 		m.Variable == m2.Variable
 }
 

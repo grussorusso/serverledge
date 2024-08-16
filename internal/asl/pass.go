@@ -38,5 +38,6 @@ func (p *PassState) GetType() StateType {
 }
 
 func (p *PassState) String() string {
-	return "Pass"
+	//TODO implement me
+	panic("implement me")
 }

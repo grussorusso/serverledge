@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornelk/hashmap"
+	"github.com/grussorusso/serverledge/internal/asl"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
@@ -393,4 +394,22 @@ func (cer *CompositionExecutionReport) UnmarshalJSON(data []byte) error {
 		cer.Reports.Set(ExecutionReportId(id), &execReportVar)
 	}
 	return nil
+}
+
+func FromStateMachine(sm *asl.StateMachine, removeFnOnDeletion bool) (*FunctionComposition, error) {
+	// we do not care whether function names are duplicate, we handle this in the composition
+	funcNames := sm.GetFunctionNames()
+	funcs := make([]*function.Function, 0)
+	for _, f := range funcNames {
+		funcObj, ok := function.GetFunction(f)
+		if !ok {
+			return nil, fmt.Errorf("function does not exists")
+		}
+		funcs = append(funcs, funcObj)
+	}
+
+	dag, _ := NewDagBuilder().Build()
+
+	comp := NewFC(sm.Name, *dag, funcs, removeFnOnDeletion)
+	return &comp, nil
 }

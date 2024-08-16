@@ -3,8 +3,6 @@ package asl
 import (
 	"fmt"
 	"github.com/buger/jsonparser"
-	"github.com/grussorusso/serverledge/internal/fc"
-	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/grussorusso/serverledge/utils"
 )
@@ -72,6 +70,7 @@ func emptyParsableFromType(t StateType) Parseable {
 	}
 }
 
+// parseStates is used to create the state machine
 func parseStates(statesData string) (map[string]State, error) {
 	states := make(map[string]State)
 	err := jsonparser.ObjectEach([]byte(statesData), func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
@@ -121,28 +120,8 @@ func (sm *StateMachine) String() string {
 		statesString)
 }
 
-// FromASL parses a AWS State Language specification JSON file and returns a StateMachine
-// The name of the composition should not be the file name by default, to avoid problems when adding the same composition multiple times.
-/*func FromASL(name string, aslSrc []byte) (*fc.FunctionComposition, error) {
-	stateMachine, err := parseASL(aslSrc)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse the ASL file: %v", err)
-	}
-
-	startingState, ok := stateMachine.States[stateMachine.StartAt]
-	if !ok {
-		return nil, fmt.Errorf("could not find starting state")
-	}
-	// loops until we get to the End
-	funcs := make([]*function.Function, 0)
-	sm, funcs, err := smBuilding(funcs, startingState, NewsmBuilder(), nil, stateMachine)
-	if err != nil {
-		return nil, err
-	}
-
-}*/
-// getFunctionNames retrieves all functions defined in the StateMachine, and duplicates are allowed
-func (sm *StateMachine) getFunctionNames() []string {
+// GetFunctionNames retrieves all functions defined in the StateMachine, and duplicates are allowed
+func (sm *StateMachine) GetFunctionNames() []string {
 	funcs := make([]string, 0)
 	for _, v := range sm.States {
 		res, ok := v.(HasResources)
@@ -155,25 +134,40 @@ func (sm *StateMachine) getFunctionNames() []string {
 	return funcs
 }
 
-func (sm *StateMachine) ToFunctionComposition(removeFnOnDeletion bool) (*fc.FunctionComposition, error) {
-	dag, err := fc.NewDagBuilder().Build() //TODO: build dag
-	if err != nil {
-		return nil, fmt.Errorf("could not build sm: %v", err)
+// TODO: delete this functions when you're done with choice
+/*func dagBuilding(funcs []*function.Function, currentState State, builder *fc.DagBuilder, condBuilder *fc.ChoiceBranchBuilder, stateMachine *StateMachine) (*fc.Dag, []*function.Function, error) {
+	switch currentState.GetType() {
+	case "Task":
+		return nil, nil, nil
+	case "Choice":
+		// gets the conditions from matches
+		//conds := make([]fc.Condition, 0)
+		//for _, c := range currentState.Choices {
+		//	conds = append(conds, c.Operation)
+		//}
+		//if condBuilder == nil {
+		//	condBuilder = builder.AddChoiceNode(conds...)
+		//}
+		//
+		//i := 0
+		//for condBuilder.HasNextBranch() {
+		//	nextState := stateMachine.States[currentState.Choices[i].Next]
+		//	subDag, _, errSub := dagBuilding(funcs, nextState, NewDagBuilder(), condBuilder, stateMachine)
+		//	if errSub != nil {
+		//		return nil, nil, errSub
+		//	}
+		//	// assign the function (Task state) to the next branch
+		//	condBuilder.NextBranch(subDag, nil)
+		//	i++
+		//}
+		// dag, err := condBuilder.EndChoiceAndBuild()
+		return nil, nil, nil
+	case "Fail":
+		return nil, nil, nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported task type: %s", currentState.GetType())
 	}
-	// we do not care whether function names are duplicate, we handle this in the composition
-	funcNames := sm.getFunctionNames()
-	funcs := make([]*function.Function, 0)
-	for _, f := range funcNames {
-		funcObj, ok := function.GetFunction(f)
-		if !ok {
-			return nil, fmt.Errorf("function does not exists")
-		}
-		funcs = append(funcs, funcObj)
-	}
-
-	comp := fc.NewFC(sm.Name, *dag, funcs, removeFnOnDeletion)
-	return &comp, nil
-}
+}*/
 
 func (sm *StateMachine) Equals(comparer types.Comparable) bool {
 	sm2 := comparer.(*StateMachine)
@@ -181,7 +175,7 @@ func (sm *StateMachine) Equals(comparer types.Comparable) bool {
 	if len(sm.States) != len(sm2.States) {
 		return false
 	}
-
+	// checks if all states are equal
 	for k := range sm.States {
 		if !sm.States[k].Equals(sm2.States[k]) {
 			return false

@@ -12,7 +12,7 @@ type ParallelState struct {
 func (p *ParallelState) GetResources() []string {
 	funcs := make([]string, 0)
 	for _, branchStateMachine := range p.Branches {
-		funcs = append(funcs, branchStateMachine.getFunctionNames()...)
+		funcs = append(funcs, branchStateMachine.GetFunctionNames()...)
 	}
 	return funcs
 }

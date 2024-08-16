@@ -3,7 +3,7 @@ package fc
 import (
 	"errors"
 	"fmt"
-
+	"github.com/grussorusso/serverledge/internal/asl"
 	"github.com/grussorusso/serverledge/internal/function"
 )
 
@@ -615,4 +615,16 @@ func CreateBroadcastMultiFunctionDag(dagger ...func() (*Dag, error)) (*Dag, erro
 	return builder.
 		AddFanInNode(AddNewMapEntry).
 		Build()
+}
+
+// ============== Build from ASL States ===================
+
+func BuildFromTaskState(builder *DagBuilder, t *asl.TaskState) (*DagBuilder, error) {
+	f, found := function.GetFunction(t.Resource)
+	if !found {
+		return nil, fmt.Errorf("non existing function in composition: %s", t.Resource)
+	}
+	builder = builder.AddSimpleNodeWithId(f, f.Name)
+	fmt.Printf("Added simple node with f: %s\n", f.Name)
+	return builder, nil
 }

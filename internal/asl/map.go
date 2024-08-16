@@ -63,7 +63,7 @@ func (m *MapState) GetResources() []string {
 		if m.ItemProcessor == nil {
 			return []string{}
 		}
-		return m.ItemProcessor.getFunctionNames()
+		return m.ItemProcessor.GetFunctionNames()
 	}()
 	res = append(res, processorResource...)
 

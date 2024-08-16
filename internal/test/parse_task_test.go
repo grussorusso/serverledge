@@ -34,7 +34,7 @@ func TestParseSingleTerminalTask(t *testing.T) {
 			"FirstState": asl.NewTerminalTask("inc"),
 		},
 	}
-	utils.AssertTrue(t, smExpected.Equals(sm))
+	utils.AssertTrueMsg(t, smExpected.Equals(sm), "state machines differs")
 }
 
 func TestParseTwoTask(t *testing.T) {
@@ -71,7 +71,7 @@ func TestParseTwoTask(t *testing.T) {
 			"SecondState": asl.NewTerminalTask("inc"),
 		},
 	}
-	utils.AssertTrue(t, smExpected.Equals(sm))
+	utils.AssertTrueMsg(t, smExpected.Equals(sm), "state machines differs")
 }
 
 func TestParseTwoTaskInverted(t *testing.T) {
@@ -108,7 +108,7 @@ func TestParseTwoTaskInverted(t *testing.T) {
 			"SecondState": asl.NewTerminalTask("inc"),
 		},
 	}
-	utils.AssertTrue(t, smExpected.Equals(sm))
+	utils.AssertTrueMsg(t, smExpected.Equals(sm), "state machines differs")
 }
 
 func TestParseTaskWithoutEnd(t *testing.T) {
