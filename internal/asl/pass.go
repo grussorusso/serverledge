@@ -8,6 +8,10 @@ type PassState struct {
 	End  bool
 }
 
+func (p *PassState) IsEndState() bool {
+	return p.End
+}
+
 func (p *PassState) Equals(cmp types.Comparable) bool {
 	p2 := cmp.(*PassState)
 	return p.Type == p2.Type && p.Next == p2.Next && p.End == p2.End

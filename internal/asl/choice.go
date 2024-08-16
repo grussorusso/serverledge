@@ -19,6 +19,10 @@ type ChoiceState struct {
 	End            bool
 }
 
+func (c *ChoiceState) IsEndState() bool {
+	return c.End
+}
+
 func (c *ChoiceState) Equals(cmp types.Comparable) bool {
 	//TODO implement me
 	panic("implement me")

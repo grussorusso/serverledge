@@ -6,6 +6,10 @@ type SucceedState struct {
 	Type StateType
 }
 
+func (s *SucceedState) IsEndState() bool {
+	return true
+}
+
 func (s *SucceedState) Equals(cmp types.Comparable) bool {
 	s2 := cmp.(*SucceedState)
 	return s.Type == s2.Type

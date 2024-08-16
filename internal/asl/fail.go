@@ -6,6 +6,10 @@ type FailState struct {
 	Type StateType
 }
 
+func (f *FailState) IsEndState() bool {
+	return true
+}
+
 func (f *FailState) Equals(cmp types.Comparable) bool {
 	f2 := cmp.(*FailState)
 	return f.Type == f2.Type

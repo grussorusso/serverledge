@@ -9,6 +9,10 @@ type ParallelState struct {
 	End      bool
 }
 
+func (p *ParallelState) IsEndState() bool {
+	return p.End
+}
+
 func (p *ParallelState) GetResources() []string {
 	funcs := make([]string, 0)
 	for _, branchStateMachine := range p.Branches {

@@ -408,8 +408,120 @@ func FromStateMachine(sm *asl.StateMachine, removeFnOnDeletion bool) (*FunctionC
 		funcs = append(funcs, funcObj)
 	}
 
-	dag, _ := NewDagBuilder().Build()
+	builder := NewDagBuilder()
+
+	nextStateName := sm.StartAt
+	nextState := sm.States[nextStateName]
+	// TODO is terminal
+	isTerminal := false
+
+	for !isTerminal {
+		switch nextState.GetType() {
+		case asl.Task:
+			taskState := nextState.(*asl.TaskState)
+			b, err := BuildFromTaskState(builder, taskState)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			isTerminal = taskState.End
+			if !isTerminal {
+				nextStateName2, ok := taskState.GetNext()
+				if !ok {
+					return nil, fmt.Errorf("failed to find next state\n")
+				}
+				nextState = sm.States[nextStateName2]
+			}
+			break
+		case asl.Parallel:
+			parallelState := nextState.(*asl.ParallelState)
+			b, err := BuildFromParallelState(builder, parallelState)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			isTerminal = parallelState.End
+			if !isTerminal {
+				nextStateName2, ok := parallelState.GetNext()
+				if !ok {
+					return nil, fmt.Errorf("failed to find next state\n")
+				}
+				nextState = sm.States[nextStateName2]
+			}
+			break
+		case asl.Map:
+			mapState := nextState.(*asl.MapState)
+			b, err := BuildFromMapState(builder, mapState)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			isTerminal = mapState.End
+			if !isTerminal {
+				nextStateName2, ok := mapState.GetNext()
+				if !ok {
+					return nil, fmt.Errorf("failed to find next state\n")
+				}
+				nextState = sm.States[nextStateName2]
+			}
+			break
+		case asl.Pass:
+			b, err := BuildFromPassState(builder, nextState.(*asl.PassState))
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			break
+		case asl.Wait:
+			b, err := BuildFromWaitState(builder, nextState.(*asl.WaitState))
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			break
+		case asl.Choice:
+			b, err := BuildFromChoiceState(builder, nextState.(*asl.ChoiceState))
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			break
+		case asl.Succeed:
+			b, err := BuildFromSucceedState(builder, nextState.(*asl.SucceedState))
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			break
+		case asl.Fail:
+			b, err := BuildFromFailState(builder, nextState.(*asl.FailState))
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			break
+		default:
+			return nil, fmt.Errorf("unknown state type %s", nextState.GetType())
+		}
+	}
+	dag, err := builder.Build()
+	if err != nil {
+		return nil, err
+	}
 
 	comp := NewFC(sm.Name, *dag, funcs, removeFnOnDeletion)
 	return &comp, nil
+}
+
+func findNextOrTerminate(state asl.CanEnd, sm *asl.StateMachine) (asl.State, bool) {
+	isTerminal := state.IsEndState()
+	var nextState asl.State = nil
+	if !isTerminal {
+		nextStateName2, ok := state.(asl.HasNext).GetNext()
+		if !ok {
+			return nil, true
+		}
+		nextState = sm.States[nextStateName2]
+	}
+	return nextState, true
 }

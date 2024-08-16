@@ -24,6 +24,10 @@ type TaskState struct {
 	End                  bool            // default false
 }
 
+func (t *TaskState) IsEndState() bool {
+	return t.End
+}
+
 func (t *TaskState) GetResources() []string {
 	return []string{t.Resource}
 }

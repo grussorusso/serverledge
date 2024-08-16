@@ -8,6 +8,10 @@ type WaitState struct {
 	End  bool
 }
 
+func (w *WaitState) IsEndState() bool {
+	return w.End
+}
+
 func (w *WaitState) Equals(cmp types.Comparable) bool {
 	w2 := cmp.(*WaitState)
 	return w.Type == w2.Type

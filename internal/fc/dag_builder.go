@@ -617,7 +617,8 @@ func CreateBroadcastMultiFunctionDag(dagger ...func() (*Dag, error)) (*Dag, erro
 		Build()
 }
 
-// ============== Build from ASL States ===================
+/* ============== Build from ASL States =================== */
+
 // BuildFromTaskState adds a SimpleNode to the previous Node
 func BuildFromTaskState(builder *DagBuilder, t *asl.TaskState) (*DagBuilder, error) {
 	f, found := function.GetFunction(t.Resource)

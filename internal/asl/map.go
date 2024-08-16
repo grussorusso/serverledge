@@ -31,6 +31,10 @@ type MapState struct {
 	End bool
 }
 
+func (m *MapState) IsEndState() bool {
+	return m.End
+}
+
 func NewEmptyMap() *MapState {
 	return &MapState{
 		Type:                       Map,
