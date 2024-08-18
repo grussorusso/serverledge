@@ -7,6 +7,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/labstack/gommon/log"
 	"github.com/lithammer/shortuuid"
 	"sync"
 	"time"
@@ -96,6 +97,19 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]
 
 	m := make(map[string]interface{})
 	firstOutputName := ""
+
+	// best-effort signature inference from parameters, if it is nil.
+	if funct.Signature == nil {
+		for _, param := range params {
+			funct.Signature = function.SignatureInference(param)
+			errSave := funct.SaveToEtcd()
+			if errSave != nil {
+				return nil, errSave
+			}
+			break
+		}
+		log.Warnf("signature of function %s is nil. Parameters map: %v\n", funct.Name, params)
+	}
 	// extract output map
 	for i, o := range funct.Signature.GetOutputs() {
 		if i == 0 {
@@ -173,6 +187,10 @@ func (s *SimpleNode) PrepareOutput(dag *Dag, output map[string]interface{}) erro
 	funct, exists := function.GetFunction(s.Func) // we are getting the function from cache if not already downloaded
 	if !exists {
 		return fmt.Errorf("funtion %s doesn't exists", s.Func)
+	}
+	if funct.Signature == nil {
+		funct.Signature = function.SignatureInference(output)
+		log.Warnf("signature of function %s is nil. Output map: %v\n", funct.Name, output)
 	}
 	err := funct.Signature.CheckAllOutputs(output)
 	if err != nil {

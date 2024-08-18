@@ -105,6 +105,27 @@ type Signature struct {
 	Outputs []*OutputDef // if empty, the function doesn't return anything
 }
 
+func (s *Signature) String() string {
+	str := "Inputs: ["
+	for i, input := range s.Inputs {
+		str += fmt.Sprintf("%s:%s", input.Name, input.Type)
+		if i != len(s.Inputs)-1 {
+			str += ", "
+		}
+	}
+	str += "]"
+	str += " Outputs: ["
+	for i, output := range s.Outputs {
+		str += fmt.Sprintf("%s:%s", output.Name, output.Type)
+		if i != len(s.Outputs)-1 {
+			str += ", "
+		}
+	}
+	str += "]"
+
+	return str
+}
+
 // SignatureBuilder can be used to dynamically build a signature
 type SignatureBuilder struct {
 	signature Signature
@@ -246,4 +267,29 @@ func datatypeToString(dataType DataTypeEnum) string {
 	default:
 		return ""
 	}
+}
+
+func SignatureInference(params map[string]interface{}) *Signature {
+	signatureBuilder := NewSignature()
+
+	for k, v := range params {
+		typeList := []DataTypeEnum{
+			Float{},
+			Int{},
+			Bool{},
+			Text{},
+			Array[Float]{},
+			Array[Int]{},
+			Array[Bool]{},
+			Array[Text]{},
+		}
+		for _, t := range typeList {
+			if t.TypeCheck(v) == nil {
+				signatureBuilder.AddInput(k, t)
+				break
+			}
+		}
+	}
+
+	return signatureBuilder.AddOutput("result", Text{}).Build()
 }

@@ -97,6 +97,10 @@ func CreateFunctionComposition(e echo.Context) error {
 				log.Printf("Dropping request for composition with non-existing function '%s'", fName)
 				return e.JSON(http.StatusBadRequest, "composition with non-existing function")
 			}
+			if f.Signature == nil {
+				return e.JSON(http.StatusBadRequest, "function "+fName+"has nil signature")
+			}
+
 			funcs[fName] = f
 		}
 		comp.Functions = funcs

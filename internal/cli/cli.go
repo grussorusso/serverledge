@@ -255,6 +255,9 @@ func buildSignature() (*function.Signature, error) {
 			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid input specification: %s", str)
 			}
+			if tokens[1] != "Int" && tokens[1] != "Text" && tokens[1] != "Float" && tokens[1] != "Bool" {
+				return nil, fmt.Errorf("invalid input specification: valid types are Int, Text, Float or Bool")
+			}
 			dataType := function.StringToDataType(tokens[1])
 			sb = sb.AddInput(tokens[0], dataType)
 		}
