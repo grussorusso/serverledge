@@ -8,13 +8,14 @@ type WaitState struct {
 	End  bool
 }
 
-func (w *WaitState) IsEndState() bool {
-	return w.End
+func (w *WaitState) ParseFrom(jsonData []byte) (State, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (w *WaitState) Equals(cmp types.Comparable) bool {
-	w2 := cmp.(*WaitState)
-	return w.Type == w2.Type
+func (w *WaitState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func NewEmptyWait() *WaitState {
@@ -23,14 +24,8 @@ func NewEmptyWait() *WaitState {
 	}
 }
 
-func (w *WaitState) String() string {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (w *WaitState) ParseFrom(jsonData []byte) (State, error) {
-	//TODO implement me
-	panic("implement me")
+func (w *WaitState) GetType() StateType {
+	return Wait
 }
 
 func (w *WaitState) GetNext() (string, bool) {
@@ -40,6 +35,16 @@ func (w *WaitState) GetNext() (string, bool) {
 	return "", false
 }
 
-func (w *WaitState) GetType() StateType {
-	return Wait
+func (w *WaitState) IsEndState() bool {
+	return w.End
+}
+
+func (w *WaitState) Equals(cmp types.Comparable) bool {
+	w2 := cmp.(*WaitState)
+	return w.Type == w2.Type
+}
+
+func (w *WaitState) String() string {
+	//TODO implement me
+	panic("implement me")
 }

@@ -1,11 +1,11 @@
-package utils
+package asl
 
 import (
 	"github.com/buger/jsonparser"
 	"strconv"
 )
 
-func JsonExtract(json []byte, key string) (string, error) {
+func JsonExtractString(json []byte, key string) (string, error) {
 	value, _, _, err := jsonparser.Get(json, key)
 	if err != nil {
 		return "", err
@@ -27,6 +27,30 @@ func JsonExtractObjectOrDefault(json []byte, key string, def interface{}) interf
 		return def
 	}
 	return value
+}
+
+func JsonExtractRefPath(json []byte, key string) (Path, error) {
+	value, _, _, err := jsonparser.Get(json, key)
+	if err != nil {
+		return "", err
+	}
+	path, errO := NewReferencePath(string(value))
+	if errO != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func JsonExtractRefPathOrDefault(json []byte, key string, def Path) Path {
+	value, _, _, err := jsonparser.Get(json, key)
+	if err != nil {
+		return def
+	}
+	path, errO := NewReferencePath(string(value))
+	if errO != nil {
+		return def
+	}
+	return path
 }
 
 func JsonExtractIntOrDefault(json []byte, key string, def int) int {
@@ -56,4 +80,14 @@ func JsonExtractBool(json []byte, key string) bool {
 		return false
 	}
 	return value
+}
+
+func JsonNumberOfKeys(json []byte) int {
+	num := 0
+
+	_ = jsonparser.ObjectEach(json, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+		num++
+		return nil
+	})
+	return num
 }

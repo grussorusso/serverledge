@@ -2,64 +2,60 @@ package asl
 
 import (
 	"fmt"
+	"github.com/buger/jsonparser"
 	"github.com/grussorusso/serverledge/internal/types"
+	"github.com/labstack/gommon/log"
 )
 
 type ChoiceState struct {
-	Type       StateType     // Necessary
-	Choices    []*ChoiceRule // Necessary. All ChoiceRule must be State Machine with an end, like fc.ChoiceNode(s).
-	InputPath  Path          // Optional
-	OutputPath Path          // Optional
-	Default    string        // Optional, but to avoid errors it is highly recommended
+	Type       StateType    // Necessary
+	Choices    []ChoiceRule // Necessary. All DataTestExpression must be State Machine with an end, like fc.ChoiceNode(s).
+	InputPath  Path         // Optional
+	OutputPath Path         // Optional
+	// Default is the default state to execute when no other DataTestExpression matches
+	Default string // Optional, but to avoid errors it is highly recommended.
 }
 
-// TODO
 func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
-	/*choices, _, _, errChoice := jsonparser.Get(value, "Choices")
+	c.Type = StateType(JsonExtractStringOrDefault(jsonData, "Type", "Choice"))
+	c.InputPath = JsonExtractRefPathOrDefault(jsonData, "InputPath", "")
+	c.OutputPath = JsonExtractRefPathOrDefault(jsonData, "OutputPath", "")
+	c.Default = JsonExtractStringOrDefault(jsonData, "Default", "")
+
+	choiceRules := make([]ChoiceRule, 0)
+
+	choices, _, _, errChoice := jsonparser.Get(jsonData, "Choices")
 	if errChoice != nil {
-		return errChoice
+		return nil, fmt.Errorf("failed to parse Choices")
 	}
-	matches := make([]ChoiceRule, 0)
 
 	_, errArr := jsonparser.ArrayEach(choices, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		matchVariable, _, _, errMatch := jsonparser.Get(value, "Variable")
-		if errMatch != nil {
+		cr, err := ParseDataTestExpr(value)
+		if err != nil {
+			log.Errorf("failed to parse choice rule %d: %s", offset, err)
 			return
 		}
-		matchCondition, _, _, errMatch := jsonparser.Get(value, "NumericEquals") // TODO: only checks NumericEquals
-		if errMatch != nil {
-			return
-		}
-		num, errNum := strconv.Atoi(string(matchCondition))
-		if errNum != nil {
-			return
-		}
-		matchNext, _, _, errMatch := jsonparser.Get(value, "Next")
-		if errMatch != nil {
-			return
-		}
-		m := ChoiceRule{
-			Variable:  string(matchVariable),
-			Operation: NewEqCondition(NewParam(string(matchVariable)), NewValue(num)),
-			Next:      string(matchNext),
-		}
-		matches = append(matches, m)
+		choiceRules = append(choiceRules, cr)
 	})
 	if errArr != nil {
-		return errArr
+		return nil, errArr
 	}
+	c.Choices = choiceRules
 
-	defaultMatch, _, _, errChoice := jsonparser.Get(value, "Default")
-	if errChoice != nil {
-		return err
-	}*/
-	return nil, nil
+	return c, nil
+}
+
+func (c *ChoiceState) Validate(stateNames []string) error {
+	if c.Default == "" {
+		log.Warn("Default choice not specified")
+	}
+	return nil
 }
 
 func NewEmptyChoice() *ChoiceState {
 	return &ChoiceState{
 		Type:       Choice,
-		Choices:    []*ChoiceRule{},
+		Choices:    []ChoiceRule{},
 		InputPath:  "",
 		OutputPath: "",
 		Default:    "",
@@ -78,16 +74,20 @@ func (c *ChoiceState) GetNext() (string, bool) {
 	return "", false
 }
 
-// IsEndState always returns false for a ChoiceState, because it is never a terminal state.
+// IsEndState always returns true for a ChoiceState, because it is always a terminal state.
 func (c *ChoiceState) IsEndState() bool {
-	return false
+	return true
 }
 
 func (c *ChoiceState) Equals(cmp types.Comparable) bool {
 	c2 := cmp.(*ChoiceState)
 
-	for _, c1 := range c.Choices {
-		if !c1.Equals(c2) {
+	if len(c.Choices) != len(c2.Choices) {
+		return false
+	}
+
+	for i, c1 := range c.Choices {
+		if !c1.Equals(c2.Choices[i]) {
 			return false
 		}
 	}
@@ -98,7 +98,6 @@ func (c *ChoiceState) Equals(cmp types.Comparable) bool {
 		c.Default == c2.Default
 }
 
-// FIXME: improve
 func (c *ChoiceState) String() string {
 	str := fmt.Sprint("{",
 		"\n\t\t\t\tType: ", c.Type,
@@ -110,7 +109,7 @@ func (c *ChoiceState) String() string {
 			str += ","
 		}
 	}
-	str += "]"
+	str += "\n\t\t\t\t]\n"
 
 	if c.InputPath != "" {
 		str += fmt.Sprintf("\t\t\t\tInputPath: %s\n", c.InputPath)
@@ -118,35 +117,6 @@ func (c *ChoiceState) String() string {
 	if c.OutputPath != "" {
 		str += fmt.Sprintf("\t\t\t\tOutputPath: %s\n", c.OutputPath)
 	}
-	str += "\t\t\t}\n"
+	str += "\t\t\t}"
 	return str
-}
-
-type ChoiceRule struct {
-	Variable  string
-	Operation string // FIXME: come up with a better type (Do not use fc.Condition, or you will have an import cycle)
-	Next      string
-}
-
-// FIXME: improve
-func (cr *ChoiceRule) String() string {
-	str := "\n\t\t\t\t\t{"
-
-	if cr.Variable != "" {
-		str += fmt.Sprintf("\t\t\t\t\t\tVariable: %s\n", cr.Variable)
-	}
-	if cr.Operation != "" {
-		str += fmt.Sprintf("\t\t\t\t\t\tOperation: %s\n", cr.Operation)
-	}
-	if cr.Next != "" {
-		str += fmt.Sprintf("\t\t\t\t\t\tNext: %s\n", cr.Next)
-	}
-	return str + "\n\t\t\t\t\t}"
-}
-
-func (cr *ChoiceRule) Equals(cmp types.Comparable) bool {
-	cr2 := cmp.(*ChoiceRule)
-	return cr.Next == cr2.Next &&
-		cr.Operation == cr2.Operation &&
-		cr.Variable == cr2.Variable
 }

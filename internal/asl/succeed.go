@@ -8,6 +8,11 @@ type SucceedState struct {
 	OutputPath Path      // Optional, default $
 }
 
+func (s *SucceedState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *SucceedState) IsEndState() bool {
 	return true
 }

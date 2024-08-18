@@ -3,7 +3,6 @@ package asl
 import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
-	"github.com/grussorusso/serverledge/utils"
 )
 
 type TaskState struct {
@@ -26,65 +25,48 @@ type TaskState struct {
 
 func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 
-	var err error
-	resource, err := utils.JsonExtract(jsonData, "Resource")
-	if err != nil {
-		return nil, fmt.Errorf("resource field is mandatory for a task state, but it is not defined")
-	}
-	t.Resource = resource
+	t.Resource = JsonExtractStringOrDefault(jsonData, "Resource", "")
 
-	t.End = utils.JsonExtractBool(jsonData, "End")
-	if !t.End {
-		jsonNext, errTask := utils.JsonExtract(jsonData, "Next")
-		if errTask != nil {
-			return nil, fmt.Errorf("next field is mandatory for a non-terminal task state, but it is not defined")
-		}
-		t.Next = jsonNext
-	}
+	t.End = JsonExtractBool(jsonData, "End")
 
-	t.Parameters.json = utils.JsonExtractStringOrDefault(jsonData, "Parameters", "")
+	t.Next = JsonExtractStringOrDefault(jsonData, "Next", "")
 
-	iInputPath := utils.JsonExtractStringOrDefault(jsonData, "InputPath", "")
-	inputPath, errI := NewReferencePath(iInputPath)
-	if errI != nil {
-		return nil, errI
-	}
-	t.InputPath = inputPath
+	t.Parameters.json = JsonExtractStringOrDefault(jsonData, "Parameters", "")
 
-	iOutputPath := utils.JsonExtractStringOrDefault(jsonData, "OutputPath", "")
-	outputPath, errO := NewReferencePath(iOutputPath)
-	if errO != nil {
-		return nil, errO
-	}
-	t.OutputPath = outputPath
+	t.InputPath = JsonExtractRefPathOrDefault(jsonData, "InputPath", "")
+	t.OutputPath = JsonExtractRefPathOrDefault(jsonData, "OutputPath", "")
+	t.ResultPath = JsonExtractRefPathOrDefault(jsonData, "ResultPath", "")
 
-	iResultPath := utils.JsonExtractStringOrDefault(jsonData, "ResultPath", "")
-	resultPath, errR := NewReferencePath(iResultPath)
-	if errR != nil {
-		return nil, errR
-	}
-	t.ResultPath = resultPath
+	t.ResultSelector.json = JsonExtractStringOrDefault(jsonData, "ResultSelector", "")
+	t.Retry = JsonExtractObjectOrDefault(jsonData, "Retry", &Retry{}).(*Retry)
+	t.Catch = JsonExtractObjectOrDefault(jsonData, "Catch", &Catch{}).(*Catch)
 
-	t.ResultSelector.json = utils.JsonExtractStringOrDefault(jsonData, "ResultSelector", "")
-	t.Retry = utils.JsonExtractObjectOrDefault(jsonData, "Retry", &Retry{}).(*Retry)
-	t.Catch = utils.JsonExtractObjectOrDefault(jsonData, "Catch", &Catch{}).(*Catch)
-	t.TimeoutSeconds = uint32(utils.JsonExtractIntOrDefault(jsonData, "TimeoutSeconds", 0))
-	timeoutSecondsPath, errT := NewReferencePath(utils.JsonExtractStringOrDefault(jsonData, "TimeoutSecondsPath", ""))
-	if errT != nil {
-		return nil, errT
-	}
-	t.TimeoutSecondsPath = timeoutSecondsPath
-	t.HeartbeatSeconds = uint32(utils.JsonExtractIntOrDefault(jsonData, "HeartbeatSeconds", 0))
-	heartbeatSecondsPath, errH := NewReferencePath(utils.JsonExtractStringOrDefault(jsonData, "HeartbeatSecondsPath", ""))
-	if errH != nil {
-		return nil, errH
-	}
-	t.HeartbeatSecondsPath = heartbeatSecondsPath
-	if t.HeartbeatSeconds > t.TimeoutSeconds {
-		return nil, fmt.Errorf("HeartbeatSeconds %d exceeds timeout %d", t.HeartbeatSeconds, t.TimeoutSeconds)
-	}
+	t.TimeoutSeconds = uint32(JsonExtractIntOrDefault(jsonData, "TimeoutSeconds", 0))
+	t.TimeoutSecondsPath = JsonExtractRefPathOrDefault(jsonData, "TimeoutSecondsPath", "")
+
+	t.HeartbeatSeconds = uint32(JsonExtractIntOrDefault(jsonData, "HeartbeatSeconds", 0))
+	t.HeartbeatSecondsPath = JsonExtractRefPathOrDefault(jsonData, "HeartbeatSecondsPath", "")
 
 	return t, nil
+}
+
+func (t *TaskState) Validate(stateNames []string) error {
+	if t.Resource == "" {
+		return fmt.Errorf("resource field is mandatory for a task state, but it is not defined")
+	}
+	if t.End == false && t.Next == "" {
+		return fmt.Errorf("next field is mandatory for a non-terminal task state, but it is not defined")
+	}
+	if t.End == true && t.Next != "" {
+		return fmt.Errorf("next field should not be defined for a terminal task state, but it is")
+	}
+	if t.HeartbeatSeconds > t.TimeoutSeconds {
+		return fmt.Errorf("HeartbeatSeconds %d exceeds timeout %d", t.HeartbeatSeconds, t.TimeoutSeconds)
+	}
+
+	// TODO: If there are both TimeoutSeconds and TimeoutSecondsPath, return an error
+	// TODO: If there are both HeartbeatSeconds and HeartbeatSecondsPath, return an error
+	return nil
 }
 
 func NewTerminalTask(resource string) *TaskState {
@@ -192,7 +174,7 @@ func (t *TaskState) String() string {
 		"\n")
 
 	if t.Next != "" {
-		str += fmt.Sprintf(`\t\t\t\tNext: %s\n`, t.Next)
+		str += fmt.Sprintf("\t\t\t\tNext: %s\n", t.Next)
 	}
 
 	if t.Parameters.json != "" {
@@ -233,6 +215,6 @@ func (t *TaskState) String() string {
 	if t.End != false {
 		str += fmt.Sprintf("\t\t\t\tEnd: %v\n", t.End)
 	}
-	str += "\t\t\t}\n"
+	str += "\t\t\t}"
 	return str
 }

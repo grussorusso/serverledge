@@ -8,6 +8,11 @@ type PassState struct {
 	End  bool
 }
 
+func (p *PassState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *PassState) IsEndState() bool {
 	return p.End
 }

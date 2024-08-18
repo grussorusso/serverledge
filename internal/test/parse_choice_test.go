@@ -1,23 +1,29 @@
 package test
 
 import (
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/asl"
 	"github.com/grussorusso/serverledge/utils"
 	"testing"
 )
 
-func TestParseTerminalChoiceWithTwoBranches(t *testing.T) {
+// TestParseTerminalChoiceWithThreeBranches tests that the following dag...
+//
+//	   [ Task ]
+//	      |
+//	   [Choice]
+//	      |
+//	(=1)--(=2)-(default)
+//	 |     |	   |
+//
+// [Task][Task] [Task]
+// ... is correctly parsed.
+func TestParseChoiceWithThreeBranches(t *testing.T) {
 	t.Skip("WIP")
 	choice := []byte(`{
 		"Comment": "An example of the Amazon States Language using a choice state.",
-		"StartAt": "FirstState",
+		"StartAt": "ChoiceState",
 		"States": {
-			"FirstState": {
-				"Comment": "Lang=Python",
-				"Type": "Task",
-				"Resource": "inc",
-				"Next": "ChoiceState"
-			},
 			"ChoiceState": {
 				"Type": "Choice",
 				"Choices": [
@@ -48,8 +54,10 @@ func TestParseTerminalChoiceWithTwoBranches(t *testing.T) {
 			},
 			
 			"DefaultState": {
-				"Type": "Succeed",
-				"Cause": "No Matches!"
+				"Comment": "Lang=Javascript",
+				"Type": "Task",
+				"Resource": "hello",
+				"Next": "NextState"
 			},
 			
 			"NextState": {
@@ -66,12 +74,46 @@ func TestParseTerminalChoiceWithTwoBranches(t *testing.T) {
 
 	smExpected := &asl.StateMachine{
 		StartAt: "FirstState",
-		Comment: "A choice state machine with 1 task state",
+		Comment: "An example of the Amazon States Language using a choice state.",
 		Version: "1.0",
 		Name:    "choice",
 		States: map[string]asl.State{
-			"FirstState": asl.NewTerminalTask("inc"),
+			"ChoiceState": &asl.ChoiceState{
+				Type: asl.Choice,
+				Choices: []asl.ChoiceRule{
+					&asl.DataTestExpression{
+						Variable: "input",
+						ComparisonOperator: &asl.ComparisonOperator{
+							Kind:     asl.NumericEquals,
+							DataType: asl.NumericComparator,
+							Operand:  1,
+						},
+						Next: "FirstMatchState",
+					},
+					&asl.DataTestExpression{
+						Variable: "input",
+						ComparisonOperator: &asl.ComparisonOperator{
+							Kind:     asl.NumericEquals,
+							DataType: asl.NumericComparator,
+							Operand:  2,
+						},
+						Next: "SecondMatchState",
+					},
+				},
+				InputPath:  "",
+				OutputPath: "",
+				Default:    "DefaultSTate",
+			},
+			"FirstMatchState":  asl.NewNonTerminalTask("inc", "NextState"),
+			"SecondMatchState": asl.NewNonTerminalTask("double", "NextState"),
+			"DefaultState":     asl.NewNonTerminalTask("hello", "NextState"),
+			"NextState":        asl.NewTerminalTask("hello"),
 		},
 	}
-	utils.AssertTrueMsg(t, smExpected.Equals(sm), "state machines differs")
+	ok := smExpected.Equals(sm)
+	if !ok {
+		fmt.Println("smExpected: ", smExpected)
+		fmt.Println("smActual: ", sm)
+	}
+	utils.AssertTrueMsg(t, ok, "state machines differs")
 }

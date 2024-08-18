@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	"github.com/grussorusso/serverledge/internal/types"
-	"github.com/grussorusso/serverledge/utils"
 )
 
 type StateMachine struct {
@@ -17,19 +16,13 @@ type StateMachine struct {
 
 func ParseFrom(name string, aslSrc []byte) (*StateMachine, error) {
 
-	startAt, err := utils.JsonExtract(aslSrc, "StartAt")
-	if err != nil {
-		return nil, fmt.Errorf("invalid ASL: missing StartAt key")
-	}
+	startAt := JsonExtractStringOrDefault(aslSrc, "StartAt", "")
 
-	comment := utils.JsonExtractStringOrDefault(aslSrc, "Comment", "")
+	comment := JsonExtractStringOrDefault(aslSrc, "Comment", "")
 
-	version := utils.JsonExtractStringOrDefault(aslSrc, "Version", "1.0")
+	version := JsonExtractStringOrDefault(aslSrc, "Version", "1.0")
 
-	statesData, err := utils.JsonExtract(aslSrc, "States")
-	if err != nil {
-		return nil, fmt.Errorf("invalid ASL: missing States key")
-	}
+	statesData := JsonExtractStringOrDefault(aslSrc, "States", "")
 
 	statesMap, err := parseStates(statesData)
 	if err != nil {
@@ -45,6 +38,44 @@ func ParseFrom(name string, aslSrc []byte) (*StateMachine, error) {
 	}
 
 	return &sm, nil
+}
+
+func (sm *StateMachine) getAllStateNames() []string {
+	// getting all states names
+	definedStateNames := make([]string, 0, len(sm.States))
+	for stateName := range sm.States {
+		definedStateNames = append(definedStateNames, stateName)
+	}
+	return definedStateNames
+}
+
+func (sm *StateMachine) Validate(stateNames []string) error {
+
+	errorStr := ""
+
+	if sm.StartAt == "" {
+		errorStr += "invalid ASL: missing StartAt key\n"
+	}
+	if sm.States == nil {
+		errorStr += "invalid ASL: missing States key\n"
+	}
+
+	for name, state := range sm.States {
+		validatable, ok := state.(Validatable)
+		if !ok {
+			errorStr = "Validatable should be implemented for all states\n"
+		}
+		err := validatable.Validate(stateNames)
+		if err != nil {
+			errorStr = "state " + name + ":" + err.Error() + "\n"
+		}
+	}
+	// return all the errors present in the state machine
+	if errorStr != "" {
+		return fmt.Errorf("%s", errorStr)
+	}
+
+	return nil
 }
 
 func emptyParsableFromType(t StateType) Parseable {
@@ -74,7 +105,7 @@ func emptyParsableFromType(t StateType) Parseable {
 func parseStates(statesData string) (map[string]State, error) {
 	states := make(map[string]State)
 	err := jsonparser.ObjectEach([]byte(statesData), func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-		stateType, err2 := utils.JsonExtract(value, "Type")
+		stateType, err2 := JsonExtractString(value, "Type")
 		if err2 != nil {
 			return err2
 		}
@@ -98,13 +129,12 @@ func (sm *StateMachine) String() string {
 
 	statesString := "["
 	for key, state := range sm.States {
-		statesString += "\n\t\t\t" + key + ":"
-		statesString += "\n\t\t\t\t" + state.String()
+		statesString += "\n\t\t\t" + key + ":" + state.String()
 	}
 	if len(sm.States) > 0 {
-		statesString += "\t\t]\n"
+		statesString += "\n\t\t]\n"
 	} else {
-		statesString += "]\n"
+		statesString += "]\n" // this will show brackets like this: []
 	}
 
 	return fmt.Sprintf(`{

@@ -12,6 +12,11 @@ type FailState struct {
 	CausePath Path
 }
 
+func (f *FailState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (f *FailState) IsEndState() bool {
 	return true
 }

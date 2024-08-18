@@ -9,6 +9,7 @@ import (
 type State interface {
 	fmt.Stringer
 	types.Comparable
+	Validatable
 	GetType() StateType
 }
 
@@ -65,4 +66,9 @@ type HasResources interface {
 
 type Parseable interface {
 	ParseFrom(jsonData []byte) (State, error)
+}
+
+// Validatable checks every state of the state machine. Use it when the state machine is complete
+type Validatable interface {
+	Validate(stateNames []string) error
 }

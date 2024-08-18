@@ -31,6 +31,11 @@ type MapState struct {
 	End bool
 }
 
+func (m *MapState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MapState) IsEndState() bool {
 	return m.End
 }

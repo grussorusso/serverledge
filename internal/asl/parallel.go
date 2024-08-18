@@ -9,6 +9,11 @@ type ParallelState struct {
 	End      bool
 }
 
+func (p *ParallelState) Validate(stateNames []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *ParallelState) IsEndState() bool {
 	return p.End
 }
