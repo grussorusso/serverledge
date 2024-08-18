@@ -40,7 +40,7 @@ func ParseFrom(name string, aslSrc []byte) (*StateMachine, error) {
 	return &sm, nil
 }
 
-func (sm *StateMachine) getAllStateNames() []string {
+func (sm *StateMachine) GetAllStateNames() []string {
 	// getting all states names
 	definedStateNames := make([]string, 0, len(sm.States))
 	for stateName := range sm.States {

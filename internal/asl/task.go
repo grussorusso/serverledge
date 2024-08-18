@@ -24,7 +24,7 @@ type TaskState struct {
 }
 
 func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
-
+	var err error
 	t.Resource = JsonExtractStringOrDefault(jsonData, "Resource", "")
 
 	t.End = JsonExtractBool(jsonData, "End")
@@ -42,11 +42,15 @@ func (t *TaskState) ParseFrom(jsonData []byte) (State, error) {
 	t.Catch = JsonExtractObjectOrDefault(jsonData, "Catch", &Catch{}).(*Catch)
 
 	t.TimeoutSeconds = uint32(JsonExtractIntOrDefault(jsonData, "TimeoutSeconds", 0))
-	t.TimeoutSecondsPath = JsonExtractRefPathOrDefault(jsonData, "TimeoutSecondsPath", "")
-
+	t.TimeoutSecondsPath, err = JsonTryExtractRefPath(jsonData, "TimeoutSecondsPath")
+	if err != nil {
+		return nil, err
+	}
 	t.HeartbeatSeconds = uint32(JsonExtractIntOrDefault(jsonData, "HeartbeatSeconds", 0))
-	t.HeartbeatSecondsPath = JsonExtractRefPathOrDefault(jsonData, "HeartbeatSecondsPath", "")
-
+	t.HeartbeatSecondsPath, err = JsonTryExtractRefPath(jsonData, "HeartbeatSecondsPath")
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -64,8 +68,14 @@ func (t *TaskState) Validate(stateNames []string) error {
 		return fmt.Errorf("HeartbeatSeconds %d exceeds timeout %d", t.HeartbeatSeconds, t.TimeoutSeconds)
 	}
 
-	// TODO: If there are both TimeoutSeconds and TimeoutSecondsPath, return an error
-	// TODO: If there are both HeartbeatSeconds and HeartbeatSecondsPath, return an error
+	if t.TimeoutSecondsPath != "" && t.TimeoutSeconds != 0 {
+		return fmt.Errorf("TimeoutSecondsPath and TimeoutSeconds cannot be set at the same time")
+	}
+
+	if t.HeartbeatSecondsPath != "" && t.HeartbeatSeconds != 0 {
+		return fmt.Errorf("HeartbeatSecondsPath and HeartbeatSeconds cannot be set at the same time")
+	}
+
 	return nil
 }
 
@@ -203,13 +213,13 @@ func (t *TaskState) String() string {
 	if t.TimeoutSeconds != 0 {
 		str += fmt.Sprintf("\t\t\tTimeoutSeconds: %d\n", t.TimeoutSeconds)
 	}
-	if t.TimeoutSeconds != 0 {
+	if t.TimeoutSecondsPath != "" {
 		str += fmt.Sprintf("\t\t\tTimeoutSecondsPath: %s\n", t.TimeoutSecondsPath)
 	}
 	if t.HeartbeatSeconds != 0 {
 		str += fmt.Sprintf("\t\t\tHeartbeatSeconds: %d\n", t.HeartbeatSeconds)
 	}
-	if t.HeartbeatSeconds != 0 {
+	if t.HeartbeatSecondsPath != "" {
 		str += fmt.Sprintf("\t\t\tHeartbeatSecondsPath: %s\n", t.HeartbeatSecondsPath)
 	}
 	if t.End != false {

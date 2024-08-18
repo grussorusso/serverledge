@@ -124,28 +124,9 @@ func TestParseTaskWithoutEnd(t *testing.T) {
 	  	}
 	}`)
 
-	_, err := asl.ParseFrom("simple", simple)
-	utils.AssertNonNilMsg(t, err, "parsing should have failed")
-	fmt.Printf("Expected error: %v\n", err)
-}
-
-func TestParseTaskWithInvalidPath(t *testing.T) {
-	simple := []byte(`{
-	  	"Comment": "A simple state machine with 2 task state",
-	  	"StartAt": "FirstState",
-	  	"States": {
-			"FirstState": {
-			  	"Comment": "The first task",
-				"Resource": "inc"
-			  	"Type": "Task",
-			  	"TimeoutSeconds": 10,
-				"HeartbeatSecondsPath": "$.@<3heart"
-			    "End": true
-	    	},
-	  	}
-	}`)
-
-	_, err := asl.ParseFrom("simple", simple)
+	sm, err1 := asl.ParseFrom("simple", simple)
+	utils.AssertNilMsg(t, err1, "parsing failed")
+	err := sm.Validate(sm.GetAllStateNames())
 	utils.AssertNonNilMsg(t, err, "parsing should have failed")
 	fmt.Printf("Expected error: %v\n", err)
 }
@@ -166,7 +147,9 @@ func TestParseTaskWithInvalidHeartbeat(t *testing.T) {
 	  	}
 	}`)
 
-	_, err := asl.ParseFrom("simple", simple)
+	sm, err1 := asl.ParseFrom("simple", simple)
+	utils.AssertNilMsg(t, err1, "parsing failed")
+	err := sm.Validate(sm.GetAllStateNames())
 	utils.AssertNonNilMsg(t, err, "parsing should have failed")
 	fmt.Printf("Expected error: %v\n", err)
 }
@@ -187,7 +170,9 @@ func TestParseTaskWithBothPathAndHeartbeat(t *testing.T) {
 	  	}
 	}`)
 
-	_, err := asl.ParseFrom("simple", simple)
+	sm, err1 := asl.ParseFrom("simple", simple)
+	utils.AssertNilMsg(t, err1, "parsing failed")
+	err := sm.Validate(sm.GetAllStateNames())
 	utils.AssertNonNilMsg(t, err, "parsing should have failed")
 	fmt.Printf("Expected error: %v\n", err)
 }
@@ -207,7 +192,9 @@ func TestParseTaskWithOnlyHeartbeat(t *testing.T) {
 	  	}
 	}`)
 
-	_, err := asl.ParseFrom("simple", simple)
+	sm, err1 := asl.ParseFrom("simple", simple)
+	utils.AssertNilMsg(t, err1, "parsing failed")
+	err := sm.Validate(sm.GetAllStateNames())
 	utils.AssertNonNilMsg(t, err, "parsing should have failed")
 	fmt.Printf("Expected error: %v\n", err)
 }

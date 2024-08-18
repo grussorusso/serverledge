@@ -19,7 +19,7 @@ import (
 // [Task][Task] [Task]
 // ... is correctly parsed.
 func TestParseChoiceWithThreeBranches(t *testing.T) {
-	t.Skip("WIP")
+	// t.Skip("WIP")
 	choice := []byte(`{
 		"Comment": "An example of the Amazon States Language using a choice state.",
 		"StartAt": "ChoiceState",
@@ -73,7 +73,7 @@ func TestParseChoiceWithThreeBranches(t *testing.T) {
 	utils.AssertNilMsg(t, err, "failed to parse state machine")
 
 	smExpected := &asl.StateMachine{
-		StartAt: "FirstState",
+		StartAt: "ChoiceState",
 		Comment: "An example of the Amazon States Language using a choice state.",
 		Version: "1.0",
 		Name:    "choice",
@@ -102,7 +102,7 @@ func TestParseChoiceWithThreeBranches(t *testing.T) {
 				},
 				InputPath:  "",
 				OutputPath: "",
-				Default:    "DefaultSTate",
+				Default:    "DefaultState",
 			},
 			"FirstMatchState":  asl.NewNonTerminalTask("inc", "NextState"),
 			"SecondMatchState": asl.NewNonTerminalTask("double", "NextState"),

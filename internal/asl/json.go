@@ -29,9 +29,9 @@ func JsonExtractObjectOrDefault(json []byte, key string, def interface{}) interf
 	return value
 }
 
-func JsonExtractRefPath(json []byte, key string) (Path, error) {
-	value, _, _, err := jsonparser.Get(json, key)
-	if err != nil {
+func JsonTryExtractRefPath(json []byte, key string) (Path, error) {
+	value, d, _, err := jsonparser.Get(json, key)
+	if err != nil && d != jsonparser.NotExist {
 		return "", err
 	}
 	path, errO := NewReferencePath(string(value))

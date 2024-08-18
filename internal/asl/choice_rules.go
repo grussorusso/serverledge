@@ -3,6 +3,7 @@ package asl
 import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"strconv"
 	"strings"
 )
 
@@ -84,20 +85,29 @@ func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
 		// comparator kind field
 		comparisonOperator.Kind = comparator
 		comparatorString := string(comparator)
-		// comparator datatype field
+		// comparator datatype and operand fields
 		if strings.HasPrefix(comparatorString, "String") {
 			comparisonOperator.DataType = StringComparator
+			comparisonOperator.Operand = comparatorValue
 		} else if strings.HasPrefix(comparatorString, "Numeric") {
 			comparisonOperator.DataType = NumericComparator
+			comparisonOperator.Operand, err = strconv.Atoi(comparatorValue)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert to int the value %s: %v", comparatorValue, err)
+			}
 		} else if strings.HasPrefix(comparatorString, "Timestamp") {
 			comparisonOperator.DataType = TimestampComparator
+			comparisonOperator.Operand = comparatorValue
 		} else if strings.HasPrefix(comparatorString, "Boolean") || strings.HasPrefix(comparatorString, "Is") {
 			comparisonOperator.DataType = BooleanComparator
+			comparisonOperator.Operand, err = strconv.ParseBool(comparatorValue)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert to bool the value %s: %v", comparatorValue, err)
+			}
 		} else {
 			return nil, fmt.Errorf("invalid comparator: %s", comparator)
 		}
-		// comparator operand field
-		comparisonOperator.Operand = comparatorValue
+
 		// we have found a valid comparator, so we exit the for loop
 		break
 	}
