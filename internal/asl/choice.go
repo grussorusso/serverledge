@@ -100,23 +100,23 @@ func (c *ChoiceState) Equals(cmp types.Comparable) bool {
 
 func (c *ChoiceState) String() string {
 	str := fmt.Sprint("{",
-		"\n\t\t\t\tType: ", c.Type,
-		"\n\t\t\t\tDefault: ", c.Default,
-		"\n\t\t\t\tChoices: [")
+		"\n\t\t\tType: ", c.Type,
+		"\n\t\t\tDefault: ", c.Default,
+		"\n\t\t\tChoices: [")
 	for i, c1 := range c.Choices {
 		str += c1.String()
 		if i < len(c.Choices)-1 {
 			str += ","
 		}
 	}
-	str += "\n\t\t\t\t]\n"
+	str += "\n\t\t\t]\n"
 
 	if c.InputPath != "" {
-		str += fmt.Sprintf("\t\t\t\tInputPath: %s\n", c.InputPath)
+		str += fmt.Sprintf("\t\t\tInputPath: %s\n", c.InputPath)
 	}
 	if c.OutputPath != "" {
-		str += fmt.Sprintf("\t\t\t\tOutputPath: %s\n", c.OutputPath)
+		str += fmt.Sprintf("\t\t\tOutputPath: %s\n", c.OutputPath)
 	}
-	str += "\t\t\t}"
+	str += "\t\t}"
 	return str
 }

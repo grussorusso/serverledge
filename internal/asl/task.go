@@ -169,52 +169,52 @@ func (t *TaskState) Equals(cmp types.Comparable) bool {
 
 func (t *TaskState) String() string {
 	str := fmt.Sprint("{",
-		"\n\t\t\t\tType: ", t.Type,
-		"\n\t\t\t\tResource: ", t.Resource,
+		"\n\t\t\tType: ", t.Type,
+		"\n\t\t\tResource: ", t.Resource,
 		"\n")
 
 	if t.Next != "" {
-		str += fmt.Sprintf("\t\t\t\tNext: %s\n", t.Next)
+		str += fmt.Sprintf("\t\t\tNext: %s\n", t.Next)
 	}
 
 	if t.Parameters.json != "" {
-		str += fmt.Sprintf("\t\t\t\tParameters: %s\n", t.Parameters.json)
+		str += fmt.Sprintf("\t\t\tParameters: %s\n", t.Parameters.json)
 	}
 
 	if t.InputPath != "" {
-		str += fmt.Sprintf("\t\t\t\tInputPath: %s\n", t.InputPath)
+		str += fmt.Sprintf("\t\t\tInputPath: %s\n", t.InputPath)
 	}
 	if t.OutputPath != "" {
-		str += fmt.Sprintf("\t\t\t\tOutputPath: %s\n", t.OutputPath)
+		str += fmt.Sprintf("\t\t\tOutputPath: %s\n", t.OutputPath)
 	}
 	if t.ResultPath != "" {
-		str += fmt.Sprintf("\t\t\t\tResultPath: %s\n", t.ResultPath)
+		str += fmt.Sprintf("\t\t\tResultPath: %s\n", t.ResultPath)
 	}
 
 	if t.ResultSelector.json != "" {
-		str += fmt.Sprint("\t\t\t\tResultSelector: ", t.ResultSelector)
+		str += fmt.Sprint("\t\t\tResultSelector: ", t.ResultSelector)
 	}
 	if t.Retry != nil {
-		str += fmt.Sprintf("\t\t\t\tRetry: %v\n", t.Retry)
+		str += fmt.Sprintf("\t\t\tRetry: %v\n", t.Retry)
 	}
 	if t.Catch != nil {
-		str += fmt.Sprintf("\t\t\t\tCatch: %v\n", t.Catch)
+		str += fmt.Sprintf("\t\t\tCatch: %v\n", t.Catch)
 	}
 	if t.TimeoutSeconds != 0 {
-		str += fmt.Sprintf("\t\t\t\tTimeoutSeconds: %d\n", t.TimeoutSeconds)
+		str += fmt.Sprintf("\t\t\tTimeoutSeconds: %d\n", t.TimeoutSeconds)
 	}
 	if t.TimeoutSeconds != 0 {
-		str += fmt.Sprintf("\t\t\t\tTimeoutSecondsPath: %s\n", t.TimeoutSecondsPath)
+		str += fmt.Sprintf("\t\t\tTimeoutSecondsPath: %s\n", t.TimeoutSecondsPath)
 	}
 	if t.HeartbeatSeconds != 0 {
-		str += fmt.Sprintf("\t\t\t\tHeartbeatSeconds: %d\n", t.HeartbeatSeconds)
+		str += fmt.Sprintf("\t\t\tHeartbeatSeconds: %d\n", t.HeartbeatSeconds)
 	}
 	if t.HeartbeatSeconds != 0 {
-		str += fmt.Sprintf("\t\t\t\tHeartbeatSecondsPath: %s\n", t.HeartbeatSecondsPath)
+		str += fmt.Sprintf("\t\t\tHeartbeatSecondsPath: %s\n", t.HeartbeatSecondsPath)
 	}
 	if t.End != false {
-		str += fmt.Sprintf("\t\t\t\tEnd: %v\n", t.End)
+		str += fmt.Sprintf("\t\t\tEnd: %v\n", t.End)
 	}
-	str += "\t\t\t}"
+	str += "\t\t}"
 	return str
 }

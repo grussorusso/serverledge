@@ -41,18 +41,18 @@ func (d *DataTestExpression) IsBooleanExpression() bool {
 }
 
 func (d *DataTestExpression) String() string {
-	str := "\n\t\t\t\t\t{"
+	str := "\n\t\t\t\t{"
 
 	if d.Variable != "" {
-		str += fmt.Sprintf("\n\t\t\t\t\t\tVariable: %s\n", d.Variable)
+		str += fmt.Sprintf("\n\t\t\t\t\tVariable: %s\n", d.Variable)
 	}
 	if d.ComparisonOperator != nil {
 		str += d.ComparisonOperator.String()
 	}
 	if d.Next != "" {
-		str += fmt.Sprintf("\t\t\t\t\t\tNext: %s", d.Next)
+		str += fmt.Sprintf("\t\t\t\t\tNext: %s", d.Next)
 	}
-	return str + "\n\t\t\t\t\t}"
+	return str + "\n\t\t\t\t}"
 }
 
 func (d *DataTestExpression) Equals(cmp types.Comparable) bool {
@@ -122,7 +122,7 @@ type ComparisonOperator struct {
 }
 
 func (co *ComparisonOperator) String() string {
-	return fmt.Sprintf("\t\t\t\t\t\t%s: %v\n", co.Kind, co.Operand)
+	return fmt.Sprintf("\t\t\t\t\t%s: %v\n", co.Kind, co.Operand)
 }
 
 func (co *ComparisonOperator) Equals(co2 *ComparisonOperator) bool {

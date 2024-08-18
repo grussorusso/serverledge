@@ -129,25 +129,16 @@ func (sm *StateMachine) String() string {
 
 	statesString := "["
 	for key, state := range sm.States {
-		statesString += "\n\t\t\t" + key + ":" + state.String()
+		statesString += "\n\t\t" + key + ":" + state.String()
 	}
 	if len(sm.States) > 0 {
-		statesString += "\n\t\t]\n"
+		statesString += "\n\t]\n"
 	} else {
 		statesString += "]\n" // this will show brackets like this: []
 	}
 
-	return fmt.Sprintf(`{
-		Name: %s
-		Comment: %s
-		StartAt: %s
-		Version: %s
-		States: %s}`,
-		sm.Name,
-		sm.Comment,
-		sm.StartAt,
-		sm.Version,
-		statesString)
+	return fmt.Sprintf("{\n\tName: %s\n\tComment: %s\n\tStartAt: %s\n\tVersion: %s\n\tStates: %s\n}",
+		sm.Name, sm.Comment, sm.StartAt, sm.Version, statesString)
 }
 
 // GetFunctionNames retrieves all functions defined in the StateMachine, and duplicates are allowed
