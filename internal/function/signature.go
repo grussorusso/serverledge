@@ -33,23 +33,32 @@ func (i InputDef) CheckInput(inputMap map[string]interface{}) error {
 		return fmt.Errorf("no input parameter with name '%s' and type '%s' exists", i.Name, i.Type)
 	}
 
-	t := StringToDataType(i.Type)
+	t, err := StringToDataType(i.Type)
+	if err != nil {
+		return err
+	}
 	if t == nil {
 		return fmt.Errorf("data type is too complex. Available types are Int, Text, Float, Bool, ArrayInt, ArrayText, ArrayFloat, ArrayBool, ArrayArrayInt, ArrayArrayFloat")
 	}
-
-	return StringToDataType(i.Type).TypeCheck(val)
+	dType, err := StringToDataType(i.Type)
+	if err != nil {
+		return fmt.Errorf("data type")
+	}
+	return dType.TypeCheck(val)
 }
 
 func (i InputDef) FindEntryThatTypeChecks(outputMap map[string]interface{}) (string, bool) {
 	for k, v := range outputMap {
 
-		t := StringToDataType(i.Type)
+		t, err := StringToDataType(i.Type)
+		if err != nil {
+			return "", false
+		}
 		if t == nil {
 			return "", false
 		}
 
-		err := t.TypeCheck(v)
+		err = t.TypeCheck(v)
 		if err == nil {
 			return k, true
 		}
@@ -69,7 +78,10 @@ func (o OutputDef) CheckOutput(inputMap map[string]interface{}) error {
 	if !exists {
 		return fmt.Errorf("no output parameter with name '%s' and type '%s' exists", o.Name, reflect.TypeOf(o.Type).Name())
 	}
-	t := StringToDataType(o.Type)
+	t, err := StringToDataType(o.Type)
+	if err != nil {
+		return err
+	}
 	if t != nil {
 		return t.TypeCheck(val)
 	}
@@ -77,9 +89,9 @@ func (o OutputDef) CheckOutput(inputMap map[string]interface{}) error {
 }
 
 func (o OutputDef) TryParse(result string) (interface{}, error) {
-	t := StringToDataType(o.Type)
-	if t == nil {
-		return nil, fmt.Errorf("type %s is not a compatible type", datatypeToString(t))
+	t, err := StringToDataType(o.Type)
+	if err != nil {
+		return nil, fmt.Errorf("type %s is not a compatible type", o.Type)
 	}
 	switch t.(type) {
 	case Int:
@@ -215,30 +227,31 @@ func (s *Signature) GetOutputs() []*OutputDef {
 	return s.Outputs
 }
 
-func StringToDataType(t string) DataTypeEnum {
+// StringToDataType parses a dataType from a string. When it fails returns an error.
+func StringToDataType(t string) (DataTypeEnum, error) {
 	switch t {
 	case INT:
-		return Int{}
+		return Int{}, nil
 	case FLOAT:
-		return Float{}
+		return Float{}, nil
 	case BOOL:
-		return Bool{}
+		return Bool{}, nil
 	case TEXT:
-		return Text{}
+		return Text{}, nil
 	case ARRAY_INT:
-		return Array[Int]{DataType: Int{}}
+		return Array[Int]{DataType: Int{}}, nil
 	case ARRAY_FLOAT:
-		return Array[Float]{DataType: Float{}}
+		return Array[Float]{DataType: Float{}}, nil
 	case ARRAY_BOOL:
-		return Array[Bool]{DataType: Bool{}}
+		return Array[Bool]{DataType: Bool{}}, nil
 	case ARRAY_TEXT:
-		return Array[Text]{DataType: Text{}}
+		return Array[Text]{DataType: Text{}}, nil
 	case ARRAY_ARRAY_INT:
-		return Array[Array[Int]]{DataType: Array[Int]{DataType: Int{}}}
+		return Array[Array[Int]]{DataType: Array[Int]{DataType: Int{}}}, nil
 	case ARRAY_ARRAY_FLOAT:
-		return Array[Array[Float]]{DataType: Array[Float]{DataType: Float{}}}
+		return Array[Array[Float]]{DataType: Array[Float]{DataType: Float{}}}, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("invalid datatype: %s", t)
 	}
 }
 

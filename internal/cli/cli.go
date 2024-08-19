@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/labstack/gommon/log"
 	"io"
 	"net/http"
 	"os"
@@ -255,10 +256,10 @@ func buildSignature() (*function.Signature, error) {
 			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid input specification: %s", str)
 			}
-			if tokens[1] != "Int" && tokens[1] != "Text" && tokens[1] != "Float" && tokens[1] != "Bool" {
-				return nil, fmt.Errorf("invalid input specification: valid types are Int, Text, Float or Bool")
+			dataType, err := function.StringToDataType(tokens[1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid signature input specification '%s': valid types are Int, Text, Float, Bool, Array[Int], Array[Text], Array[Float] or Array[Bool]\n", tokens[1])
 			}
-			dataType := function.StringToDataType(tokens[1])
 			sb = sb.AddInput(tokens[0], dataType)
 		}
 	}
@@ -268,7 +269,10 @@ func buildSignature() (*function.Signature, error) {
 			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid output specification: %s", str)
 			}
-			dataType := function.StringToDataType(tokens[1])
+			dataType, err := function.StringToDataType(tokens[1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid signature input specification '%s'. Available types are Int, Text, Float, Bool, ArrayInt, ArrayText, ArrayFloat, ArrayBool, ArrayArrayInt, ArrayArrayFloat\n", tokens[1])
+			}
 			sb = sb.AddOutput(tokens[0], dataType)
 		}
 	}
@@ -298,16 +302,22 @@ func create(cmd *cobra.Command, args []string) {
 		encoded = ""
 	}
 
-	// Signature: we only configure one if at least one input or output has been specified
+	// When signature is specified we build it from the input. Otherwise we defined an EMPTY signature (accepts and returns nothing)
 	var sig *function.Signature = nil
 	if (inputs != nil && len(inputs) > 0) || (outputs != nil && len(outputs) > 0) {
 		s, err := buildSignature()
 		if err != nil {
-			cmd.Help()
+			errHelp := cmd.Help()
+			if errHelp != nil {
+				log.Errorf("failed to call cmd.Help: %v\n", errHelp)
+				return
+			}
 			os.Exit(4)
 		}
 		sig = s
 		fmt.Printf("Parsed signature: %v\n", s)
+	} else {
+		sig = function.NewSignature().Build()
 	}
 
 	request := function.Function{Name: funcName, Handler: handler,
