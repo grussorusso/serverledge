@@ -14,20 +14,67 @@ type ChoiceRule interface {
 	IsBooleanExpression() bool
 }
 
+func ParseRule(json []byte) (ChoiceRule, error) {
+	// detect if it is a boolean or dataTest expression
+	if JsonHasAllKeys(json, "Variable", "Next") && JsonNumberOfKeys(json) == 3 {
+		return ParseDataTestExpr(json)
+	} else if JsonHasOneKey(json, "And", "Or", "Not") {
+		return ParseBooleanExpr(json)
+	} else {
+		return nil, fmt.Errorf("invalid choice rule: %s", string(json))
+	}
+}
+
 // BooleanExpression is a ChoiceRule that is parsable from combination of And, Or and Not json objects
 type BooleanExpression struct {
-	And  []*ChoiceRule
-	Or   []*ChoiceRule
-	Not  *ChoiceRule
-	Next string // Necessary. The value should match a state name in the StateMachine
+	Formula Formula
+	Next    string // Necessary. The value should match a state name in the StateMachine
+}
+
+func (b *BooleanExpression) Equals(cmp types.Comparable) bool {
+	b2, ok := cmp.(*BooleanExpression)
+	if !ok {
+		return false
+	}
+	return b.Next == b2.Next && b.Formula.Equals(b2.Formula)
+}
+
+func (b *BooleanExpression) String() string {
+	return "\t\t\t\t\t" + b.Formula.GetFormulaType() + ": {\n" +
+		b.Formula.String() +
+		"\n\t\t\t\t\tNext: " + b.Next +
+		"\n\t\t\t\t\t}"
 }
 
 func (b *BooleanExpression) IsBooleanExpression() bool {
 	return true
 }
 
-func ParseBooleanExpr(jsonRule []byte) (*BooleanExpression, error) {
-	return &BooleanExpression{}, nil
+func ParseBooleanExpr(jsonExpression []byte) (*BooleanExpression, error) {
+	next, err := JsonExtractString(jsonExpression, "Next")
+	if err != nil {
+		return nil, fmt.Errorf("boolean expression doesn't have a Next json field")
+	}
+	if JsonHasKey(jsonExpression, "And") {
+		andFormula, err2 := ParseAnd(jsonExpression)
+		if err2 != nil {
+			return nil, err2
+		}
+		return &BooleanExpression{Formula: andFormula, Next: next}, nil
+	} else if JsonHasKey(jsonExpression, "Or") {
+		orFormula, err2 := ParseOr(jsonExpression)
+		if err2 != nil {
+			return nil, err2
+		}
+		return &BooleanExpression{Formula: orFormula, Next: next}, nil
+	} else if JsonHasKey(jsonExpression, "Not") {
+		notFormula, err2 := ParseNot(jsonExpression)
+		if err2 != nil {
+			return nil, err2
+		}
+		return &BooleanExpression{Formula: notFormula, Next: next}, nil
+	}
+	return nil, fmt.Errorf("invalid boolean expression: %s", string(jsonExpression))
 }
 
 // DataTestExpression is a ChoiceRule that is parsable from a Variable, a ComparisonOperator and has a Next field.

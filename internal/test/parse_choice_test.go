@@ -9,17 +9,17 @@ import (
 
 // TestParseTerminalChoiceWithThreeBranches tests that the following dag...
 //
-//	   [ Task ]
-//	      |
-//	   [Choice]
-//	      |
-//	(=1)--(=2)-(default)
-//	 |     |	   |
+//	   			[ Task ]
+//	   			   |
+//	   			[Choice]
+//	   			   |
+//	(input=1)--(input=2)--(default)
+//	   |   		   |	     |
 //
-// [Task][Task] [Task]
+// [Task1] 		[Task2]   [Task3]
+// [Task3] 		[Task3]
 // ... is correctly parsed.
-func TestParseChoiceWithThreeBranches(t *testing.T) {
-	// t.Skip("WIP")
+func TestParseChoiceWithDataTestExpr(t *testing.T) {
 	choice := []byte(`{
 		"Comment": "An example of the Amazon States Language using a choice state.",
 		"StartAt": "ChoiceState",
@@ -98,6 +98,177 @@ func TestParseChoiceWithThreeBranches(t *testing.T) {
 							Operand:  2,
 						},
 						Next: "SecondMatchState",
+					},
+				},
+				InputPath:  "",
+				OutputPath: "",
+				Default:    "DefaultState",
+			},
+			"FirstMatchState":  asl.NewNonTerminalTask("inc", "NextState"),
+			"SecondMatchState": asl.NewNonTerminalTask("double", "NextState"),
+			"DefaultState":     asl.NewNonTerminalTask("hello", "NextState"),
+			"NextState":        asl.NewTerminalTask("hello"),
+		},
+	}
+	ok := smExpected.Equals(sm)
+	if !ok {
+		fmt.Println("smExpected: ", smExpected)
+		fmt.Println("smActual: ", sm)
+	}
+	utils.AssertTrueMsg(t, ok, "state machines differs")
+}
+
+// TestParseTerminalChoiceWithThreeBranches tests that the following dag...
+//
+//	   [ Task ]
+//	      |
+//	   [Choice]
+//	      |
+//	(type!="Private")--(value is present && )----(default)
+//				       (value is numeric && )	   |
+//				       (value >= 20 &&      )	   |
+//				       (value < 30          )	   |
+//	     |              | 	                       |
+//
+// [Task Private]    [Task ValueInTwenties] 	 [Task DefaultState]
+// ... is correctly parsed.
+func TestParseChoiceWithBooleanExpr(t *testing.T) {
+	t.Skip("WIP")
+	choice := []byte(`{
+		"Comment": "An example of the Amazon States Language using a choice state.",
+		"StartAt": "ChoiceState",
+		"States": {
+			"ChoiceState": {
+				"Type": "Choice",
+				"Choices": [
+					{
+						"Not": {
+							"Variable": "$.type",
+							"StringEquals": "Private"
+						},
+						"Next": "Public"
+    				},
+    				{
+      					"And": [
+        					{
+          						"Variable": "$.value",
+          						"IsPresent": true
+        					},
+							{
+							  "Variable": "$.value",
+							  "IsNumeric": true
+							},
+							{
+							  "Variable": "$.value",
+							  "NumericGreaterThanEquals": 20
+							},
+							{
+							  "Variable": "$.value",
+							  "NumericLessThan": 30
+							}
+      					],
+						"Next": "ValueInTwenties"
+    				},
+				],
+				"Default": "DefaultState"
+			},
+			"Public": {
+				"Comment": "Lang=Python",
+				"Type": "Task",
+				"Resource": "inc",
+				"Next": "NextState"
+			},	
+			"ValueInTwenties": {
+				"Comment": "Lang=Python",
+				"Type": "Task",
+				"Resource": "double",
+				"Next": "NextState"
+			},
+			
+			"DefaultState": {
+				"Comment": "Lang=Javascript",
+				"Type": "Task",
+				"Resource": "hello",
+				"Next": "NextState"
+			},
+			
+			"NextState": {
+				"Comment": "Lang=Python",
+				"Type": "Task",
+				"Resource": "hello",
+				"End": true
+			}
+		}
+	}`)
+
+	sm, err := asl.ParseFrom("choice", choice)
+	utils.AssertNilMsg(t, err, "failed to parse state machine")
+
+	smExpected := &asl.StateMachine{
+		StartAt: "ChoiceState",
+		Comment: "An example of the Amazon States Language using a choice state.",
+		Version: "1.0",
+		Name:    "choice",
+		States: map[string]asl.State{
+			"ChoiceState": &asl.ChoiceState{
+				Type: asl.Choice,
+				Choices: []asl.ChoiceRule{
+					&asl.BooleanExpression{
+						Formula: &asl.NotFormula{
+							Not: &asl.DataTestExpression{
+								Variable: "$.type",
+								ComparisonOperator: &asl.ComparisonOperator{
+									Kind:     asl.StringEquals,
+									DataType: asl.StringComparator,
+									Operand:  "Private",
+								},
+								Next: "Public", // FIXME: not needed
+							},
+						},
+						Next: "Public",
+					},
+					&asl.BooleanExpression{
+						Formula: &asl.AndFormula{
+							And: []asl.ChoiceRule{
+								&asl.DataTestExpression{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.IsPresent,
+										DataType: asl.BooleanComparator,
+										Operand:  "true",
+									},
+									Next: "ValueInTwenties", // FIXME: not needed
+								},
+								&asl.DataTestExpression{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.IsNumeric,
+										DataType: asl.BooleanComparator,
+										Operand:  true,
+									},
+									Next: "ValueInTwenties", // FIXME: not needed
+								},
+								&asl.DataTestExpression{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.NumericGreaterThanEquals,
+										DataType: asl.NumericComparator,
+										Operand:  20,
+									},
+									Next: "ValueInTwenties", // FIXME: not needed
+								},
+								&asl.DataTestExpression{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.NumericLessThan,
+										DataType: asl.NumericComparator,
+										Operand:  30,
+									},
+									Next: "ValueInTwenties", // FIXME: not needed
+								},
+							},
+						},
+						Next: "ValueInTwenties",
 					},
 				},
 				InputPath:  "",

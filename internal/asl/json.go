@@ -5,6 +5,40 @@ import (
 	"strconv"
 )
 
+func JsonHasKey(json []byte, key string) bool {
+	_, dataType, _, err := jsonparser.Get(json, key)
+	if err != nil || dataType == jsonparser.NotExist {
+		return false
+	}
+	return true
+}
+
+func JsonHasAllKeys(json []byte, keys ...string) bool {
+	for _, key := range keys {
+		if !JsonHasKey(json, key) {
+			return false
+		}
+	}
+	return true
+}
+
+func JsonHasOneKey(json []byte, keys ...string) bool {
+	for _, key := range keys {
+		if JsonHasKey(json, key) {
+			return true
+		}
+	}
+	return false
+}
+
+func JsonExtract(json []byte, key string) ([]byte, error) {
+	value, _, _, err := jsonparser.Get(json, key)
+	if err != nil {
+		return []byte(""), err
+	}
+	return value, nil
+}
+
 func JsonExtractString(json []byte, key string) (string, error) {
 	value, _, _, err := jsonparser.Get(json, key)
 	if err != nil {
