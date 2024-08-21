@@ -107,13 +107,13 @@ func parseStates(statesData string) (map[string]State, error) {
 	err := jsonparser.ObjectEach([]byte(statesData), func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
 		stateType, err2 := JsonExtractString(value, "Type")
 		if err2 != nil {
-			return err2
+			return fmt.Errorf("invalid type %s; error: %v", stateType, err2)
 		}
 
 		parseable := emptyParsableFromType(StateType(stateType))
 		parsedState, err := parseable.ParseFrom(value)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse state %s ...\n%v", value[:40], err)
 		}
 		states[string(key)] = parsedState
 		return nil

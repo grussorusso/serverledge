@@ -56,7 +56,7 @@ func ParseAnd(jsonBytes []byte) (*AndFormula, error) {
 	}
 	andArray := make([]ChoiceRule, 0)
 	_, err = jsonparser.ArrayEach(andJson, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		rule, err := ParseRule(andJson)
+		rule, err := ParseTestExpr(value)
 		if err != nil {
 			return
 		}
@@ -80,7 +80,7 @@ func ParseOr(jsonBytes []byte) (*OrFormula, error) {
 	}
 	orArray := make([]ChoiceRule, 0)
 	_, err = jsonparser.ArrayEach(orRule, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		rule, err := ParseRule(orRule)
+		rule, err := ParseTestExpr(orRule)
 		if err != nil {
 			return
 		}
@@ -135,7 +135,7 @@ func ParseNot(jsonBytes []byte) (*NotFormula, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Not formula: %v", err)
 	}
-	notRule, err := ParseRule(notJson)
+	notRule, err := ParseTestExpr(notJson)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Not formula: %v", err)
 	}

@@ -24,22 +24,22 @@ func (c *ChoiceState) ParseFrom(jsonData []byte) (State, error) {
 
 	choiceRules := make([]ChoiceRule, 0)
 
-	choices, _, _, errChoice := jsonparser.Get(jsonData, "Choices")
+	choices, errChoice := JsonExtract(jsonData, "Choices")
 	if errChoice != nil {
-		return nil, fmt.Errorf("failed to parse Choices")
+		return nil, fmt.Errorf("failed to parse Choices %v", errChoice)
 	}
 
-	_, errArr := jsonparser.ArrayEach(choices, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		cr, err := ParseDataTestExpr(value)
-		if err != nil {
-			log.Errorf("failed to parse choice rule %d: %s", offset, err)
+	_, _ = jsonparser.ArrayEach(choices, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		cr, errR := ParseRule(value)
+		if errR != nil {
+			log.Errorf("failed to parse choice rule %d: %v", offset, err)
 			return
 		}
 		choiceRules = append(choiceRules, cr)
 	})
-	if errArr != nil {
-		return nil, errArr
-	}
+	//if errArr != nil {
+	//	return nil, fmt.Errorf("error %v when parsing choice rule %s", errArr, choices[:offset])
+	//}
 	c.Choices = choiceRules
 
 	return c, nil

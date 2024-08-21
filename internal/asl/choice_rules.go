@@ -7,11 +7,20 @@ import (
 	"strings"
 )
 
+type RuleType int
+
+const (
+	BooleanExpr = iota
+	DataTestExpr
+	TestExpr
+)
+
 type ChoiceRule interface {
 	types.Comparable
 	fmt.Stringer
+	Validatable
 	// IsBooleanExpression return true if the ChoiceRule is a BooleanExpression, otherwise false when it is a DataTestExpression
-	IsBooleanExpression() bool
+	GetRuleType() RuleType
 }
 
 func ParseRule(json []byte) (ChoiceRule, error) {
@@ -46,8 +55,8 @@ func (b *BooleanExpression) String() string {
 		"\n\t\t\t\t\t}"
 }
 
-func (b *BooleanExpression) IsBooleanExpression() bool {
-	return true
+func (b *BooleanExpression) GetRuleType() RuleType {
+	return BooleanExpr
 }
 
 func ParseBooleanExpr(jsonExpression []byte) (*BooleanExpression, error) {
@@ -77,45 +86,45 @@ func ParseBooleanExpr(jsonExpression []byte) (*BooleanExpression, error) {
 	return nil, fmt.Errorf("invalid boolean expression: %s", string(jsonExpression))
 }
 
-// DataTestExpression is a ChoiceRule that is parsable from a Variable, a ComparisonOperator and has a Next field.
-type DataTestExpression struct {
+func (b *BooleanExpression) Validate(stateNames []string) error {
+	//TODO implement me
+	return nil
+}
+
+// TestExpression is used in both DataTestExpression and BooleanExpression and represents a condition
+type TestExpression struct {
 	Variable           string
 	ComparisonOperator *ComparisonOperator // FIXME: parse into a fc.Condition, but leave it a string (or you'll have an import cycle)
-	Next               string              // Necessary. The value should match a state name in the StateMachine
 }
 
-func (d *DataTestExpression) IsBooleanExpression() bool {
-	return false
+func (t *TestExpression) Validate(stateNames []string) error {
+	return nil
 }
 
-func (d *DataTestExpression) String() string {
+func (t *TestExpression) String() string {
 	str := "\n\t\t\t\t{"
 
-	if d.Variable != "" {
-		str += fmt.Sprintf("\n\t\t\t\t\tVariable: %s\n", d.Variable)
+	if t.Variable != "" {
+		str += fmt.Sprintf("\n\t\t\t\t\tVariable: %s\n", t.Variable)
 	}
-	if d.ComparisonOperator != nil {
-		str += d.ComparisonOperator.String()
-	}
-	if d.Next != "" {
-		str += fmt.Sprintf("\t\t\t\t\tNext: %s", d.Next)
+	if t.ComparisonOperator != nil {
+		str += t.ComparisonOperator.String()
 	}
 	return str + "\n\t\t\t\t}"
 }
 
-func (d *DataTestExpression) Equals(cmp types.Comparable) bool {
-	d2 := cmp.(*DataTestExpression)
-	return d.Next == d2.Next &&
-		d.ComparisonOperator.Equals(d2.ComparisonOperator) &&
-		d.Variable == d2.Variable
+func (t *TestExpression) GetRuleType() RuleType {
+	return TestExpr
 }
 
-func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
+func (t *TestExpression) Equals(cmp types.Comparable) bool {
+	d2 := cmp.(*TestExpression)
+	return t.Variable == d2.Variable &&
+		t.ComparisonOperator.Equals(d2.ComparisonOperator)
+}
+
+func ParseTestExpr(jsonRule []byte) (*TestExpression, error) {
 	variable, err := JsonExtractString(jsonRule, "Variable")
-	if err != nil {
-		return nil, err
-	}
-	next, err := JsonExtractString(jsonRule, "Next")
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +134,7 @@ func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
 		comparatorValue, errComp := JsonExtractString(jsonRule, string(comparator))
 		if errComp != nil {
 			if i == len(PossibleComparators)-1 {
-				return nil, fmt.Errorf("invalid data test expression comparator. It can be one of the following: StringEquals, StringEqualsPath, StringLessThan, StringLessThanPath, StringGreaterThan, StringGreaterThanPath, StringLessThanEquals, StringLessThanEqualsPath, StringGreaterThanEquals, StringGreaterThanEqualsPath, StringMatches, NumericEqualsPath, NumericLessThan, NumericLessThanPath, NumericGreaterThan, NumericGreaterThanPath, NumericLessThanEquals, NumericLessThanEqualsPath, NumericGreaterThanEquals, NumericGreaterThanEqualsPath, BooleanEquals, BooleanEqualsPath, TimestampEquals, TimestampEqualsPath, TimestampLessThan, TimestampLessThanPath, TimestampGreaterThan, TimestampGreaterThanPath, TimestampLessThanEquals, TimestampLessThanEqualsPath, TimestampGreaterThanEquals, TimestampGreaterThanEqualsPath, IsNull, IsPresent, IsNumeric, IsString, IsBoolean, IsTimestamp")
+				return nil, fmt.Errorf("invalid test expression comparator. It can be one of the following: StringEquals, StringEqualsPath, StringLessThan, StringLessThanPath, StringGreaterThan, StringGreaterThanPath, StringLessThanEquals, StringLessThanEqualsPath, StringGreaterThanEquals, StringGreaterThanEqualsPath, StringMatches, NumericEqualsPath, NumericLessThan, NumericLessThanPath, NumericGreaterThan, NumericGreaterThanPath, NumericLessThanEquals, NumericLessThanEqualsPath, NumericGreaterThanEquals, NumericGreaterThanEqualsPath, BooleanEquals, BooleanEqualsPath, TimestampEquals, TimestampEqualsPath, TimestampLessThan, TimestampLessThanPath, TimestampGreaterThan, TimestampGreaterThanPath, TimestampLessThanEquals, TimestampLessThanEqualsPath, TimestampGreaterThanEquals, TimestampGreaterThanEqualsPath, IsNull, IsPresent, IsNumeric, IsString, IsBoolean, IsTimestamp")
 			}
 			continue
 		}
@@ -158,18 +167,62 @@ func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
 		// we have found a valid comparator, so we exit the for loop
 		break
 	}
+	return &TestExpression{
+		Variable:           variable,
+		ComparisonOperator: &comparisonOperator,
+	}, nil
+}
 
-	// check that there is only one comparisonOperator
-	num := JsonNumberOfKeys(jsonRule)
-	if num != 3 {
-		return nil, fmt.Errorf("found %d keys. There are'nt exactly 3 keys in this JsonRule: %s\n", num, jsonRule)
+// DataTestExpression is a ChoiceRule that is parsable from a Variable, a ComparisonOperator and has a Next field.
+type DataTestExpression struct {
+	Test *TestExpression
+	Next string // Necessary. The value should match a state name in the StateMachine
+}
+
+func (d *DataTestExpression) GetRuleType() RuleType {
+	return DataTestExpr
+}
+
+func (d *DataTestExpression) String() string {
+	str := "\n\t\t\t\t{"
+
+	if d.Test.Variable != "" {
+		str += fmt.Sprintf("\n\t\t\t\t\tVariable: %s\n", d.Test.Variable)
+	}
+	if d.Test.ComparisonOperator != nil {
+		str += d.Test.ComparisonOperator.String()
+	}
+	if d.Next != "" {
+		str += fmt.Sprintf("\t\t\t\t\tNext: %s", d.Next)
+	}
+	return str + "\n\t\t\t\t}"
+}
+
+func (d *DataTestExpression) Equals(cmp types.Comparable) bool {
+	d2 := cmp.(*DataTestExpression)
+	return d.Test.Equals(d2.Test) && d.Next == d2.Next
+}
+
+func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
+	next, err := JsonExtractString(jsonRule, "Next")
+	if err != nil {
+		return nil, err
+	}
+
+	testExpr, err := ParseTestExpr(jsonRule)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse test expression %s\n%v", jsonRule, err)
 	}
 
 	return &DataTestExpression{
-		Variable:           variable,
-		ComparisonOperator: &comparisonOperator,
-		Next:               next,
+		Test: testExpr,
+		Next: next,
 	}, nil
+}
+
+func (d *DataTestExpression) Validate(stateNames []string) error {
+	// TODO: implement me.
+	return nil
 }
 
 type ComparisonOperator struct {

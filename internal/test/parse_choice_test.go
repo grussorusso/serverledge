@@ -82,20 +82,24 @@ func TestParseChoiceWithDataTestExpr(t *testing.T) {
 				Type: asl.Choice,
 				Choices: []asl.ChoiceRule{
 					&asl.DataTestExpression{
-						Variable: "input",
-						ComparisonOperator: &asl.ComparisonOperator{
-							Kind:     asl.NumericEquals,
-							DataType: asl.NumericComparator,
-							Operand:  1,
+						Test: &asl.TestExpression{
+							Variable: "input",
+							ComparisonOperator: &asl.ComparisonOperator{
+								Kind:     asl.NumericEquals,
+								DataType: asl.NumericComparator,
+								Operand:  1,
+							},
 						},
 						Next: "FirstMatchState",
 					},
 					&asl.DataTestExpression{
-						Variable: "input",
-						ComparisonOperator: &asl.ComparisonOperator{
-							Kind:     asl.NumericEquals,
-							DataType: asl.NumericComparator,
-							Operand:  2,
+						Test: &asl.TestExpression{
+							Variable: "input",
+							ComparisonOperator: &asl.ComparisonOperator{
+								Kind:     asl.NumericEquals,
+								DataType: asl.NumericComparator,
+								Operand:  2,
+							},
 						},
 						Next: "SecondMatchState",
 					},
@@ -133,7 +137,7 @@ func TestParseChoiceWithDataTestExpr(t *testing.T) {
 // [Task Private]    [Task ValueInTwenties] 	 [Task DefaultState]
 // ... is correctly parsed.
 func TestParseChoiceWithBooleanExpr(t *testing.T) {
-	t.Skip("WIP")
+
 	choice := []byte(`{
 		"Comment": "An example of the Amazon States Language using a choice state.",
 		"StartAt": "ChoiceState",
@@ -216,11 +220,13 @@ func TestParseChoiceWithBooleanExpr(t *testing.T) {
 					&asl.BooleanExpression{
 						Formula: &asl.NotFormula{
 							Not: &asl.DataTestExpression{
-								Variable: "$.type",
-								ComparisonOperator: &asl.ComparisonOperator{
-									Kind:     asl.StringEquals,
-									DataType: asl.StringComparator,
-									Operand:  "Private",
+								Test: &asl.TestExpression{
+									Variable: "$.type",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.StringEquals,
+										DataType: asl.StringComparator,
+										Operand:  "Private",
+									},
 								},
 								Next: "Public", // FIXME: not needed
 							},
@@ -231,38 +237,46 @@ func TestParseChoiceWithBooleanExpr(t *testing.T) {
 						Formula: &asl.AndFormula{
 							And: []asl.ChoiceRule{
 								&asl.DataTestExpression{
-									Variable: "$.value",
-									ComparisonOperator: &asl.ComparisonOperator{
-										Kind:     asl.IsPresent,
-										DataType: asl.BooleanComparator,
-										Operand:  "true",
+									Test: &asl.TestExpression{
+										Variable: "$.value",
+										ComparisonOperator: &asl.ComparisonOperator{
+											Kind:     asl.IsPresent,
+											DataType: asl.BooleanComparator,
+											Operand:  "true",
+										},
 									},
 									Next: "ValueInTwenties", // FIXME: not needed
 								},
 								&asl.DataTestExpression{
-									Variable: "$.value",
-									ComparisonOperator: &asl.ComparisonOperator{
-										Kind:     asl.IsNumeric,
-										DataType: asl.BooleanComparator,
-										Operand:  true,
+									Test: &asl.TestExpression{
+										Variable: "$.value",
+										ComparisonOperator: &asl.ComparisonOperator{
+											Kind:     asl.IsNumeric,
+											DataType: asl.BooleanComparator,
+											Operand:  true,
+										},
 									},
 									Next: "ValueInTwenties", // FIXME: not needed
 								},
 								&asl.DataTestExpression{
-									Variable: "$.value",
-									ComparisonOperator: &asl.ComparisonOperator{
-										Kind:     asl.NumericGreaterThanEquals,
-										DataType: asl.NumericComparator,
-										Operand:  20,
+									Test: &asl.TestExpression{
+										Variable: "$.value",
+										ComparisonOperator: &asl.ComparisonOperator{
+											Kind:     asl.NumericGreaterThanEquals,
+											DataType: asl.NumericComparator,
+											Operand:  20,
+										},
 									},
 									Next: "ValueInTwenties", // FIXME: not needed
 								},
 								&asl.DataTestExpression{
-									Variable: "$.value",
-									ComparisonOperator: &asl.ComparisonOperator{
-										Kind:     asl.NumericLessThan,
-										DataType: asl.NumericComparator,
-										Operand:  30,
+									Test: &asl.TestExpression{
+										Variable: "$.value",
+										ComparisonOperator: &asl.ComparisonOperator{
+											Kind:     asl.NumericLessThan,
+											DataType: asl.NumericComparator,
+											Operand:  30,
+										},
 									},
 									Next: "ValueInTwenties", // FIXME: not needed
 								},
