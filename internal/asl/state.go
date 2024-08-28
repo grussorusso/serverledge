@@ -64,7 +64,8 @@ type HasResources interface {
 	GetResources() []string
 }
 
-type Parseable interface {
+type Parsable interface {
+	fmt.Stringer
 	ParseFrom(jsonData []byte) (State, error)
 }
 

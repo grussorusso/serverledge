@@ -219,66 +219,51 @@ func TestParseChoiceWithBooleanExpr(t *testing.T) {
 				Choices: []asl.ChoiceRule{
 					&asl.BooleanExpression{
 						Formula: &asl.NotFormula{
-							Not: &asl.DataTestExpression{
-								Test: &asl.TestExpression{
-									Variable: "$.type",
-									ComparisonOperator: &asl.ComparisonOperator{
-										Kind:     asl.StringEquals,
-										DataType: asl.StringComparator,
-										Operand:  "Private",
-									},
+							Not: &asl.TestExpression{
+								Variable: "$.type",
+								ComparisonOperator: &asl.ComparisonOperator{
+									Kind:     asl.StringEquals,
+									DataType: asl.StringComparator,
+									Operand:  "Private",
 								},
-								Next: "Public", // FIXME: not needed
 							},
 						},
 						Next: "Public",
 					},
 					&asl.BooleanExpression{
 						Formula: &asl.AndFormula{
-							And: []asl.ChoiceRule{
-								&asl.DataTestExpression{
-									Test: &asl.TestExpression{
-										Variable: "$.value",
-										ComparisonOperator: &asl.ComparisonOperator{
-											Kind:     asl.IsPresent,
-											DataType: asl.BooleanComparator,
-											Operand:  "true",
-										},
+							And: []*asl.TestExpression{
+								{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.IsPresent,
+										DataType: asl.BooleanComparator,
+										Operand:  true,
 									},
-									Next: "ValueInTwenties", // FIXME: not needed
 								},
-								&asl.DataTestExpression{
-									Test: &asl.TestExpression{
-										Variable: "$.value",
-										ComparisonOperator: &asl.ComparisonOperator{
-											Kind:     asl.IsNumeric,
-											DataType: asl.BooleanComparator,
-											Operand:  true,
-										},
+								{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.IsNumeric,
+										DataType: asl.BooleanComparator,
+										Operand:  true,
 									},
-									Next: "ValueInTwenties", // FIXME: not needed
 								},
-								&asl.DataTestExpression{
-									Test: &asl.TestExpression{
-										Variable: "$.value",
-										ComparisonOperator: &asl.ComparisonOperator{
-											Kind:     asl.NumericGreaterThanEquals,
-											DataType: asl.NumericComparator,
-											Operand:  20,
-										},
+								{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.NumericGreaterThanEquals,
+										DataType: asl.NumericComparator,
+										Operand:  20,
 									},
-									Next: "ValueInTwenties", // FIXME: not needed
 								},
-								&asl.DataTestExpression{
-									Test: &asl.TestExpression{
-										Variable: "$.value",
-										ComparisonOperator: &asl.ComparisonOperator{
-											Kind:     asl.NumericLessThan,
-											DataType: asl.NumericComparator,
-											Operand:  30,
-										},
+								{
+									Variable: "$.value",
+									ComparisonOperator: &asl.ComparisonOperator{
+										Kind:     asl.NumericLessThan,
+										DataType: asl.NumericComparator,
+										Operand:  30,
 									},
-									Next: "ValueInTwenties", // FIXME: not needed
 								},
 							},
 						},
@@ -289,10 +274,10 @@ func TestParseChoiceWithBooleanExpr(t *testing.T) {
 				OutputPath: "",
 				Default:    "DefaultState",
 			},
-			"FirstMatchState":  asl.NewNonTerminalTask("inc", "NextState"),
-			"SecondMatchState": asl.NewNonTerminalTask("double", "NextState"),
-			"DefaultState":     asl.NewNonTerminalTask("hello", "NextState"),
-			"NextState":        asl.NewTerminalTask("hello"),
+			"Public":          asl.NewNonTerminalTask("inc", "NextState"),
+			"ValueInTwenties": asl.NewNonTerminalTask("double", "NextState"),
+			"DefaultState":    asl.NewNonTerminalTask("hello", "NextState"),
+			"NextState":       asl.NewTerminalTask("hello"),
 		},
 	}
 	ok := smExpected.Equals(sm)

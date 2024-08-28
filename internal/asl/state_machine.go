@@ -78,7 +78,7 @@ func (sm *StateMachine) Validate(stateNames []string) error {
 	return nil
 }
 
-func emptyParsableFromType(t StateType) Parseable {
+func emptyParsableFromType(t StateType) Parsable {
 	switch t {
 	case Task:
 		return NewEmptyTask()
@@ -125,20 +125,30 @@ func parseStates(statesData string) (map[string]State, error) {
 	return states, nil
 }
 
-func (sm *StateMachine) String() string {
-
+func (sm *StateMachine) getStateString() string {
 	statesString := "["
 	for key, state := range sm.States {
-		statesString += "\n\t\t" + key + ":" + state.String()
+		statesString += "\n\t\t" + key + ": " + state.String()
 	}
 	if len(sm.States) > 0 {
-		statesString += "\n\t]\n"
+		statesString += "\n\t]"
 	} else {
-		statesString += "]\n" // this will show brackets like this: []
+		statesString += "]" // this will show brackets like this: []
 	}
+	return statesString
+}
 
-	return fmt.Sprintf("{\n\tName: %s\n\tComment: %s\n\tStartAt: %s\n\tVersion: %s\n\tStates: %s\n}",
-		sm.Name, sm.Comment, sm.StartAt, sm.Version, statesString)
+func (sm *StateMachine) String() string {
+
+	return fmt.Sprintf("{\n"+
+		"\tName: %s\n"+
+		"\tComment: %s\n"+
+		"\tStartAt: %s\n"+
+		"\tVersion: %s\n"+
+		"\tStates: "+
+		"%s\n"+
+		"}",
+		sm.Name, sm.Comment, sm.StartAt, sm.Version, sm.getStateString())
 }
 
 // GetFunctionNames retrieves all functions defined in the StateMachine, and duplicates are allowed
@@ -199,6 +209,7 @@ func (sm *StateMachine) Equals(comparer types.Comparable) bool {
 	// checks if all states are equal
 	for k := range sm.States {
 		if !sm.States[k].Equals(sm2.States[k]) {
+			fmt.Printf("sm.States[k]: %v\n sm2.States[k]: %v\n", sm.States[k], sm2.States[k])
 			return false
 		}
 	}

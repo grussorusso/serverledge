@@ -3,6 +3,7 @@ package asl
 import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -12,7 +13,7 @@ type RuleType int
 const (
 	BooleanExpr = iota
 	DataTestExpr
-	TestExpr
+	// TestExpr
 )
 
 type ChoiceRule interface {
@@ -49,10 +50,10 @@ func (b *BooleanExpression) Equals(cmp types.Comparable) bool {
 }
 
 func (b *BooleanExpression) String() string {
-	return "\t\t\t\t\t" + b.Formula.GetFormulaType() + ": {\n" +
+	return "\n\t\t\t\t" + b.Formula.GetFormulaType() + ": {" +
 		b.Formula.String() +
 		"\n\t\t\t\t\tNext: " + b.Next +
-		"\n\t\t\t\t\t}"
+		"\n\t\t\t\t}"
 }
 
 func (b *BooleanExpression) GetRuleType() RuleType {
@@ -102,25 +103,25 @@ func (t *TestExpression) Validate(stateNames []string) error {
 }
 
 func (t *TestExpression) String() string {
-	str := "\n\t\t\t\t{"
+	str := "\t\t\t\t\t\t{\n"
 
 	if t.Variable != "" {
-		str += fmt.Sprintf("\n\t\t\t\t\tVariable: %s\n", t.Variable)
+		str += fmt.Sprintf("\t\t\t\t\t\t\tVariable: %s\n", t.Variable)
 	}
 	if t.ComparisonOperator != nil {
 		str += t.ComparisonOperator.String()
 	}
-	return str + "\n\t\t\t\t}"
-}
-
-func (t *TestExpression) GetRuleType() RuleType {
-	return TestExpr
+	return str + "\n\t\t\t\t\t\t}"
 }
 
 func (t *TestExpression) Equals(cmp types.Comparable) bool {
-	d2 := cmp.(*TestExpression)
-	return t.Variable == d2.Variable &&
-		t.ComparisonOperator.Equals(d2.ComparisonOperator)
+	t2, ok := cmp.(*TestExpression)
+	if !ok {
+		fmt.Printf("t1: %v\nt2: %v\n", t, t2)
+		return false
+	}
+	return t.Variable == t2.Variable &&
+		t.ComparisonOperator.Equals(t2.ComparisonOperator)
 }
 
 func ParseTestExpr(jsonRule []byte) (*TestExpression, error) {
@@ -129,7 +130,8 @@ func ParseTestExpr(jsonRule []byte) (*TestExpression, error) {
 		return nil, err
 	}
 
-	comparisonOperator := ComparisonOperator{}
+	tempComparisonOperator := ComparisonOperator{}
+	var compOp *ComparisonOperator = nil
 	for i, comparator := range PossibleComparators {
 		comparatorValue, errComp := JsonExtractString(jsonRule, string(comparator))
 		if errComp != nil {
@@ -139,37 +141,42 @@ func ParseTestExpr(jsonRule []byte) (*TestExpression, error) {
 			continue
 		}
 		// comparator kind field
-		comparisonOperator.Kind = comparator
+		tempComparisonOperator.Kind = comparator
 		comparatorString := string(comparator)
 		// comparator datatype and operand fields
 		if strings.HasPrefix(comparatorString, "String") {
-			comparisonOperator.DataType = StringComparator
-			comparisonOperator.Operand = comparatorValue
+			tempComparisonOperator.DataType = StringComparator
+			tempComparisonOperator.Operand = comparatorValue
 		} else if strings.HasPrefix(comparatorString, "Numeric") {
-			comparisonOperator.DataType = NumericComparator
-			comparisonOperator.Operand, err = strconv.Atoi(comparatorValue)
+			tempComparisonOperator.DataType = NumericComparator
+			tempComparisonOperator.Operand, err = strconv.Atoi(comparatorValue)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert to int the value %s: %v", comparatorValue, err)
 			}
 		} else if strings.HasPrefix(comparatorString, "Timestamp") {
-			comparisonOperator.DataType = TimestampComparator
-			comparisonOperator.Operand = comparatorValue
+			tempComparisonOperator.DataType = TimestampComparator
+			tempComparisonOperator.Operand = comparatorValue
 		} else if strings.HasPrefix(comparatorString, "Boolean") || strings.HasPrefix(comparatorString, "Is") {
-			comparisonOperator.DataType = BooleanComparator
-			comparisonOperator.Operand, err = strconv.ParseBool(comparatorValue)
+			tempComparisonOperator.DataType = BooleanComparator
+			tempComparisonOperator.Operand, err = strconv.ParseBool(comparatorValue)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert to bool the value %s: %v", comparatorValue, err)
 			}
 		} else {
 			return nil, fmt.Errorf("invalid comparator: %s", comparator)
 		}
+		compOp, err = NewComparisonOperator(tempComparisonOperator.Kind, tempComparisonOperator.DataType, tempComparisonOperator.Operand)
+		if err != nil {
+			return nil, fmt.Errorf("something went wrong with comparison operator: %v", err)
+		}
 
 		// we have found a valid comparator, so we exit the for loop
 		break
 	}
+
 	return &TestExpression{
 		Variable:           variable,
-		ComparisonOperator: &comparisonOperator,
+		ComparisonOperator: compOp,
 	}, nil
 }
 
@@ -231,11 +238,51 @@ type ComparisonOperator struct {
 	Operand  interface{}
 }
 
+func NewComparisonOperator(comparatorInstance ComparisonOperatorKind, comparatorType ComparisonOperatorDataType, operand interface{}) (*ComparisonOperator, error) {
+	opType := reflect.TypeOf(operand).Kind()
+	switch comparatorType {
+	case StringComparator:
+		if opType != reflect.String {
+			return nil, fmt.Errorf("invalid string comparison operator for value %v with type: %T", operand, operand)
+		}
+		break
+	case NumericComparator:
+		if !(opType == reflect.Int || opType == reflect.Int8 || opType == reflect.Int16 || opType == reflect.Int32 || opType == reflect.Int64 ||
+			opType == reflect.Uint || opType == reflect.Uint8 || opType == reflect.Uint16 || opType == reflect.Uint32 || opType == reflect.Uint64 ||
+			opType == reflect.Float32 || opType == reflect.Float64) {
+			return nil, fmt.Errorf("invalid numeric comparison operator for value %v with type: %T", operand, operand)
+		}
+		break
+	case TimestampComparator:
+		if opType != reflect.String {
+			return nil, fmt.Errorf("invalid timestamp comparison operator for value %v with type: %T", operand, operand)
+		}
+		break
+	case BooleanComparator:
+		if opType != reflect.Bool {
+			return nil, fmt.Errorf("invalid boolean comparison operator for value %v with type: %T", operand, operand)
+		}
+		break
+	default:
+		return nil, fmt.Errorf("invalid comparison operator %v", comparatorType)
+	}
+
+	return &ComparisonOperator{
+		Kind:     comparatorInstance,
+		DataType: comparatorType,
+		Operand:  operand,
+	}, nil
+}
+
 func (co *ComparisonOperator) String() string {
-	return fmt.Sprintf("\t\t\t\t\t%s: %v\n", co.Kind, co.Operand)
+	return fmt.Sprintf("\t\t\t\t\t\t\t%s: %v", co.Kind, co.Operand)
 }
 
 func (co *ComparisonOperator) Equals(co2 *ComparisonOperator) bool {
+	if reflect.TypeOf(co.Operand) != reflect.TypeOf(co2.Operand) {
+		fmt.Printf("Operand type differs: expected %v, but found %v\n", reflect.TypeOf(co.Operand), reflect.TypeOf(co2.Operand))
+		return false
+	}
 	return co.Kind == co2.Kind && co.DataType == co2.DataType && co.Operand == co2.Operand
 }
 

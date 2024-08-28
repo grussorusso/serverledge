@@ -159,7 +159,11 @@ func (t *TaskState) IsEndState() bool {
 }
 
 func (t *TaskState) Equals(cmp types.Comparable) bool {
-	t2 := cmp.(*TaskState)
+	t2, ok := cmp.(*TaskState)
+	if !ok {
+		fmt.Printf("t1: %v\nt2: %v\n", t, cmp)
+		return false
+	}
 	return t.Type == t2.Type &&
 		t.Resource == t2.Resource &&
 		t.Next == t2.Next &&

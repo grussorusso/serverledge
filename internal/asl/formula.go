@@ -13,7 +13,7 @@ type Formula interface {
 }
 
 type AndFormula struct {
-	And []ChoiceRule
+	And []*TestExpression
 }
 
 func (a *AndFormula) Equals(cmp types.Comparable) bool {
@@ -23,26 +23,34 @@ func (a *AndFormula) Equals(cmp types.Comparable) bool {
 	}
 	for i, choiceRule := range a.And {
 		if !choiceRule.Equals(otherAnd.And[i]) {
+			fmt.Printf("And1: %v\n And2: %v\n", choiceRule, otherAnd.And[i])
 			return false
 		}
 	}
 
 	return true
 }
-
-func (a *AndFormula) String() string {
-	str := "\t\t\t\t\t\tAnd: ["
-
-	for i, choiceRule := range a.And {
-		str += "\n\t\t\t\t\t\t\t" + choiceRule.String()
-		if i != len(a.And)-1 {
-			str += ","
+func printTestExpression(expressions []*TestExpression) string {
+	str := "\t\t\t\t\t\n\t\t\t\t\t["
+	exprLenMinusOne := len(expressions) - 1
+	for i, choiceRule := range expressions {
+		if i == 0 {
+			str += "\n"
+		}
+		str += choiceRule.String()
+		if i != exprLenMinusOne {
+			str += ",\n"
+		} else {
+			str += "\n"
 		}
 	}
 
-	str += "]"
-
+	str += "\t\t\t\t\t]"
 	return str
+}
+
+func (a *AndFormula) String() string {
+	return printTestExpression(a.And)
 }
 
 func (a *AndFormula) GetFormulaType() string {
@@ -54,7 +62,7 @@ func ParseAnd(jsonBytes []byte) (*AndFormula, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse and formula: %v", err)
 	}
-	andArray := make([]ChoiceRule, 0)
+	andArray := make([]*TestExpression, 0)
 	_, err = jsonparser.ArrayEach(andJson, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		rule, err := ParseTestExpr(value)
 		if err != nil {
@@ -70,7 +78,7 @@ func ParseAnd(jsonBytes []byte) (*AndFormula, error) {
 }
 
 type OrFormula struct {
-	Or []ChoiceRule
+	Or []*TestExpression
 }
 
 func ParseOr(jsonBytes []byte) (*OrFormula, error) {
@@ -78,7 +86,7 @@ func ParseOr(jsonBytes []byte) (*OrFormula, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Or formula: %v", err)
 	}
-	orArray := make([]ChoiceRule, 0)
+	orArray := make([]*TestExpression, 0)
 	_, err = jsonparser.ArrayEach(orRule, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		rule, err := ParseTestExpr(orRule)
 		if err != nil {
@@ -108,18 +116,7 @@ func (o *OrFormula) Equals(cmp types.Comparable) bool {
 }
 
 func (o *OrFormula) String() string {
-	str := "\t\t\t\t\t\tOr: ["
-
-	for i, choiceRule := range o.Or {
-		str += "\n\t\t\t\t\t\t\t" + choiceRule.String()
-		if i != len(o.Or)-1 {
-			str += ","
-		}
-	}
-
-	str += "]"
-
-	return str
+	return printTestExpression(o.Or)
 }
 
 func (o *OrFormula) GetFormulaType() string {
@@ -127,7 +124,7 @@ func (o *OrFormula) GetFormulaType() string {
 }
 
 type NotFormula struct {
-	Not ChoiceRule
+	Not *TestExpression
 }
 
 func ParseNot(jsonBytes []byte) (*NotFormula, error) {
@@ -151,7 +148,10 @@ func (n *NotFormula) Equals(cmp types.Comparable) bool {
 }
 
 func (n *NotFormula) String() string {
-	return fmt.Sprintf("\t\t\t\t\t\tNot: %s", n.Not.String())
+	return fmt.Sprintf(
+		"\n\t\t\t\t\tVariable: %s\n"+
+			"\t\t\t\t\t%s: %s",
+		n.Not.Variable, n.Not.ComparisonOperator.Kind, n.Not.ComparisonOperator.Operand)
 }
 
 func (n *NotFormula) GetFormulaType() string {
