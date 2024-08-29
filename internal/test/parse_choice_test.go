@@ -172,7 +172,7 @@ func TestParseChoiceWithBooleanExpr(t *testing.T) {
 							}
       					],
 						"Next": "ValueInTwenties"
-    				},
+    				}
 				],
 				"Default": "DefaultState"
 			},

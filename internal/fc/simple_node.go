@@ -257,7 +257,7 @@ func (s *SimpleNode) Name() string {
 	return "Simple"
 }
 
-func (s *SimpleNode) ToString() string {
+func (s *SimpleNode) String() string {
 	return fmt.Sprintf("[SimpleNode (%s) func %s()]->%s", s.Id, s.Func, s.OutputTo)
 }
 

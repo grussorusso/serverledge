@@ -226,7 +226,7 @@ func (f *FanOutNode) Name() string {
 	}
 }
 
-func (f *FanOutNode) ToString() string {
+func (f *FanOutNode) String() string {
 	outputs := ""
 	for i, outputTo := range f.OutputTo {
 		outputs += string(outputTo)

@@ -259,7 +259,7 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	pd = NewPartialData(requestId, forNode, nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.ToString(), errSend)
+		return false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.String(), errSend)
 	}
 
 	// saving partial data and updating progress
@@ -296,7 +296,7 @@ func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *Composi
 	pd = NewPartialData(requestId, choice.GetNext()[0], nodeId, output)
 	errSend := choice.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", choice.ToString(), errSend)
+		return false, fmt.Errorf("the node %s cannot send the output: %v", choice.String(), errSend)
 	}
 
 	// for choice node, we skip all branch that will not be executed
@@ -340,7 +340,7 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 	// sends output to each next node
 	errSend := fanOut.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.ToString(), errSend)
+		return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.String(), errSend)
 	}
 
 	for i, nextNode := range fanOut.GetNext() {
@@ -649,7 +649,7 @@ func (dag *Dag) String() string {
 		Nodes: %s,
 		End:   %s,
 		Width: %d,
-	}`, dag.Start.ToString(), dag.Nodes, dag.End.ToString(), dag.Width)
+	}`, dag.Start.String(), dag.Nodes, dag.End.String(), dag.Width)
 }
 
 // MarshalJSON is needed because DagNode is an interface
@@ -829,12 +829,8 @@ func Debug(r *CompositionRequest, nodeId string, output map[string]interface{}) 
 	return nil
 }
 
-func FromStateMachine(sm *asl.StateMachine) (*Dag, error) {
+func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName string) (*Dag, error) {
 	builder := NewDagBuilder()
-
-	nextStateName := sm.StartAt
-	nextState := sm.States[nextStateName]
-	// TODO is terminal
 	isTerminal := false
 	// forse questo va messo in un metodo a parte e riutilizzato per navigare i branch dei choice
 	for !isTerminal {
@@ -911,6 +907,12 @@ func FromStateMachine(sm *asl.StateMachine) (*Dag, error) {
 		}
 	}
 	return builder.Build()
+}
+
+func FromStateMachine(sm *asl.StateMachine) (*Dag, error) {
+	nextStateName := sm.StartAt
+	nextState := sm.States[nextStateName]
+	return DagBuildingLoop(sm, nextState, nextStateName)
 }
 
 // findNextOrTerminate returns the State, its name and if it is terminal or not

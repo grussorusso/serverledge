@@ -198,10 +198,10 @@ func (c *ChoiceNode) GetBranchId() int {
 	return c.BranchId
 }
 
-func (c *ChoiceNode) ToString() string {
+func (c *ChoiceNode) String() string {
 	conditions := "<"
 	for i, condFn := range c.Conditions {
-		conditions += condFn.ToString()
+		conditions += condFn.String()
 		if i != len(c.Conditions) {
 			conditions += " | "
 		}

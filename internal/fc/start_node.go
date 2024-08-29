@@ -77,7 +77,7 @@ func (s *StartNode) Name() string {
 	return "Start "
 }
 
-func (s *StartNode) ToString() string {
+func (s *StartNode) String() string {
 	return fmt.Sprintf("[%s]-next->%s", s.Name(), s.Next)
 }
 

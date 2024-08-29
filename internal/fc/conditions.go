@@ -17,18 +17,18 @@ type Condition struct {
 	Sub  []Condition   `json:"Sub"`  // Sub is a SubCondition List. Useful for Type And, Or and Not
 }
 
-type CondEnum int
+type CondEnum string
 
 const (
-	And = iota
-	Or
-	Not
-	Const
-	Eq
-	Diff
-	Greater
-	Smaller
-	Empty // for collections
+	And     CondEnum = "And"
+	Or      CondEnum = "Or"
+	Not     CondEnum = "Not"
+	Const   CondEnum = "Const"
+	Eq      CondEnum = "Eq"
+	Diff    CondEnum = "Diff"
+	Greater CondEnum = "Greater"
+	Smaller CondEnum = "Smaller"
+	Empty   CondEnum = "Empty" // for collections
 )
 
 func (p Predicate) Test(input map[string]interface{}) bool {
@@ -40,15 +40,15 @@ func (p Predicate) Test(input map[string]interface{}) bool {
 }
 
 func (p Predicate) LogicString() string {
-	return p.Root.ToString()
+	return p.Root.String()
 }
 
-func (c Condition) ToString() string {
+func (c Condition) String() string {
 	switch c.Type {
 	case And:
 		str := "("
 		for i, condition := range c.Sub {
-			str += condition.ToString()
+			str += condition.String()
 			if i != len(c.Sub)-1 {
 				str += " && "
 			}
@@ -58,7 +58,7 @@ func (c Condition) ToString() string {
 	case Or:
 		str := "("
 		for i, condition := range c.Sub {
-			str += fmt.Sprintf("%s", condition.ToString())
+			str += fmt.Sprintf("%s", condition.String())
 			if i != len(c.Sub)-1 {
 				str += " || "
 			}
@@ -66,7 +66,7 @@ func (c Condition) ToString() string {
 		str += ")"
 		return str
 	case Not:
-		return fmt.Sprintf("!(%s)", c.Sub[0].ToString())
+		return fmt.Sprintf("!(%s)", c.Sub[0].String())
 	case Const:
 		if len(c.Op) == 0 {
 			return "?"

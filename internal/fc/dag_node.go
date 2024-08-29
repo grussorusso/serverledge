@@ -1,6 +1,7 @@
 package fc
 
 import (
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
 )
 
@@ -31,7 +32,7 @@ type HasBranch interface {
 }
 
 type Display interface {
-	ToString() string
+	fmt.Stringer
 	GetId() DagNodeId
 	Name() string
 }

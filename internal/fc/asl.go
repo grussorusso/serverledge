@@ -57,15 +57,26 @@ func BuildFromChoiceState(builder *DagBuilder, c *asl.ChoiceState, name string, 
 	// the choice state has two or more StateMachine(s) in it, one for each branch
 	i := 0
 	for branchBuilder.HasNextBranch() {
-		nextState := c.Choices[i].GetNextState()
-		sm, errBranch := GetBranchesForChoiceFromStates(entireSM, nextState, i)
-		if errBranch != nil {
-			return nil, errBranch
+		if i < len(conds)-1 {
+			// choice branches
+			nextState := c.Choices[i].GetNextState()
+			sm, errBranch := GetBranchForChoiceFromStates(entireSM, nextState, i)
+			if errBranch != nil {
+				return nil, errBranch
+			}
+			branchBuilder = branchBuilder.NextBranch(sm, errBranch)
+			i++
+		} else {
+			// we add one more branch to the ChoiceNode to handle the default branch
+			defaultState := c.Default
+			sm, errBranch := GetBranchForChoiceFromStates(entireSM, defaultState, i)
+			if errBranch != nil {
+				return nil, errBranch
+			}
+			branchBuilder = branchBuilder.NextBranch(sm, errBranch)
+			i++
 		}
-		branchBuilder = branchBuilder.NextBranch(FromStateMachine(sm))
-		i++
 	}
-	// TODO: handle the default branch
 
 	return builder.Build()
 }
@@ -77,82 +88,16 @@ func BuildConditionFromRule(rules []asl.ChoiceRule) ([]Condition, error) {
 	for _, rule := range rules {
 		switch t := rule.(type) {
 		case *asl.BooleanExpression:
+			condition, err := buildBooleanExpr(t)
+			if err != nil {
+				return []Condition{}, fmt.Errorf("failed to build boolean expression: %v", err)
+			}
+			conds = append(conds, condition)
 			break
 		case *asl.DataTestExpression:
-			param := NewParam(t.Test.Variable)
-			val := NewValue(t.Test.ComparisonOperator.Operand)
-			// TODO: handle the case when there are two params!!!
-			var condition Condition
-			switch t.Test.ComparisonOperator.Kind {
-			case "StringEquals":
-				condition = NewEqParamCondition(param, val)
-				break
-			case "StringEqualsPath":
-			case "StringLessThan":
-			case "StringLessThanPath":
-			case "StringGreaterThan":
-			case "StringGreaterThanPath":
-			case "StringLessThanEquals":
-			case "StringLessThanEqualsPath":
-			case "StringGreaterThanEquals":
-			case "StringGreaterThanEqualsPath":
-			case "StringMatches":
-				panic("Not implemented")
-			case "NumericEquals":
-				condition = NewEqParamCondition(param, val)
-				break
-			case "NumericEqualsPath":
-				panic("Not implemented")
-			case "NumericLessThan":
-				condition = NewSmallerParamCondition(param, val)
-				break
-			case "NumericLessThanPath":
-				panic("Not implemented")
-			case "NumericGreaterThan":
-				condition = NewGreaterParamCondition(param, val)
-				break
-			case "NumericGreaterThanPath":
-				panic("Not implemented")
-			case "NumericLessThanEquals":
-				condition = NewOr(NewSmallerParamCondition(param, val), NewEqParamCondition(param, val))
-				break
-			case "NumericLessThanEqualsPath":
-				panic("Not implemented")
-			case "NumericGreaterThanEquals":
-				condition = NewOr(NewGreaterParamCondition(param, val), NewEqParamCondition(param, val))
-				break
-			case "NumericGreaterThanEqualsPath":
-				panic("Not implemented")
-			case "BooleanEquals":
-				condition = NewEqCondition(param, true)
-				break
-			case "BooleanEqualsPath":
-				panic("Not implemented")
-			case "TimestampEquals":
-			case "TimestampEqualsPath":
-			case "TimestampLessThan":
-			case "TimestampLessThanPath":
-			case "TimestampGreaterThan":
-			case "TimestampGreaterThanPath":
-			case "TimestampLessThanEquals":
-			case "TimestampLessThanEqualsPath":
-			case "TimestampGreaterThanEquals":
-			case "TimestampGreaterThanEqualsPath":
-				panic("Not implemented")
-			case "IsNull":
-				condition = NewEqCondition(param, nil)
-				break
-			case "IsPresent":
-				condition = NewNot(NewEqCondition(param, nil))
-				break
-			case "IsNumeric":
-				break
-			case "IsString":
-				break
-			case "IsBoolean":
-				condition = NewOr(NewEqCondition(param, true), NewEqCondition(param, false))
-			case "IsTimestamp":
-				panic("Not implemented")
+			condition, err := buildTestExpr(t.Test)
+			if err != nil {
+				return []Condition{}, fmt.Errorf("failed to build data test expression: %v", err)
 			}
 			conds = append(conds, condition)
 			break
@@ -166,10 +111,127 @@ func BuildConditionFromRule(rules []asl.ChoiceRule) ([]Condition, error) {
 	return conds, nil
 }
 
-func GetBranchesForChoiceFromStates(sm *asl.StateMachine, nextState string, branchIndex int) (*asl.StateMachine, error) {
-	fmt.Printf("Branch index: %d\n", branchIndex)
+func buildBooleanExpr(b *asl.BooleanExpression) (Condition, error) {
+	var condition Condition
+	switch t := b.Formula.(type) {
+	case *asl.AndFormula:
+		andConditions := make([]Condition, 0)
+		for i, andExpr := range t.And {
+			testExpr, err := buildTestExpr(andExpr)
+			if err != nil {
+				return NewConstCondition(false), fmt.Errorf("failed to build AND test expression %d %v:\n %v", i, t, err)
+			}
+			andConditions = append(andConditions, testExpr)
+		}
+		condition = NewAnd(andConditions...)
+		break
+	case *asl.OrFormula:
+		orConditions := make([]Condition, 0)
+		for i, orExpr := range t.Or {
+			testExpr, err := buildTestExpr(orExpr)
+			if err != nil {
+				return NewConstCondition(false), fmt.Errorf("failed to build OR test expression %d %v:\n %v", i, t, err)
+			}
+			orConditions = append(orConditions, testExpr)
+		}
+		condition = NewAnd(orConditions...)
+		break
+	case *asl.NotFormula:
+		testExpr, err := buildTestExpr(t.Not)
+		if err != nil {
+			return NewConstCondition(false), fmt.Errorf("failed to build NOT test expression %v:\n %v", t, err)
+		}
+		condition = testExpr
+		break
+	default:
+		condition = NewConstCondition(false)
+		break
+	}
+	return condition, nil
+}
 
-	return sm, nil
+func buildTestExpr(t *asl.TestExpression) (Condition, error) {
+	param := NewParam(t.Variable)
+	val := NewValue(t.ComparisonOperator.Operand)
+	// TODO: handle the case when there are two params!!!
+	var condition Condition
+	switch t.ComparisonOperator.Kind {
+	case "StringEquals":
+		condition = NewEqParamCondition(param, val)
+		break
+	case "StringEqualsPath":
+	case "StringLessThan":
+	case "StringLessThanPath":
+	case "StringGreaterThan":
+	case "StringGreaterThanPath":
+	case "StringLessThanEquals":
+	case "StringLessThanEqualsPath":
+	case "StringGreaterThanEquals":
+	case "StringGreaterThanEqualsPath":
+	case "StringMatches":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "NumericEquals":
+		condition = NewEqParamCondition(param, val)
+		break
+	case "NumericEqualsPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "NumericLessThan":
+		condition = NewSmallerParamCondition(param, val)
+		break
+	case "NumericLessThanPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "NumericGreaterThan":
+		condition = NewGreaterParamCondition(param, val)
+		break
+	case "NumericGreaterThanPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "NumericLessThanEquals":
+		condition = NewOr(NewSmallerParamCondition(param, val), NewEqParamCondition(param, val))
+		break
+	case "NumericLessThanEqualsPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "NumericGreaterThanEquals":
+		condition = NewOr(NewGreaterParamCondition(param, val), NewEqParamCondition(param, val))
+		break
+	case "NumericGreaterThanEqualsPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "BooleanEquals":
+		condition = NewEqCondition(param, true)
+		break
+	case "BooleanEqualsPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "TimestampEquals":
+	case "TimestampEqualsPath":
+	case "TimestampLessThan":
+	case "TimestampLessThanPath":
+	case "TimestampGreaterThan":
+	case "TimestampGreaterThanPath":
+	case "TimestampLessThanEquals":
+	case "TimestampLessThanEqualsPath":
+	case "TimestampGreaterThanEquals":
+	case "TimestampGreaterThanEqualsPath":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	case "IsNull":
+		condition = NewEqCondition(param, nil)
+		break
+	case "IsPresent":
+		condition = NewNot(NewEqCondition(param, nil))
+		break
+	case "IsNumeric":
+		break
+	case "IsString":
+		break
+	case "IsBoolean":
+		condition = NewOr(NewEqCondition(param, true), NewEqCondition(param, false))
+	case "IsTimestamp":
+		return NewConstCondition(false), fmt.Errorf("not implemented")
+	}
+	return condition, nil
+}
+
+func GetBranchForChoiceFromStates(sm *asl.StateMachine, nextState string, branchIndex int) (*Dag, error) {
+	fmt.Printf("Branch index: %d\n", branchIndex)
+	return DagBuildingLoop(sm, sm.States[nextState], nextState)
 }
 
 // BuildFromParallelState adds a FanOutNode and a FanInNode and as many branches as defined in the ParallelState

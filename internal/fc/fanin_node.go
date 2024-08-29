@@ -150,7 +150,7 @@ func (f *FanInNode) Name() string {
 	return "Fan In"
 }
 
-func (f *FanInNode) ToString() string {
+func (f *FanInNode) String() string {
 	return fmt.Sprintf("[FanInNode(%d)]", f.FanInDegree)
 }
 
