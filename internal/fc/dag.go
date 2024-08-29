@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/asl"
 	"github.com/grussorusso/serverledge/internal/cache"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
@@ -826,4 +827,104 @@ func Debug(r *CompositionRequest, nodeId string, output map[string]interface{}) 
 		}
 	}
 	return nil
+}
+
+func FromStateMachine(sm *asl.StateMachine) (*Dag, error) {
+	builder := NewDagBuilder()
+
+	nextStateName := sm.StartAt
+	nextState := sm.States[nextStateName]
+	// TODO is terminal
+	isTerminal := false
+	// forse questo va messo in un metodo a parte e riutilizzato per navigare i branch dei choice
+	for !isTerminal {
+		switch nextState.GetType() {
+		case asl.Task:
+			taskState := nextState.(*asl.TaskState)
+			b, err := BuildFromTaskState(builder, taskState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(taskState, sm)
+			break
+		case asl.Parallel:
+			parallelState := nextState.(*asl.ParallelState)
+			b, err := BuildFromParallelState(builder, parallelState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(parallelState, sm)
+			break
+		case asl.Map:
+			mapState := nextState.(*asl.MapState)
+			b, err := BuildFromMapState(builder, mapState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(mapState, sm)
+			break
+		case asl.Pass:
+			passState := nextState.(*asl.PassState)
+			b, err := BuildFromPassState(builder, passState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(passState, sm)
+			break
+		case asl.Wait:
+			waitState := nextState.(*asl.WaitState)
+			b, err := BuildFromWaitState(builder, waitState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(waitState, sm)
+			break
+		case asl.Choice:
+			choiceState := nextState.(*asl.ChoiceState)
+			// In this case, the choice state will automatically build the dag, because it is terminal
+			return BuildFromChoiceState(builder, choiceState, nextStateName, sm)
+		case asl.Succeed:
+			succeed := nextState.(*asl.SucceedState)
+			b, err := BuildFromSucceedState(builder, succeed, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(succeed, sm)
+			break
+		case asl.Fail:
+			failState := nextState.(*asl.FailState)
+			b, err := BuildFromFailState(builder, failState, nextStateName)
+			if err != nil {
+				return nil, err
+			}
+			builder = b
+			nextState, nextStateName, isTerminal = findNextOrTerminate(failState, sm)
+			break
+		default:
+			return nil, fmt.Errorf("unknown state type %s", nextState.GetType())
+		}
+	}
+	return builder.Build()
+}
+
+// findNextOrTerminate returns the State, its name and if it is terminal or not
+func findNextOrTerminate(state asl.CanEnd, sm *asl.StateMachine) (asl.State, string, bool) {
+	isTerminal := state.IsEndState()
+	var nextState asl.State = nil
+	var nextStateName string = ""
+	if !isTerminal {
+		nextName, ok := state.(asl.HasNext).GetNext()
+		if !ok {
+			return nil, "", true
+		}
+		nextStateName = nextName
+		nextState = sm.States[nextStateName]
+	}
+	return nextState, nextStateName, isTerminal
 }

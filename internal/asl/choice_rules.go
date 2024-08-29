@@ -22,6 +22,7 @@ type ChoiceRule interface {
 	Validatable
 	// IsBooleanExpression return true if the ChoiceRule is a BooleanExpression, otherwise false when it is a DataTestExpression
 	GetRuleType() RuleType
+	GetNextState() string
 }
 
 func ParseRule(json []byte) (ChoiceRule, error) {
@@ -58,6 +59,10 @@ func (b *BooleanExpression) String() string {
 
 func (b *BooleanExpression) GetRuleType() RuleType {
 	return BooleanExpr
+}
+
+func (b *BooleanExpression) GetNextState() string {
+	return b.Next
 }
 
 func ParseBooleanExpr(jsonExpression []byte) (*BooleanExpression, error) {
@@ -208,6 +213,10 @@ func (d *DataTestExpression) String() string {
 func (d *DataTestExpression) Equals(cmp types.Comparable) bool {
 	d2 := cmp.(*DataTestExpression)
 	return d.Test.Equals(d2.Test) && d.Next == d2.Next
+}
+
+func (d *DataTestExpression) GetNextState() string {
+	return d.Next
 }
 
 func ParseDataTestExpr(jsonRule []byte) (*DataTestExpression, error) {
