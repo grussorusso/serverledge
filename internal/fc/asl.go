@@ -57,35 +57,31 @@ func BuildFromChoiceState(builder *DagBuilder, c *asl.ChoiceState, name string, 
 	// the choice state has two or more StateMachine(s) in it, one for each branch
 	i := 0
 	for branchBuilder.HasNextBranch() {
+		var nextState string
 		if i < len(conds)-1 {
 			// choice branches
-			nextState := c.Choices[i].GetNextState()
-			sm, errBranch := GetBranchForChoiceFromStates(entireSM, nextState, i)
-			if errBranch != nil {
-				return nil, errBranch
-			}
-			branchBuilder = branchBuilder.NextBranch(sm, errBranch)
-			i++
+			nextState = c.Choices[i].GetNextState()
 		} else {
 			// we add one more branch to the ChoiceNode to handle the default branch
-			defaultState := c.Default
-			sm, errBranch := GetBranchForChoiceFromStates(entireSM, defaultState, i)
-			if errBranch != nil {
-				return nil, errBranch
-			}
-			branchBuilder = branchBuilder.NextBranch(sm, errBranch)
-			i++
+			nextState = c.Default
 		}
+		sm, errBranch := GetBranchForChoiceFromStates(entireSM, nextState, i)
+		if errBranch != nil {
+			return nil, errBranch
+		}
+		branchBuilder = branchBuilder.NextBranch(sm, errBranch)
+		i++
 	}
 
-	return builder.Build()
+	return branchBuilder.EndChoiceAndBuild()
 }
 
 // BuildConditionFromRule creates a condition from a rule
 func BuildConditionFromRule(rules []asl.ChoiceRule) ([]Condition, error) {
 	conds := make([]Condition, 0)
 
-	for _, rule := range rules {
+	for i, rule := range rules {
+		fmt.Printf("Condition %d: %v\n", i, rule)
 		switch t := rule.(type) {
 		case *asl.BooleanExpression:
 			condition, err := buildBooleanExpr(t)

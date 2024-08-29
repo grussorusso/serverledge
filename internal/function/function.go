@@ -126,7 +126,7 @@ func (f *Function) Delete() error {
 	if err != nil {
 		return fmt.Errorf("Failed Delete: %v", err)
 	} else if dresp.Deleted != 1 {
-		fmt.Printf("no function with key '%s' exists", f.getEtcdKey())
+		fmt.Printf("no function with key '%s' exists\n", f.getEtcdKey())
 	}
 
 	// Remove the function from the local cache

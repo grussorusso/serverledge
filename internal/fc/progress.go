@@ -78,15 +78,15 @@ func printStatus(s DagNodeStatus) string {
 	return "No Status - Error"
 }
 
-type DagNodeType int
+type DagNodeType string
 
 const (
-	Start = iota
-	End
-	Simple
-	Choice
-	FanOut
-	FanIn
+	Start  DagNodeType = "StartNode"
+	End    DagNodeType = "EndNode"
+	Simple DagNodeType = "SimpleNode"
+	Choice DagNodeType = "ChoiceNode"
+	FanOut DagNodeType = "FanOutNode"
+	FanIn  DagNodeType = "FanInNode"
 )
 
 func parseType(dNode DagNode) DagNodeType {

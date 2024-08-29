@@ -740,7 +740,10 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 	if err := json.Unmarshal(value, &tempNodeMap); err != nil {
 		return err
 	}
-	dagNodeType := int(tempNodeMap["NodeType"].(float64))
+	dagNodeType, ok := tempNodeMap["NodeType"].(DagNodeType)
+	if !ok {
+		return fmt.Errorf("unknown nodeType: %v", dagNodeType)
+	}
 	var err error
 	switch dagNodeType {
 	case Start:

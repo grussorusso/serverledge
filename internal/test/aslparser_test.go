@@ -221,6 +221,66 @@ func TestParsingChoiceFunctionDag(t *testing.T) {
 	fmt.Println("Result: ", output)
 }
 
+func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	// Creates "inc", "double" and "hello" python functions
+	incFn, err := InitializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	doubleFn, err := InitializePyFunction("double", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	helloFn, err := InitializePyFunction("hello", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).
+		Build())
+	// Removes the functions after test execution
+	defer func() {
+		err := incFn.Delete()
+		utils.AssertNil(t, err)
+		err = doubleFn.Delete()
+		utils.AssertNil(t, err)
+		err = helloFn.Delete()
+		utils.AssertNil(t, err)
+	}()
+
+	err = incFn.SaveToEtcd()
+	utils.AssertNilMsg(t, err, "failed to create inc fn")
+	err = doubleFn.SaveToEtcd()
+	utils.AssertNilMsg(t, err, "failed to create double fn")
+	err = helloFn.SaveToEtcd()
+	utils.AssertNilMsg(t, err, "failed to create hello fn")
+
+	// reads the file
+	body, err := os.ReadFile("asl/choice_datatestexpr.json")
+	utils.AssertNilMsg(t, err, "unable to read file")
+	// parse the ASL language
+	comp, err := fc.FromASL("choice3", body)
+	utils.AssertNilMsg(t, err, "unable to parse json")
+	// deletes the composition after test execution
+	defer func() {
+		err = comp.Delete()
+		utils.AssertNilMsg(t, err, "failed to delete composition")
+	}()
+
+	// runs the workflow
+	params := make(map[string]interface{})
+	params[incFn.Signature.GetInputs()[0].Name] = 0
+	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
+	resultMap, err2 := comp.Invoke(request)
+	utils.AssertNil(t, err2)
+
+	// checks the result
+	output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, "expectedResult", output.(string))
+	fmt.Println("Result: ", output)
+}
+
 func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	t.Skip("WIP")
 	if testing.Short() {
@@ -262,67 +322,6 @@ func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	utils.AssertNilMsg(t, err, "unable to read file")
 	// parse the ASL language
 	comp, err := fc.FromASL("choice2", body)
-	utils.AssertNilMsg(t, err, "unable to parse json")
-	// deletes the composition after test execution
-	defer func() {
-		err = comp.Delete()
-		utils.AssertNilMsg(t, err, "failed to delete composition")
-	}()
-
-	// runs the workflow
-	params := make(map[string]interface{})
-	params[incFn.Signature.GetInputs()[0].Name] = 0
-	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
-	resultMap, err2 := comp.Invoke(request)
-	utils.AssertNil(t, err2)
-
-	// checks the result
-	output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, "expectedResult", output.(string))
-	fmt.Println("Result: ", output)
-}
-
-func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
-	t.Skip("WIP")
-	if testing.Short() {
-		t.Skip("Skipping integration test")
-	}
-
-	// Creates "inc", "double" and "hello" python functions
-	incFn, err := InitializePyFunction("inc", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	doubleFn, err := InitializePyFunction("double", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	helloFn, err := InitializePyFunction("hello", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	// Removes the functions after test execution
-	defer func() {
-		err := incFn.Delete()
-		utils.AssertNil(t, err)
-		err = doubleFn.Delete()
-		utils.AssertNil(t, err)
-		err = helloFn.Delete()
-		utils.AssertNil(t, err)
-	}()
-
-	err = incFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create inc fn")
-	err = doubleFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create double fn")
-	err = helloFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create hello fn")
-
-	// reads the file
-	body, err := os.ReadFile("asl/choice_datatestexpr.json")
-	utils.AssertNilMsg(t, err, "unable to read file")
-	// parse the ASL language
-	comp, err := fc.FromASL("choice3", body)
 	utils.AssertNilMsg(t, err, "unable to parse json")
 	// deletes the composition after test execution
 	defer func() {
