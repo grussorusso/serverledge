@@ -136,7 +136,7 @@ func buildBooleanExpr(b *asl.BooleanExpression) (Condition, error) {
 		if err != nil {
 			return NewConstCondition(false), fmt.Errorf("failed to build NOT test expression %v:\n %v", t, err)
 		}
-		condition = testExpr
+		condition = NewNot(testExpr)
 		break
 	default:
 		condition = NewConstCondition(false)
@@ -146,9 +146,24 @@ func buildBooleanExpr(b *asl.BooleanExpression) (Condition, error) {
 }
 
 func buildTestExpr(t *asl.TestExpression) (Condition, error) {
-	param := NewParam(t.Variable)
-	val := NewValue(t.ComparisonOperator.Operand)
-	// TODO: handle the case when there are two params!!!
+	var param, val *ParamOrValue
+	// the Variable could be a parameter or a value, like "true", 1, etc.
+	if asl.IsReferencePath(t.Variable) {
+		param = NewParam(asl.RemoveDollar(t.Variable))
+	} else {
+		param = NewValue(t.Variable)
+	}
+	// The operand could be a constant or another parameter
+	operand := t.ComparisonOperator.Operand
+	if asl.IsReferencePath(operand) {
+		operandPath, ok := operand.(string)
+		if !ok {
+			return NewConstCondition(false), fmt.Errorf("invalid comparison operator operand: it should have been a string")
+		}
+		val = NewParam(asl.RemoveDollar(operandPath))
+	} else {
+		val = NewValue(operand)
+	}
 	var condition Condition
 	switch t.ComparisonOperator.Kind {
 	case "StringEquals":
@@ -207,10 +222,10 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 	case "TimestampGreaterThanEqualsPath":
 		return NewConstCondition(false), fmt.Errorf("not implemented")
 	case "IsNull":
-		condition = NewEqCondition(param, nil)
+		condition = NewEqCondition(param, NewValue(nil))
 		break
 	case "IsPresent":
-		condition = NewNot(NewEqCondition(param, nil))
+		condition = NewNot(NewEqCondition(param, NewValue(nil)))
 		break
 	case "IsNumeric":
 		break

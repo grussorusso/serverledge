@@ -53,13 +53,13 @@
       "Comment": "Lang=Javascript",
       "Type": "Task",
       "Resource": "hello",
-      "Next": "NextState"
+      "End": true
     },
 
     "NextState": {
       "Comment": "Lang=Python",
       "Type": "Task",
-      "Resource": "hello",
+      "Resource": "inc",
       "End": true
     }
   }

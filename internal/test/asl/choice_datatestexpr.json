@@ -6,12 +6,12 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "input",
+          "Variable": "$.input",
           "NumericEquals": 1,
           "Next": "FirstMatchState"
         },
         {
-          "Variable": "input",
+          "Variable": "$.input",
           "NumericEquals": 2,
           "Next": "SecondMatchState"
         }

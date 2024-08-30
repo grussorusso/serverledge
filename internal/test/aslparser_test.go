@@ -3,7 +3,6 @@ package test
 import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
-	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
 	"github.com/lithammer/shortuuid"
 	"os"
@@ -191,7 +190,7 @@ func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
 	params1 := make(map[string]interface{})
 	params1[incFn.Signature.GetInputs()[0].Name] = 1
 	request1 := fc.NewCompositionRequest(shortuuid.New(), comp, params1)
-	resultMap1, err1 := comp.Invoke(request1) // TODO: Default state fails the nextState is the same SimpleNode, but has the same name in the state machine
+	resultMap1, err1 := comp.Invoke(request1)
 	utils.AssertNil(t, err1)
 
 	// checks that output is 1+1+1=3
@@ -224,75 +223,36 @@ func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
 }
 
 func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
-	t.Skip("WIP")
+	// t.Skip("WIP")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
 
 	// Creates "inc", "double" and "hello" python functions
-	incFn, err := InitializePyFunction("inc", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	doubleFn, err := InitializePyFunction("double", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	helloFn, err := InitializePyFunction("hello", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddOutput("result", function.Int{}).
-		Build())
-	// Removes the functions after test execution
-	defer func() {
-		err := incFn.Delete()
-		utils.AssertNil(t, err)
-		err = doubleFn.Delete()
-		utils.AssertNil(t, err)
-		err = helloFn.Delete()
-		utils.AssertNil(t, err)
-	}()
-
-	err = incFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create inc fn")
-	err = doubleFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create double fn")
-	err = helloFn.SaveToEtcd()
-	utils.AssertNilMsg(t, err, "failed to create hello fn")
-
+	funcs := initializeAllPyFunctionFromNames(t, "inc", "double", "hello")
+	incFn := funcs[0]
+	// helloFn := funcs[2]
 	// reads the file
 	body, err := os.ReadFile("asl/choice_boolexpr.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
 	// parse the ASL language
 	comp, err := fc.FromASL("choice2", body)
 	utils.AssertNilMsg(t, err, "unable to parse json")
-	// deletes the composition after test execution
-	defer func() {
-		err = comp.Delete()
-		utils.AssertNilMsg(t, err, "failed to delete composition")
-	}()
 
-	// runs the workflow
+	// 1st branch (type != "Private")
 	params := make(map[string]interface{})
-	params[incFn.Signature.GetInputs()[0].Name] = 0
+	params["type"] = "Public"
+	params["value"] = 0
+	params["input"] = 1
 	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
 	resultMap, err2 := comp.Invoke(request)
 	utils.AssertNil(t, err2)
 
-	// checks the result
-	output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, "expectedResult", output.(string))
+	// checks the result (1+1+1 = 3)
+	output := resultMap.Result[incFn.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, 3, output.(int))
 	fmt.Println("Result: ", output)
 }
-
-/*
-&{
-	map[
-		ChoiceState:{ChoiceState  Choice  DefaultState  false map[] [] [] 0 0 [
-			{input {4 [false false] [0xc00017e6f0 0xc00017e720] []} FirstMatchState}
-			{input {4 [false false] [0xc00017e750 0xc00017e780] []} SecondMatchState}
-		]}
-		] FirstState }
-*/
 
 func TestParsingDagWithMalformedJson(t *testing.T) {}
 
