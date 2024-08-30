@@ -55,13 +55,13 @@ func (ni *DagNodeInfo) Equals(ni2 *DagNodeInfo) bool {
 	return ni.Id == ni2.Id && ni.Type == ni2.Type && ni.Status == ni2.Status && ni.Group == ni2.Group && ni.Branch == ni2.Branch
 }
 
-type DagNodeStatus int
+type DagNodeStatus string
 
 const (
-	Pending = iota
-	Executed
-	Skipped // if a node is skipped, all its children nodes should also be skipped
-	Failed
+	Pending  = "Pending"
+	Executed = "Executed"
+	Skipped  = "Skipped" // if a node is skipped, all its children nodes should also be skipped
+	Failed   = "Failed"
 )
 
 func printStatus(s DagNodeStatus) string {

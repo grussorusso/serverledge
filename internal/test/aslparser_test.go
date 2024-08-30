@@ -186,42 +186,41 @@ func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
 	incFn := funcs[0]
 	// helloFn := funcs[len(funcs)-1]
 
-	// runs the workflow (1st choice branch) // TODO: first branch should simply use inc
-	//params := make(map[string]interface{})
-	//params[incFn.Signature.GetInputs()[0].Name] = 0
-	//request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
-	//_, err2 := comp.Invoke(request) // TODO: Default state fails the nextState is the same SimpleNode, but has the same name in the state machine
-	//utils.AssertNil(t, err2)
+	// runs the workflow (1st choice branch) test: (input == 1)
+	fmt.Println("1st branch invocation (if input == 1)... ")
+	params1 := make(map[string]interface{})
+	params1[incFn.Signature.GetInputs()[0].Name] = 1
+	request1 := fc.NewCompositionRequest(shortuuid.New(), comp, params1)
+	resultMap1, err1 := comp.Invoke(request1) // TODO: Default state fails the nextState is the same SimpleNode, but has the same name in the state machine
+	utils.AssertNil(t, err1)
 
-	// checks the result // TODO: check that output is 1+1+1=3
-	//output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	//utils.AssertEquals(t, "expectedResult", output.(string))
-	//fmt.Println("Result: ", output)
+	// checks that output is 1+1+1=3
+	output := resultMap1.Result[incFn.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, 3, output.(int))
+	fmt.Println(resultMap1.String())
+	fmt.Println("=============================================")
+	// runs the workflow (2nd choice branch) test: (input == 2)
+	fmt.Println("2nd branch invocation (else if input == 2)...")
+	params2 := make(map[string]interface{})
+	params2[incFn.Signature.GetInputs()[0].Name] = 2
+	request2 := fc.NewCompositionRequest(shortuuid.New(), comp, params2)
+	resultMap, err2 := comp.Invoke(request2)
+	utils.AssertNil(t, err2)
 
-	// runs the workflow (2nd choice branch) // TODO: second branch should use double and then inc
-	//params := make(map[string]interface{})
-	//params[incFn.Signature.GetInputs()[0].Name] = 0
-	//request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
-	//resultMap, err2 := comp.Invoke(request) // TODO: Default state fails the nextState is the same SimpleNode, but has the same name in the state machine
-	//utils.AssertNil(t, err2)
+	// check that output is 2*2+1 = 5
+	output2 := resultMap.Result[incFn.Signature.GetOutputs()[0].Name]
+	utils.AssertEquals(t, 5, output2.(int))
+	fmt.Println("Result: ", output2)
 
-	// checks the result // TODO: check that output is 2*2+1 = 5
-	//output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	//utils.AssertEquals(t, "expectedResult", output.(string))
-	//fmt.Println("Result: ", output)
-
-	// runs the workflow (default choice branch) // TODO: should only print hello
+	// runs the workflow (default choice branch)
+	fmt.Println("=============================================")
+	fmt.Println("Default branch invocation...")
 	paramsDefault := make(map[string]interface{})
 	paramsDefault[incFn.Signature.GetInputs()[0].Name] = "Giacomo"
-	request := fc.NewCompositionRequest(shortuuid.New(), comp, paramsDefault)
-	resultMap, errDef := comp.Invoke(request) // TODO: Default state fails the nextState is the same SimpleNode, but has the same name in the state machine
+	requestDefault := fc.NewCompositionRequest(shortuuid.New(), comp, paramsDefault)
+	resultMap, errDef := comp.Invoke(requestDefault)
 	utils.AssertNil(t, errDef)
 	fmt.Printf("Composition Execution Report: %s\n", resultMap.String())
-
-	// checks the result // TODO: should check that contains the printed result.
-	//output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	//utils.AssertEquals(t, "expectedResult", output.(string))
-	//fmt.Println("Result: ", output)
 }
 
 func TestParsingChoiceDagWithBoolExpr(t *testing.T) {

@@ -400,9 +400,20 @@ func (cer *CompositionExecutionReport) String() string {
 	str += fmt.Sprintf("\n\tResponseTime: %f", cer.ResponseTime)
 	str += fmt.Sprintf("\n\tReports (len): %d", cer.Reports.Len())
 	str += "\n\tResult: {"
-	for s, i := range cer.Result {
-		str += fmt.Sprintf("\n\t\t%s: %v,", s, i)
+	i := 0
+	lll := len(cer.Result)
+	for s, v := range cer.Result {
+		if i == 0 {
+			str += "\n"
+		}
+		str += fmt.Sprintf("\t\t%s: %v,", s, v)
+		if i < lll-1 {
+			str += ",\n"
+		} else if i == lll-1 {
+			str += "\n"
+		}
+		i++
 	}
-	str += "}\n}\n"
+	str += "\t}\n}\n"
 	return str
 }

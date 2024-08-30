@@ -142,16 +142,33 @@ func (c *ChoiceNode) GetChoiceBranch(dag *Dag, branch int) []DagNode {
 	return VisitDag(dag, node, branchNodes, true)
 }
 
+// GetNodesToSkip skips all node that are in a branch that will not be executed.
+// If a skipped branch contains one or more node that is used by the current branch, the node,
+// should NOT be skipped (Tested in TestParsingChoiceDagWithDataTestExpr)
 func (c *ChoiceNode) GetNodesToSkip(dag *Dag) []DagNode {
 	nodesToSkip := make([]DagNode, 0)
 	if c.FirstMatch == -1 || c.FirstMatch >= len(c.Alternatives) {
 		return nodesToSkip
 	}
+
+	nodesToNotSkip := c.GetChoiceBranch(dag, c.FirstMatch)
 	for i := 0; i < len(c.Alternatives); i++ {
 		if i == c.FirstMatch {
 			continue
 		}
-		nodesToSkip = append(nodesToSkip, c.GetChoiceBranch(dag, i)...)
+		branchNodes := c.GetChoiceBranch(dag, i)
+		for _, node := range branchNodes {
+			shouldBeSkipped := true
+			for _, nodeToNotSkip := range nodesToNotSkip {
+				if node.Equals(nodeToNotSkip) {
+					shouldBeSkipped = false
+					break
+				}
+			}
+			if shouldBeSkipped {
+				nodesToSkip = append(nodesToSkip, node)
+			}
+		}
 	}
 	return nodesToSkip
 }
