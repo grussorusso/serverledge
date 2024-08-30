@@ -98,17 +98,8 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]
 	m := make(map[string]interface{})
 	firstOutputName := ""
 
-	// best-effort signature inference from parameters, if it is nil.
 	if funct.Signature == nil {
-		for _, param := range params {
-			funct.Signature = function.SignatureInference(param)
-			errSave := funct.SaveToEtcd()
-			if errSave != nil {
-				return nil, errSave
-			}
-			break
-		}
-		log.Warnf("signature of function %s is nil. Parameters map: %v\n", funct.Name, params)
+		return nil, fmt.Errorf("signature of function %s is nil. Recreate the function with a valid signature. Parameters map: %v\n", funct.Name, params)
 	}
 	// extract output map
 	for i, o := range funct.Signature.GetOutputs() {

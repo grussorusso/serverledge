@@ -81,19 +81,18 @@ func BuildConditionFromRule(rules []asl.ChoiceRule) ([]Condition, error) {
 	conds := make([]Condition, 0)
 
 	for i, rule := range rules {
-		fmt.Printf("Condition %d: %v\n", i, rule)
 		switch t := rule.(type) {
 		case *asl.BooleanExpression:
 			condition, err := buildBooleanExpr(t)
 			if err != nil {
-				return []Condition{}, fmt.Errorf("failed to build boolean expression: %v", err)
+				return []Condition{}, fmt.Errorf("failed to build boolean expression %d: %v", i, err)
 			}
 			conds = append(conds, condition)
 			break
 		case *asl.DataTestExpression:
 			condition, err := buildTestExpr(t.Test)
 			if err != nil {
-				return []Condition{}, fmt.Errorf("failed to build data test expression: %v", err)
+				return []Condition{}, fmt.Errorf("failed to build data test expression %d: %v", i, err)
 			}
 			conds = append(conds, condition)
 			break
@@ -226,7 +225,6 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 }
 
 func GetBranchForChoiceFromStates(sm *asl.StateMachine, nextState string, branchIndex int) (*Dag, error) {
-	fmt.Printf("Branch index: %d\n", branchIndex)
 	return DagBuildingLoop(sm, sm.States[nextState], nextState)
 }
 

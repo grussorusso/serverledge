@@ -70,6 +70,7 @@ func TestCreateComposition(t *testing.T) {
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	utils.AssertNil(t, err)
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
 	createCompositionApiTest(t, &composition, HOST, PORT)
 
@@ -103,6 +104,7 @@ func TestInvokeComposition(t *testing.T) {
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	utils.AssertNil(t, err)
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
 	createCompositionApiTest(t, &composition, HOST, PORT)
 
@@ -147,6 +149,7 @@ func TestInvokeComposition_DifferentFunctions(t *testing.T) {
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize python function")
 	dag, err := fc.CreateSequenceDag(fnPy, fnJs, fnPy, fnJs)
+	utils.AssertNil(t, err)
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fnPy, fnJs}, true)
 	createCompositionApiTest(t, &composition, HOST, PORT)
 
@@ -190,6 +193,7 @@ func TestDeleteComposition(t *testing.T) {
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, db, fn)
+	utils.AssertNil(t, err)
 	for _, b := range []bool{true, false} {
 		composition := fc.NewFC(fcName, *dag, []*function.Function{fn, db}, b)
 		err = composition.SaveToEtcd()
@@ -240,6 +244,7 @@ func TestAsyncInvokeComposition(t *testing.T) {
 		Build())
 	utils.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, fn, fn)
+	utils.AssertNil(t, err)
 	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
 	createCompositionApiTest(t, &composition, HOST, PORT)
 

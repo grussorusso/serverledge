@@ -31,7 +31,7 @@ func CreateFunctionCompositionFromASL(e echo.Context) error {
 
 	err := json.Unmarshal(body, &creationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse compose request - error during unmarshal: %v", err)
 		return err
 	}
 
@@ -76,7 +76,7 @@ func CreateFunctionComposition(e echo.Context) error {
 
 	err := json.Unmarshal(body, &comp)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse composition request - error during unmarshal: %v", err)
 		return err
 	}
 	// checking if the function already exists. If exists we return an error
@@ -141,7 +141,7 @@ func DeleteFunctionComposition(c echo.Context) error {
 	// here we only need the name of the function composition (and if all function should be deleted with it)
 	err := json.NewDecoder(c.Request().Body).Decode(&comp)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse delete request - error during decoding: %v", err)
 		return err
 	}
 
@@ -193,7 +193,7 @@ func InvokeFunctionComposition(e echo.Context) error {
 	var fcInvocationRequest client.CompositionInvocationRequest
 	err := json.NewDecoder(e.Request().Body).Decode(&fcInvocationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v", err)
+		log.Printf("Could not parse invoke request - error during decoding: %v", err)
 		return e.JSON(http.StatusInternalServerError, "failed to parse composition invocation request. Check parameters and composition definition")
 	}
 	// gets a fc.CompositionRequest from the pool goroutine-safe cache.

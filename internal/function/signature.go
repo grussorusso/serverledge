@@ -17,6 +17,7 @@ const (
 	ARRAY_TEXT        = "ArrayText"
 	ARRAY_ARRAY_INT   = "ArrayArrayInt"
 	ARRAY_ARRAY_FLOAT = "ArrayArrayFloat"
+	VOID              = "Void"
 )
 
 // InputDef can be used to represent and check an input type with its name in the map
@@ -177,7 +178,14 @@ func (s SignatureBuilder) AddOutput(name string, dataType DataTypeEnum) Signatur
 	return s.addOutputDef(&def)
 }
 
+// Build completes a signature: if it does not have any input or outputs, adds a Void output and/or output respectively with empty name ""
 func (s SignatureBuilder) Build() *Signature {
+	if len(s.signature.Inputs) == 0 {
+		s.AddInput("", Void{})
+	}
+	if len(s.signature.Outputs) == 0 {
+		s.AddOutput("", Void{})
+	}
 	return &s.signature
 }
 
@@ -250,6 +258,8 @@ func StringToDataType(t string) (DataTypeEnum, error) {
 		return Array[Array[Int]]{DataType: Array[Int]{DataType: Int{}}}, nil
 	case ARRAY_ARRAY_FLOAT:
 		return Array[Array[Float]]{DataType: Array[Float]{DataType: Float{}}}, nil
+	case VOID:
+		return Void{}, nil
 	default:
 		return nil, fmt.Errorf("invalid datatype: %s", t)
 	}
@@ -277,11 +287,14 @@ func datatypeToString(dataType DataTypeEnum) string {
 		return ARRAY_ARRAY_INT
 	case Array[Array[Float]]:
 		return ARRAY_ARRAY_FLOAT
+	case Void:
+		return VOID
 	default:
 		return ""
 	}
 }
 
+// SignatureInference is a best-effort function that tries to infer signature from a function without a defined signature. Maybe we do not need it.
 func SignatureInference(params map[string]interface{}) *Signature {
 	signatureBuilder := NewSignature()
 
@@ -295,6 +308,7 @@ func SignatureInference(params map[string]interface{}) *Signature {
 			Array[Int]{},
 			Array[Bool]{},
 			Array[Text]{},
+			Void{},
 		}
 		for _, t := range typeList {
 			if t.TypeCheck(v) == nil {

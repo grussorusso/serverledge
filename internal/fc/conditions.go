@@ -255,7 +255,7 @@ func (p Predicate) Equals(o Predicate) bool {
 func (c Condition) Equals(o Condition) bool {
 	typeOk := c.Type == o.Type
 	if !typeOk {
-		fmt.Printf("operand type is not the same: %d vs %d\n", c.Type, o.Type)
+		fmt.Printf("operand type is not the same: %s vs %s\n", c.Type, o.Type)
 	}
 	lenOpOk := len(c.Op) == len(o.Op)
 	if !lenOpOk {

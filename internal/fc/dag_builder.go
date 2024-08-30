@@ -543,7 +543,27 @@ func (p *ParallelBroadcastBranchBuilder) HasNextBranch() bool {
 
 // Build ends the single branch with an EndNode. If there is more than one branch, it panics!
 func (b *DagBuilder) Build() (*Dag, error) {
+	if b.dag.End != nil {
+		b.dag.End.Reason = Success
+	}
+	switch b.prevNode.(type) {
+	case nil:
+		return &b.dag, nil
+	case *EndNode:
+		return &b.dag, nil
+	default:
+		err := b.dag.ChainToEndNode(b.prevNode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to chain to end node: %v", err)
+		}
+	}
+	return &b.dag, nil
+}
 
+func (b *DagBuilder) BuildFailing() (*Dag, error) {
+	if b.dag.End != nil {
+		b.dag.End.Reason = Failure
+	}
 	switch b.prevNode.(type) {
 	case nil:
 		return &b.dag, nil

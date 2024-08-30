@@ -57,8 +57,8 @@ func InvokeFunction(c echo.Context) error {
 	var invocationRequest client.InvocationRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&invocationRequest)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v\n", err)
-		return fmt.Errorf("could not parse request: %v", err)
+		log.Printf("Could not parse invoke function request - error during decoding: %v\n", err)
+		return fmt.Errorf("could not parse invoke function request: %v", err)
 	}
 	// gets a function.Request from the pool goroutine-safe cache.
 	r := requestsPool.Get().(*function.Request) // function.Request will be created if does not exists, otherwise removed from the pool
@@ -128,7 +128,7 @@ func CreateFunction(c echo.Context) error {
 	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v\n", err)
+		log.Printf("Could not parse create function request - error during decoding: %v\n", err)
 		return err
 	}
 
@@ -162,7 +162,7 @@ func DeleteFunction(c echo.Context) error {
 	var f function.Function
 	err := json.NewDecoder(c.Request().Body).Decode(&f)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v\n", err)
+		log.Printf("Could not parse delete function request - error during decoding: %v\n", err)
 		return err
 	}
 
@@ -221,7 +221,7 @@ func PrewarmFunction(c echo.Context) error {
 	var req client.PrewarmingRequest
 	err := json.NewDecoder(c.Request().Body).Decode(&req)
 	if err != nil && err != io.EOF {
-		log.Printf("Could not parse request: %v\n", err)
+		log.Printf("Could not parse prewarm request - error during decoding: %v\n", err)
 		return err
 	}
 

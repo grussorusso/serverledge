@@ -740,12 +740,12 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 	if err := json.Unmarshal(value, &tempNodeMap); err != nil {
 		return err
 	}
-	dagNodeType, ok := tempNodeMap["NodeType"].(DagNodeType)
+	dagNodeType, ok := tempNodeMap["NodeType"].(string)
 	if !ok {
-		return fmt.Errorf("unknown nodeType: %v", dagNodeType)
+		return fmt.Errorf("unknown nodeType: %v", tempNodeMap["NodeType"])
 	}
 	var err error
-	switch dagNodeType {
+	switch DagNodeType(dagNodeType) {
 	case Start:
 		node := &StartNode{}
 		err = json.Unmarshal(value, node)
@@ -842,7 +842,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			taskState := nextState.(*asl.TaskState)
 			b, err := BuildFromTaskState(builder, taskState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building SimpleNode from task state: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(taskState, sm)
@@ -851,7 +851,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			parallelState := nextState.(*asl.ParallelState)
 			b, err := BuildFromParallelState(builder, parallelState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building FanInNode and FanOutNode from ParallelState: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(parallelState, sm)
@@ -860,7 +860,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			mapState := nextState.(*asl.MapState)
 			b, err := BuildFromMapState(builder, mapState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building MapNode from Map state: %v", err) // TODO: MapNode doesn't exist
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(mapState, sm)
@@ -869,7 +869,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			passState := nextState.(*asl.PassState)
 			b, err := BuildFromPassState(builder, passState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building SimplNode with function 'pass' from Pass state: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(passState, sm)
@@ -878,7 +878,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			waitState := nextState.(*asl.WaitState)
 			b, err := BuildFromWaitState(builder, waitState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building SimpleNode with function 'wait' from Wait state: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(waitState, sm)
@@ -891,7 +891,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			succeed := nextState.(*asl.SucceedState)
 			b, err := BuildFromSucceedState(builder, succeed, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building EndNode with reason Success from Succeed state: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(succeed, sm)
@@ -900,7 +900,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			failState := nextState.(*asl.FailState)
 			b, err := BuildFromFailState(builder, failState, nextStateName)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed building EndNode with reason Failure from Fail state: %v", err)
 			}
 			builder = b
 			nextState, nextStateName, isTerminal = findNextOrTerminate(failState, sm)

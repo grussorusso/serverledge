@@ -9,7 +9,6 @@ import (
 )
 
 type DataTypeEnum interface {
-	// VariantName() string
 	TypeCheck(val interface{}) error
 }
 
@@ -35,6 +34,8 @@ type Array[D DataTypeEnum] struct {
 	DataType D
 }
 
+type Void struct{}
+
 // Option represent a value that can either be a DataType or be nil
 // type Option[D DataTypeEnum, N None] struct{}
 
@@ -47,6 +48,7 @@ func (t Text) TypeCheck(val interface{}) error {
 		return fmt.Errorf("val should be Text, but is %v", val)
 	}
 }
+
 func (i Int) TypeCheck(val interface{}) error {
 	switch val := val.(type) {
 	case int:
@@ -154,6 +156,14 @@ func (a Array[D]) TypeCheck(val interface{}) error {
 	}
 }
 
+// TypeCheck checks that input is nil, otherwise returns an error
+func (v Void) TypeCheck(val interface{}) error {
+	if val != nil {
+		return fmt.Errorf("val should be void, but is %v", val)
+	}
+	return nil
+}
+
 func (t Text) Convert(val interface{}) (string, error) {
 	switch t := val.(type) {
 	case string:
@@ -174,6 +184,8 @@ func (t Text) Convert(val interface{}) (string, error) {
 		return fmt.Sprintf("%f", t), nil
 	case bool:
 		return fmt.Sprintf("%v", t), nil
+	case nil:
+		return "", nil
 	default:
 		return "", fmt.Errorf("val should be Text, but is %v", val)
 	}
@@ -258,4 +270,8 @@ func (f Float) Convert(val interface{}) (float64, error) {
 	default:
 		return math.NaN(), fmt.Errorf("val should be Float but is %v", val)
 	}
+}
+
+func (v Void) Convert(_ interface{}) (Void, error) {
+	return Void{}, nil
 }

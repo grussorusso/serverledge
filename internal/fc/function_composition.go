@@ -394,3 +394,15 @@ func (cer *CompositionExecutionReport) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+func (cer *CompositionExecutionReport) String() string {
+	str := "{"
+	str += fmt.Sprintf("\n\tResponseTime: %f", cer.ResponseTime)
+	str += fmt.Sprintf("\n\tReports (len): %d", cer.Reports.Len())
+	str += "\n\tResult: {"
+	for s, i := range cer.Result {
+		str += fmt.Sprintf("\n\t\t%s: %v,", s, i)
+	}
+	str += "}\n}\n"
+	return str
+}

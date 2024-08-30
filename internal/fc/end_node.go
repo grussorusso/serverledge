@@ -7,11 +7,11 @@ import (
 )
 
 // Reason can be used to parse the success or failure state of AWS State Language
-type Reason int
+type Reason string
 
 const (
-	Success Reason = iota
-	Failure
+	Success Reason = "Success" // Default
+	Failure Reason = "Failure"
 )
 
 // EndNode is a DagNode that represents the end of the Dag.
@@ -27,6 +27,7 @@ func NewEndNode() *EndNode {
 		Id:       DagNodeId(shortuuid.New()),
 		NodeType: End,
 		Reason:   Success,
+		Result:   make(map[string]interface{}),
 	}
 }
 
@@ -35,6 +36,16 @@ func NewFailingEndNode() *EndNode {
 		Id:       DagNodeId(shortuuid.New()),
 		NodeType: End,
 		Reason:   Failure,
+		Result:   make(map[string]interface{}),
+	}
+}
+
+func NewSuccessEndNode() *EndNode {
+	return &EndNode{
+		Id:       DagNodeId(shortuuid.New()),
+		NodeType: End,
+		Reason:   Success,
+		Result:   make(map[string]interface{}),
 	}
 }
 
