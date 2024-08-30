@@ -245,7 +245,7 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		}
 		return len(slice) == 0, nil
 	default:
-		return false, fmt.Errorf("invalid operation condition")
+		return false, fmt.Errorf("invalid operation condition %s", c.Type)
 	}
 }
 

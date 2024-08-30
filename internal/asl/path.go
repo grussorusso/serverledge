@@ -2,6 +2,7 @@ package asl
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -22,4 +23,27 @@ func NewReferencePath(s string) (Path, error) {
 		return "", fmt.Errorf("A reference path should not contain any of the following characters: '@' ',' ':' '?' ")
 	}
 	return Path(s), nil
+}
+
+// IsReferencePath checks whether the input is a valid reference path string or not (e.g. starts with '$')
+func IsReferencePath(valpar interface{}) bool {
+	if reflect.TypeOf(valpar).Kind() == reflect.String {
+		s, ok := valpar.(string)
+		if !ok {
+			fmt.Printf("this should never happen: parameter has kind string, but is not a string")
+			return false
+		}
+		return s == "$" || (strings.HasPrefix(s, "$.") && len(s) > 2)
+	}
+	return false
+}
+
+// RemoveDollar removes the leading '$.' from the reference path. It leaves subsequent '.' in it.
+func RemoveDollar(s string) string {
+	if s == "" || s == "$" {
+		return ""
+	} else if strings.HasPrefix(s, "$.") {
+		return s[2:]
+	}
+	return s
 }
