@@ -203,6 +203,16 @@ func (i Int) Convert(val interface{}) (int, error) {
 		return int(t), nil
 	case int64:
 		return int(t), nil
+	case uint:
+		return int(t), nil
+	case uint8:
+		return int(t), nil
+	case uint16:
+		return int(t), nil
+	case uint32:
+		return int(t), nil
+	case uint64:
+		return int(t), nil
 	case string:
 		val, err := strconv.Atoi(val.(string))
 		if err == nil {

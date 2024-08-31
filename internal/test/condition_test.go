@@ -115,6 +115,7 @@ func TestIsNumeric(t *testing.T) {
 	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
 	testMap = make(map[string]interface{})
 	ok, err = isNumeric.Test(testMap)
-	utils.AssertNonNil(t, err)
+	// foo is not specified, so ok should be false. No errors should be expected
+	utils.AssertNil(t, err)
 	utils.AssertFalse(t, ok)
 }

@@ -42,7 +42,7 @@ func (cer *CompositionExecutionReport) GetSingleResult() (string, error) {
 			return fmt.Sprintf("%v", value), nil
 		}
 	}
-	return "", fmt.Errorf("there is more then one result: %d", len(cer.Result))
+	return "", fmt.Errorf("there is not exactly one result: there are %d result(s)", len(cer.Result))
 }
 
 func (cer *CompositionExecutionReport) GetIntSingleResult() (int, error) {
@@ -55,7 +55,7 @@ func (cer *CompositionExecutionReport) GetIntSingleResult() (int, error) {
 			return valueInt, nil
 		}
 	}
-	return 0, fmt.Errorf("there is more then one result: %d", len(cer.Result))
+	return 0, fmt.Errorf("there is not exactly one result: there are %d result(s)", len(cer.Result))
 }
 
 func (cer *CompositionExecutionReport) GetAllResults() string {

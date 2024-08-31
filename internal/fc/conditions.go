@@ -25,10 +25,10 @@ const (
 	Or        CondEnum = "Or"
 	Not       CondEnum = "Not"
 	Const     CondEnum = "Const"
-	Eq        CondEnum = "Eq"
-	Diff      CondEnum = "Diff"
-	Greater   CondEnum = "Greater"
-	Smaller   CondEnum = "Smaller"
+	Eq        CondEnum = "Eq"        // also works for strings
+	Diff      CondEnum = "Diff"      // also works for strings
+	Greater   CondEnum = "Greater"   // TODO: make it work for strings
+	Smaller   CondEnum = "Smaller"   // TODO: make it work for strings
 	Empty     CondEnum = "Empty"     // for collections
 	IsNumeric CondEnum = "IsNumeric" // for collections
 )
@@ -133,9 +133,10 @@ func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, erro
 			}
 			value, found := input[opStr]
 			if !found {
-				ops = append(ops, false)
+				ops = append(ops, nil)
+			} else {
+				ops = append(ops, value)
 			}
-			ops = append(ops, value)
 		}
 	}
 	return ops, nil
@@ -218,11 +219,16 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		float1, err1 := f.Convert(ops[0])
-		float2, err2 := f.Convert(ops[1])
-		if err1 != nil || err2 != nil {
-			return false, fmt.Errorf("not all operands %v can be converted to float64", c.Op)
+		if err1 != nil {
+			fmt.Printf("condition Greater: first operand '%v' cannot be converted to float64\n", c.Op[0])
+			return false, nil
 		}
-		return float1 > float2, nil
+		float2, err2 := f.Convert(ops[1])
+		if err2 != nil {
+			fmt.Printf("condition Greater: second operand '%v' cannot be converted to float64\n", c.Op[1])
+			return false, nil
+		}
+		return float1 > float2, nil // TODO: make it work for strings (a string is greater than another string it comes alphabetically after than the other)
 	case Smaller:
 		if len(c.Op) != 2 {
 			return false, fmt.Errorf("you need exactly two numbers to check which is greater")
@@ -233,11 +239,16 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		float1, err1 := f.Convert(ops[0])
-		float2, err2 := f.Convert(ops[1])
-		if err1 != nil || err2 != nil {
-			return false, fmt.Errorf("not all operands %v can be converted to float64", c.Op)
+		if err1 != nil {
+			fmt.Printf("condition Smaller: first operand '%v' cannot be converted to float64\n", c.Op[0])
+			return false, nil
 		}
-		return float1 < float2, nil
+		float2, err2 := f.Convert(ops[1])
+		if err2 != nil {
+			fmt.Printf("condition Smaller: second operand '%v' cannot be converted to float64\n", c.Op[1])
+			return false, nil
+		}
+		return float1 < float2, nil // TODO: make it work for strings (a string is smaller than another string it comes alphabetically before than the other)
 	case Empty:
 		ops, err := c.findInputs(input)
 		if err != nil {
@@ -249,8 +260,16 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		}
 		return len(slice) == 0, nil
 	case IsNumeric:
-		isNumeric := func(s string) bool {
-			_, err := strconv.ParseFloat(s, 64)
+		isNumeric := func(s interface{}) bool {
+			_, err := function.Int{}.Convert(s)
+			if err == nil {
+				return true
+			}
+			numericStringMaybe, ok := s.(string)
+			if !ok {
+				return false
+			}
+			_, err = strconv.ParseFloat(numericStringMaybe, 64)
 			return err == nil
 		}
 
@@ -258,11 +277,7 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		strOp, ok := ops[0].(string)
-		if !ok {
-			return false, fmt.Errorf("first operand must be a string")
-		}
-		return isNumeric(strOp), nil
+		return isNumeric(ops[0]), nil
 	default:
 		return false, fmt.Errorf("invalid operation condition %s", c.Type)
 	}

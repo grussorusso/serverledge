@@ -228,7 +228,7 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 		condition = NewNot(NewEqCondition(param, NewValue(nil)))
 		break
 	case "IsNumeric":
-		valBool, err := function.Bool{}.Convert(val)
+		valBool, err := function.Bool{}.Convert(val.value)
 		if err != nil {
 			return NewConstCondition(false), fmt.Errorf("IsNumeric requires a boolean constant to be evaluated with, but it was given %v", val)
 		}

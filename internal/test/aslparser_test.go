@@ -238,6 +238,7 @@ func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	utils.AssertNilMsg(t, err, "unable to parse json")
 
 	// 1st branch (type != "Private")
+	fmt.Println("1st branch: (type != 'Private') -> inc + inc")
 	params := make(map[string]interface{})
 	params["type"] = "Public"
 	params["value"] = 1
@@ -253,6 +254,7 @@ func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	fmt.Println("Result: ", output)
 
 	// 2nd branch (type == "Private", value is present, value is numeric, value >= 20, value < 30)
+	fmt.Println("2nd branch: (type == \"Private\", value is present, value is numeric, value >= 20, value < 30) -> double + inc")
 	params2 := make(map[string]interface{})
 	params2["type"] = "Private"
 	params2["value"] = 20
@@ -265,6 +267,16 @@ func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	utils.AssertNilMsg(t, err, "failed to get int single result")
 	utils.AssertEquals(t, 41, output2)
 	fmt.Println("Result: ", output2)
+
+	// 2nd branch (type == "Private", value is present, value is numeric, value >= 20, value < 30)
+	fmt.Println("default branch (we specify nothing instead of a number)")
+	params3 := make(map[string]interface{})
+	params3["type"] = "Private"
+	request3 := fc.NewCompositionRequest(shortuuid.New(), comp, params3)
+	resultMap3, err2 := comp.Invoke(request3)
+	utils.AssertNil(t, err2)
+	fmt.Printf("Composition Execution Report: %s\n", resultMap3.String())
+	// no results to check
 }
 
 func TestParsingDagWithMalformedJson(t *testing.T) {}
