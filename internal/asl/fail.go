@@ -1,6 +1,9 @@
 package asl
 
-import "github.com/grussorusso/serverledge/internal/types"
+import (
+	"fmt"
+	"github.com/grussorusso/serverledge/internal/types"
+)
 
 type FailState struct {
 	Type StateType
@@ -13,8 +16,14 @@ type FailState struct {
 }
 
 func (f *FailState) Validate(stateNames []string) error {
-	//TODO implement me
-	panic("implement me")
+	if f.Error != "" && f.ErrorPath != "" {
+		return fmt.Errorf("the Error and ErrorPath fields cannot be both set at the same time")
+	}
+
+	if f.Cause != "" && f.CausePath != "" {
+		return fmt.Errorf("the Cause and CausePath fields cannot be both set at the same time")
+	}
+	return nil
 }
 
 func (f *FailState) IsEndState() bool {
@@ -37,8 +46,11 @@ func NewEmptyFail() *FailState {
 }
 
 func (f *FailState) ParseFrom(jsonData []byte) (State, error) {
-	//TODO implement me
-	panic("implement me")
+	f.Error = JsonExtractStringOrDefault(jsonData, "Error", "")
+	f.ErrorPath = JsonExtractRefPathOrDefault(jsonData, "ErrorPath", "")
+	f.Cause = JsonExtractStringOrDefault(jsonData, "Cause", "")
+	f.CausePath = JsonExtractRefPathOrDefault(jsonData, "CausePath", "")
+	return f, nil
 }
 
 func (f *FailState) GetType() StateType {
@@ -46,5 +58,21 @@ func (f *FailState) GetType() StateType {
 }
 
 func (f *FailState) String() string {
-	return "Fail"
+	str := fmt.Sprint("{",
+		"\n\t\t\tType: ", f.Type,
+		"\n")
+	if f.Error != "" {
+		str += fmt.Sprintf("\t\t\tError: %s\n", f.Error)
+	}
+	if f.ErrorPath != "" {
+		str += fmt.Sprintf("\t\t\tErrorPath: %s\n", f.ErrorPath)
+	}
+	if f.Cause != "" {
+		str += fmt.Sprintf("\t\t\tCause: %s\n", f.Cause)
+	}
+	if f.CausePath != "" {
+		str += fmt.Sprintf("\t\t\tCausePath: %s\n", f.CausePath)
+	}
+	str += "\t\t}"
+	return str
 }
