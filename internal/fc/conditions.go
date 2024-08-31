@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
+	"strconv"
 )
 
 type Predicate struct {
@@ -13,22 +14,23 @@ type Predicate struct {
 type Condition struct {
 	Type CondEnum      `json:"Type"` // Type of the condition
 	Find []bool        `json:"Find"` // Find if true, the corresponding Op value should be read from parameters
-	Op   []interface{} `json:"Op"`   // Op is the list of operand of the condition
+	Op   []interface{} `json:"Op"`   // Op is the list of operand of the condition. An operand can be a constant value or a parameter (a string key that will be used to index the parameter map)
 	Sub  []Condition   `json:"Sub"`  // Sub is a SubCondition List. Useful for Type And, Or and Not
 }
 
 type CondEnum string
 
 const (
-	And     CondEnum = "And"
-	Or      CondEnum = "Or"
-	Not     CondEnum = "Not"
-	Const   CondEnum = "Const"
-	Eq      CondEnum = "Eq"
-	Diff    CondEnum = "Diff"
-	Greater CondEnum = "Greater"
-	Smaller CondEnum = "Smaller"
-	Empty   CondEnum = "Empty" // for collections
+	And       CondEnum = "And"
+	Or        CondEnum = "Or"
+	Not       CondEnum = "Not"
+	Const     CondEnum = "Const"
+	Eq        CondEnum = "Eq"
+	Diff      CondEnum = "Diff"
+	Greater   CondEnum = "Greater"
+	Smaller   CondEnum = "Smaller"
+	Empty     CondEnum = "Empty"     // for collections
+	IsNumeric CondEnum = "IsNumeric" // for collections
 )
 
 func (p Predicate) Test(input map[string]interface{}) bool {
@@ -102,6 +104,8 @@ func (c Condition) String() string {
 		return fmt.Sprintf("%v < %v", c.Op[0], c.Op[1])
 	case Empty:
 		return "empty input"
+	case IsNumeric:
+		return fmt.Sprintf("IsNumeric(%v)", c.Op[0])
 	default:
 		return ""
 	}
@@ -244,6 +248,21 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		return len(slice) == 0, nil
+	case IsNumeric:
+		isNumeric := func(s string) bool {
+			_, err := strconv.ParseFloat(s, 64)
+			return err == nil
+		}
+
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		strOp, ok := ops[0].(string)
+		if !ok {
+			return false, fmt.Errorf("first operand must be a string")
+		}
+		return isNumeric(strOp), nil
 	default:
 		return false, fmt.Errorf("invalid operation condition %s", c.Type)
 	}
@@ -366,17 +385,21 @@ func NewValue(val interface{}) *ParamOrValue {
 	}
 }
 
+func (pv *ParamOrValue) GetOperand() interface{} {
+	if pv.IsParam {
+		return pv.name
+	} else {
+		return pv.value
+	}
+}
+
 func NewEqParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
 	ops := make([]interface{}, 0, 2)
 	finds := make([]bool, 0, 2)
 	params := []*ParamOrValue{param1, param2}
 	for _, param := range params {
 		finds = append(finds, param.IsParam)
-		if param.IsParam {
-			ops = append(ops, param.name)
-		} else {
-			ops = append(ops, param.value)
-		}
+		ops = append(ops, param.GetOperand())
 	}
 	return Condition{
 		Type: Eq,
@@ -399,11 +422,7 @@ func NewDiffParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition
 	params := []*ParamOrValue{param1, param2}
 	for _, param := range params {
 		finds = append(finds, param.IsParam)
-		if param.IsParam {
-			ops = append(ops, param.name)
-		} else {
-			ops = append(ops, param.value)
-		}
+		ops = append(ops, param.GetOperand())
 	}
 	return Condition{
 		Type: Diff,
@@ -433,11 +452,7 @@ func NewGreaterParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condit
 	params := []*ParamOrValue{param1, param2}
 	for _, param := range params {
 		finds = append(finds, param.IsParam)
-		if param.IsParam {
-			ops = append(ops, param.name)
-		} else {
-			ops = append(ops, param.value)
-		}
+		ops = append(ops, param.GetOperand())
 	}
 	return Condition{
 		Type: Greater,
@@ -467,11 +482,7 @@ func NewSmallerParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condit
 	params := []*ParamOrValue{param1, param2}
 	for _, param := range params {
 		finds = append(finds, param.IsParam)
-		if param.IsParam {
-			ops = append(ops, param.name)
-		} else {
-			ops = append(ops, param.value)
-		}
+		ops = append(ops, param.GetOperand())
 	}
 	return Condition{
 		Type: Smaller,
@@ -485,6 +496,14 @@ func NewEmptyCondition(collection []interface{}) Condition {
 		Type: Empty,
 		Op:   collection,
 		Find: make([]bool, 1), // all false,
+	}
+}
+
+func NewIsNumericParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsNumeric,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
 	}
 }
 

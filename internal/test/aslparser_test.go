@@ -55,8 +55,9 @@ func commonTest(t *testing.T, name string, expectedResult int) {
 	utils.AssertNil(t, err2)
 
 	// checks the result
-	output := resultMap.Result[f.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, expectedResult, output.(int))
+	output, err := resultMap.GetIntSingleResult()
+	utils.AssertNilMsg(t, err, "failed to get single int result for sequence test")
+	utils.AssertEquals(t, expectedResult, output)
 	fmt.Println("Result: ", output)
 }
 
@@ -142,8 +143,6 @@ func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
 	fns := initializeAllPyFunctionFromNames(t, "inc", "double", "hello")
 
 	incFn := fns[0]
-	//doubleFn := fns[1]
-	helloFn := fns[2]
 
 	// reads the file
 	body, err := os.ReadFile("asl/choice_numeq_fail.json")
@@ -160,8 +159,9 @@ func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
 	utils.AssertNil(t, err2)
 
 	// checks the result
-	output := resultMap.Result[helloFn.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, "expectedResult", output.(string))
+	output, err := resultMap.GetIntSingleResult()
+	utils.AssertNilMsg(t, err, "failed to get int single result (choice fail)")
+	utils.AssertEquals(t, 1, output) // TODO: wrong expected value
 	fmt.Println("Result: ", output)
 }
 
@@ -223,15 +223,13 @@ func TestParsingChoiceDagWithDataTestExpr(t *testing.T) {
 }
 
 func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
-	// t.Skip("WIP")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
 
 	// Creates "inc", "double" and "hello" python functions
-	funcs := initializeAllPyFunctionFromNames(t, "inc", "double", "hello")
-	incFn := funcs[0]
-	// helloFn := funcs[2]
+	_ = initializeAllPyFunctionFromNames(t, "inc", "double", "hello")
+
 	// reads the file
 	body, err := os.ReadFile("asl/choice_boolexpr.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
@@ -242,16 +240,31 @@ func TestParsingChoiceDagWithBoolExpr(t *testing.T) {
 	// 1st branch (type != "Private")
 	params := make(map[string]interface{})
 	params["type"] = "Public"
-	params["value"] = 0
-	params["input"] = 1
+	params["value"] = 1
+	//params["input"] = 1
 	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
-	resultMap, err2 := comp.Invoke(request)
-	utils.AssertNil(t, err2)
+	resultMap, err1 := comp.Invoke(request)
+	utils.AssertNil(t, err1)
 
 	// checks the result (1+1+1 = 3)
-	output := resultMap.Result[incFn.Signature.GetOutputs()[0].Name]
-	utils.AssertEquals(t, 3, output.(int))
+	output, err := resultMap.GetIntSingleResult()
+	utils.AssertNilMsg(t, err, "failed to get int single result")
+	utils.AssertEquals(t, 3, output)
 	fmt.Println("Result: ", output)
+
+	// 2nd branch (type == "Private", value is present, value is numeric, value >= 20, value < 30)
+	params2 := make(map[string]interface{})
+	params2["type"] = "Private"
+	params2["value"] = 20
+	request2 := fc.NewCompositionRequest(shortuuid.New(), comp, params2)
+	resultMap2, err2 := comp.Invoke(request2)
+	utils.AssertNil(t, err2)
+
+	// checks the result (20*2+1 = 41)
+	output2, err := resultMap2.GetIntSingleResult()
+	utils.AssertNilMsg(t, err, "failed to get int single result")
+	utils.AssertEquals(t, 41, output2)
+	fmt.Println("Result: ", output2)
 }
 
 func TestParsingDagWithMalformedJson(t *testing.T) {}

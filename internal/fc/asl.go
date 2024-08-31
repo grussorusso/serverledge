@@ -228,11 +228,26 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 		condition = NewNot(NewEqCondition(param, NewValue(nil)))
 		break
 	case "IsNumeric":
+		valBool, err := function.Bool{}.Convert(val)
+		if err != nil {
+			return NewConstCondition(false), fmt.Errorf("IsNumeric requires a boolean constant to be evaluated with, but it was given %v", val)
+		}
+		if valBool == true {
+			condition = NewIsNumericParamCondition(param)
+		} else {
+			condition = NewNot(NewIsNumericParamCondition(param))
+		}
+
 		break
 	case "IsString":
+		// condition = NewIsStringCondition(param, val)
 		break
 	case "IsBoolean":
-		condition = NewOr(NewEqCondition(param, true), NewEqCondition(param, false))
+		convertedParam, err := function.Bool{}.Convert(param)
+		if err != nil {
+			return NewConstCondition(false), fmt.Errorf("test IsBoolean: failed to convert param to bool")
+		}
+		condition = NewOr(NewEqCondition(convertedParam, true), NewEqCondition(convertedParam, false))
 	case "IsTimestamp":
 		return NewConstCondition(false), fmt.Errorf("not implemented")
 	}

@@ -273,7 +273,8 @@ func TestAsyncInvokeComposition(t *testing.T) {
 			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms: %v\n", i, errUnmarshalExecResult)
 			time.Sleep(200 * time.Millisecond)
 		} else {
-			result := compExecReport.GetSingleResult()
+			result, err := compExecReport.GetSingleResult()
+			utils.AssertNilMsg(t, err, "failed to get single result")
 			utils.AssertEquals(t, "4", result)
 			break
 		}

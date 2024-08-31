@@ -91,3 +91,30 @@ func TestBuilder(t *testing.T) {
 	utils.AssertTrue(t, built4.Equals(predicate4.Root))
 
 }
+
+func TestIsNumeric(t *testing.T) {
+	isNumeric := fc.NewIsNumericParamCondition(fc.NewValue("123"))
+	ok, err := isNumeric.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertTrue(t, ok)
+
+	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
+	testMap := make(map[string]interface{})
+	testMap["foo"] = "123"
+	ok, err = isNumeric.Test(testMap)
+	utils.AssertNil(t, err)
+	utils.AssertTrue(t, ok)
+
+	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
+	testMap = make(map[string]interface{})
+	testMap["foo"] = "bar"
+	ok, err = isNumeric.Test(testMap)
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
+	testMap = make(map[string]interface{})
+	ok, err = isNumeric.Test(testMap)
+	utils.AssertNonNil(t, err)
+	utils.AssertFalse(t, ok)
+}

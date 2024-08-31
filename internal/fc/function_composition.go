@@ -36,13 +36,26 @@ type CompositionExecutionReport struct {
 	Progress     *Progress `json:"-"` // skipped in Json marshaling
 }
 
-func (cer *CompositionExecutionReport) GetSingleResult() string {
+func (cer *CompositionExecutionReport) GetSingleResult() (string, error) {
 	if len(cer.Result) == 1 {
 		for _, value := range cer.Result {
-			return fmt.Sprintf("%v", value)
+			return fmt.Sprintf("%v", value), nil
 		}
 	}
-	return fmt.Sprintf("%v", cer.Result)
+	return "", fmt.Errorf("there is more then one result: %d", len(cer.Result))
+}
+
+func (cer *CompositionExecutionReport) GetIntSingleResult() (int, error) {
+	if len(cer.Result) == 1 {
+		for _, value := range cer.Result {
+			valueInt, ok := value.(int)
+			if !ok {
+				return 0, fmt.Errorf("value %v cannot be casted to int", value)
+			}
+			return valueInt, nil
+		}
+	}
+	return 0, fmt.Errorf("there is more then one result: %d", len(cer.Result))
 }
 
 func (cer *CompositionExecutionReport) GetAllResults() string {
