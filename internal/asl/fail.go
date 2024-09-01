@@ -76,3 +76,23 @@ func (f *FailState) String() string {
 	str += "\t\t}"
 	return str
 }
+
+func (f *FailState) GetError() string {
+	if f.Error != "" {
+		return f.Error
+	} else if f.ErrorPath != "" {
+		return string(f.ErrorPath) // will be evaluated at run time
+	} else {
+		return "GenericError"
+	}
+}
+
+func (f *FailState) GetCause() string {
+	if f.Cause != "" {
+		return f.Cause
+	} else if f.CausePath != "" {
+		return string(f.CausePath) // will be evaluated at run time
+	} else {
+		return "Execution failed due to a generic error"
+	}
+}

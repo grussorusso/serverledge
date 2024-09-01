@@ -197,42 +197,44 @@ func (c *ChoiceBranchBuilder) NextBranch(dagToChain *Dag, err1 error) *ChoiceBra
 		// getting start.Next from the dagToChain
 		startNext, _ := dagToChain.Find(dagToChain.Start.Next)
 		// chains the alternative to the input dag, which is already connected to a whole series of nodes
-		c.dagBuilder.dag.addNode(startNext)
-		err := c.dagBuilder.dag.chain(c.dagBuilder.prevNode.(*ChoiceNode), startNext)
-		//dagToChain.Start.Next.setBranchId(branchNumber)
-		if err != nil {
-			c.dagBuilder.appendError(err)
-		}
-		// TODO: RICONTROLLARE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		// adds the nodes to the building dag
-		for _, n := range dagToChain.Nodes {
-			switch n.(type) {
-			case *StartNode:
-				continue
-			case *EndNode:
-				continue
-			case *FanOutNode:
-				c.dagBuilder.dag.addNode(n)
-				n.setBranchId(n.GetBranchId() + baseBranchNumber)
-				continue
-			default:
-				c.dagBuilder.dag.addNode(n)
-				n.setBranchId(n.GetBranchId() + baseBranchNumber)
-				nextNode, _ := dagToChain.Find(n.GetNext()[0])
-				// chain the last node(s) of the input dag to the end node of the building dag
-				if n.GetNext() != nil && len(n.GetNext()) > 0 && nextNode == dagToChain.End {
-					errEnd := c.dagBuilder.dag.ChainToEndNode(n)
-					if errEnd != nil {
-						c.dagBuilder.appendError(errEnd)
-						return c
+		if !dagToChain.IsEmpty() {
+			c.dagBuilder.dag.addNode(startNext)
+			err := c.dagBuilder.dag.chain(c.dagBuilder.prevNode.(*ChoiceNode), startNext)
+			if err != nil {
+				c.dagBuilder.appendError(err)
+			}
+			// adds the nodes to the building dag
+			for _, n := range dagToChain.Nodes {
+				switch n.(type) {
+				case *StartNode:
+					continue
+				case *EndNode:
+					continue
+				case *FanOutNode:
+					c.dagBuilder.dag.addNode(n)
+					n.setBranchId(n.GetBranchId() + baseBranchNumber)
+					continue
+				default:
+					c.dagBuilder.dag.addNode(n)
+					n.setBranchId(n.GetBranchId() + baseBranchNumber)
+					nextNode, _ := dagToChain.Find(n.GetNext()[0])
+					// chain the last node(s) of the input dag to the end node of the building dag
+					if n.GetNext() != nil && len(n.GetNext()) > 0 && nextNode == dagToChain.End {
+						errEnd := c.dagBuilder.dag.ChainToEndNode(n)
+						if errEnd != nil {
+							c.dagBuilder.appendError(errEnd)
+							return c
+						}
 					}
 				}
 			}
+			// so we completed a branch
+			c.completed++
+			c.dagBuilder.branches--
+		} else {
+			fmt.Printf("not adding another end node\n")
+			c.EndNextBranch()
 		}
-
-		// so we completed a branch
-		c.completed++
-		c.dagBuilder.branches--
 	} else {
 		panic("There is not a NextBranch. Use EndChoiceAndBuild to end the choiceNode.")
 	}
@@ -560,9 +562,12 @@ func (b *DagBuilder) Build() (*Dag, error) {
 	return &b.dag, nil
 }
 
-func (b *DagBuilder) BuildFailing() (*Dag, error) {
+func (b *DagBuilder) BuildFailing(error, cause string) (*Dag, error) {
 	if b.dag.End != nil {
 		b.dag.End.Reason = Failure
+	}
+	if error != "" && cause != "" {
+		b.dag.End.Result[error] = cause
 	}
 	switch b.prevNode.(type) {
 	case nil:

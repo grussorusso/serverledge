@@ -190,6 +190,7 @@ func (p *Progress) SkipAll(nodes []DagNode) error {
 	return nil
 }
 
+// FailNode marks a node progress to failed
 func (p *Progress) FailNode(id DagNodeId) error {
 	for _, node := range p.DagNodes {
 		if node.Id == id {

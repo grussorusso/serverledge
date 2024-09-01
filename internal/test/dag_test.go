@@ -219,6 +219,53 @@ func TestChoiceDag_BuiltWithNextBranch(t *testing.T) {
 	}
 }
 
+// TestChoiceDag_BuiltWithNextBranch_OneEmptyBranch builds a choice node with 3 branch. The third branch is made of an empty Dag.
+// There should be only one end node!!!
+func TestChoiceDag_BuiltWithNextBranch_OneEmptyBranch(t *testing.T) {
+	//fc.BranchNumber = 0
+
+	m := make(map[string]interface{})
+	m["input"] = 1
+	length := 2
+	_, fArr, err := initializeSameFunctionSlice(length, "py")
+	u.AssertNil(t, err)
+
+	dag, err := fc.NewDagBuilder().
+		AddChoiceNode(
+			fc.NewConstCondition(false),
+			fc.NewSmallerCondition(2, 1),
+			fc.NewConstCondition(true),
+		).
+		NextBranch(fc.CreateSequenceDag(fArr...)).
+		NextBranch(fc.CreateSequenceDag(fArr...)).
+		NextBranch(fc.CreateEmptyDag()).
+		EndChoiceAndBuild()
+	u.AssertNil(t, err)
+	choiceDag, _ := dag.Find(dag.Start.Next)
+	choice := choiceDag.(*fc.ChoiceNode)
+	width := len(choice.Alternatives)
+
+	u.AssertNil(t, err)
+	fmt.Println("==== Choice  Dag ====")
+	dag.Print()
+
+	u.AssertNonNil(t, dag.Start)
+	u.AssertNonNil(t, dag.End)
+	u.AssertEquals(t, dag.Width, width)
+	u.AssertNonNil(t, dag.Nodes)
+	// u.AssertEquals(t, width+1, len(dag.Nodes))
+
+	countEndNodes := 0
+	for _, n := range dag.Nodes {
+		_, ok := n.(*fc.EndNode)
+		if ok {
+			countEndNodes++
+		}
+	}
+	// IMPORTANT: there should be only one end node!
+	u.AssertEqualsMsg(t, 1, countEndNodes, "there is not exactly one end node!")
+}
+
 // TestBroadcastDag verifies that a broadcast dag is created correctly with fan out, simple nodes and fan in.
 // All dag branches have the same sequence of simple nodes.
 func TestBroadcastDag(t *testing.T) {
@@ -519,4 +566,25 @@ func TestVisit(t *testing.T) {
 	visitedNodes = fc.VisitDag(complexDag, choice, nodeList, true)
 	u.AssertEquals(t, 7, len(visitedNodes))
 
+}
+
+func TestVisitMultipleEnd(t *testing.T) {
+	f, err := initializeExamplePyFunction()
+	u.AssertNil(t, err)
+	complexDag, err := fc.NewDagBuilder().
+		AddSimpleNode(f).
+		AddChoiceNode(fc.NewEqCondition(1, 4), fc.NewEqCondition(1, 3), fc.NewDiffCondition(1, 4)).
+		NextBranch(fc.CreateSequenceDag(f)).
+		NextBranch(fc.CreateSequenceDag(f)).
+		NextBranch(fc.NewDagBuilder().BuildFailing("Fail", "Default case should never happen")).
+		EndChoiceAndBuild()
+	u.AssertNil(t, err)
+
+	startNext, _ := complexDag.Find(complexDag.Start.Next)
+
+	_ = startNext.GetNext()[0]
+
+	nodeList := make([]fc.DagNode, 0)
+	visitedNodes := fc.VisitDag(complexDag, complexDag.Start.Id, nodeList, false)
+	u.AssertEquals(t, len(complexDag.Nodes), len(visitedNodes))
 }

@@ -65,11 +65,11 @@ func BuildFromChoiceState(builder *DagBuilder, c *asl.ChoiceState, name string, 
 			// we add one more branch to the ChoiceNode to handle the default branch
 			nextState = c.Default
 		}
-		sm, errBranch := GetBranchForChoiceFromStates(entireSM, nextState, i)
+		dag, errBranch := GetBranchForChoiceFromStates(entireSM, nextState, i)
 		if errBranch != nil {
 			return nil, errBranch
 		}
-		branchBuilder = branchBuilder.NextBranch(sm, errBranch)
+		branchBuilder = branchBuilder.NextBranch(dag, errBranch)
 		i++
 	}
 
@@ -290,8 +290,10 @@ func BuildFromSucceedState(builder *DagBuilder, s *asl.SucceedState, name string
 	return builder, nil
 }
 
-// BuildFromFailState is not fully compatible with serverledge, but it adds an EndNode
-func BuildFromFailState(builder *DagBuilder, s *asl.FailState, name string) (*DagBuilder, error) {
-	// TODO: implement me
-	return builder, nil
+// BuildFromFailState adds an EndNode with Reason = Failure and sets the Result with the Error as key and the Cause as value.
+// if error and cause are not specified, a GenericError key and a generic message will be set in the EndNode Result field.
+func BuildFromFailState(builder *DagBuilder, s *asl.FailState, name string) (*Dag, error) {
+	// Error or ErrorPath will be the key in the EndNode Result field
+	// Cause oe CausePath will be the string value in the EndNode Result field.
+	return builder.BuildFailing(s.GetError(), s.GetCause())
 }

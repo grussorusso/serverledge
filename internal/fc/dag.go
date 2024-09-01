@@ -798,6 +798,35 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 	return fmt.Errorf("failed to decode node")
 }
 
+// IsEmpty returns true if the dag has 0 nodes or exactly one StartNode and one EndNode.
+func (dag *Dag) IsEmpty() bool {
+	if len(dag.Nodes) == 0 {
+		return true
+	}
+
+	onlyTwoNodes := len(dag.Nodes) == 2
+	hasOnlyStartAndEnd := false
+	if onlyTwoNodes {
+		hasStart := 0
+		hasEnd := 0
+		for _, node := range dag.Nodes {
+			if node.GetNodeType() == Start {
+				hasStart++
+			}
+			if node.GetNodeType() == End {
+				hasEnd++
+			}
+		}
+		hasOnlyStartAndEnd = (hasStart == 1) && (hasEnd == 1)
+	}
+
+	if hasOnlyStartAndEnd {
+		return true
+	}
+
+	return false
+}
+
 // Debug can be used to find if expected output of test TestInvokeFC_Concurrent is correct based on requestId of format "goroutine_#" and simple node ids of format "simple #"
 func Debug(r *CompositionRequest, nodeId string, output map[string]interface{}) error {
 	if strings.Contains(r.ReqId, "goroutine") {
@@ -898,13 +927,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			break
 		case asl.Fail:
 			failState := nextState.(*asl.FailState)
-			b, err := BuildFromFailState(builder, failState, nextStateName)
-			if err != nil {
-				return nil, fmt.Errorf("failed building EndNode with reason Failure from Fail state: %v", err)
-			}
-			builder = b
-			nextState, nextStateName, isTerminal = findNextOrTerminate(failState, sm)
-			break
+			return BuildFromFailState(builder, failState, nextStateName)
 		default:
 			return nil, fmt.Errorf("unknown state type %s", nextState.GetType())
 		}
