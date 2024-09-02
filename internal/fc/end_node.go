@@ -6,56 +6,38 @@ import (
 	"github.com/lithammer/shortuuid"
 )
 
-// Reason can be used to parse the success or failure state of AWS State Language
-type Reason string
-
-const (
-	Success Reason = "Success" // Default
-	Failure Reason = "Failure"
-)
-
 // EndNode is a DagNode that represents the end of the Dag.
 type EndNode struct {
 	Id       DagNodeId
 	NodeType DagNodeType
 	Result   map[string]interface{}
-	Reason   Reason
 }
 
 func NewEndNode() *EndNode {
 	return &EndNode{
 		Id:       DagNodeId(shortuuid.New()),
 		NodeType: End,
-		Reason:   Success,
-		Result:   make(map[string]interface{}),
-	}
-}
-
-func NewFailingEndNode() *EndNode {
-	return &EndNode{
-		Id:       DagNodeId(shortuuid.New()),
-		NodeType: End,
-		Reason:   Failure,
-		Result:   make(map[string]interface{}),
-	}
-}
-
-func NewSuccessEndNode() *EndNode {
-	return &EndNode{
-		Id:       DagNodeId(shortuuid.New()),
-		NodeType: End,
-		Reason:   Success,
 		Result:   make(map[string]interface{}),
 	}
 }
 
 func (e *EndNode) Equals(cmp types.Comparable) bool {
-	switch cmp.(type) {
-	case *EndNode:
-		return e.Reason == cmp.(*EndNode).Reason
-	default:
+	e2, ok := cmp.(*EndNode)
+	if !ok {
 		return false
 	}
+
+	if len(e.Result) != len(e2.Result) {
+		return false
+	}
+
+	for k := range e.Result {
+		if e.Result[k] != e2.Result[k] {
+			return false
+		}
+	}
+
+	return e.Id == e2.Id && e.NodeType == e2.NodeType
 }
 
 func (e *EndNode) Exec(*CompositionRequest, ...map[string]interface{}) (map[string]interface{}, error) {

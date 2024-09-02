@@ -134,7 +134,6 @@ func TestParsingMultipleFunctionSequence(t *testing.T) {
 
 // / TestParsingChoiceFunctionDagWithDefaultFail verifies that a json file with three different choices is correctly parsed in a Dag with a Choice node and three simple nodes.
 func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
-	t.Skip("fail is not implemented")
 	if testing.Short() {
 		t.Skip("Skipping integration test")
 	}
@@ -148,21 +147,28 @@ func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
 	body, err := os.ReadFile("asl/choice_numeq_fail.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
 	// parse the ASL language
-	comp, err := fc.FromASL("choice", body) // TODO: implement fail parsing
+	comp, err := fc.FromASL("choice", body)
 	utils.AssertNilMsg(t, err, "unable to parse json")
 
-	// runs the workflow
+	// runs the workflow, making it going to the fail part
 	params := make(map[string]interface{})
 	params[incFn.Signature.GetInputs()[0].Name] = 0
 	request := fc.NewCompositionRequest(shortuuid.New(), comp, params)
 	resultMap, err2 := comp.Invoke(request)
 	utils.AssertNil(t, err2)
 
-	// checks the result
-	output, err := resultMap.GetIntSingleResult()
-	utils.AssertNilMsg(t, err, "failed to get int single result (choice fail)")
-	utils.AssertEquals(t, 1, output) // TODO: wrong expected value
-	fmt.Println("Result: ", output)
+	expectedKey := "DefaultStateError"
+	expectedValue := "No Matches!"
+
+	// There should be the error/cause pair, and only that
+	value, keyExist := resultMap.Result[expectedKey]
+	valueStr, isString := value.(string)
+	utils.AssertTrueMsg(t, keyExist, "key "+expectedKey+"does not exist")
+	utils.AssertTrueMsg(t, isString, "value is not a string")
+	utils.AssertEqualsMsg(t, len(resultMap.Result), 1, "there is not exactly one result")
+	utils.AssertEqualsMsg(t, expectedValue, valueStr, "values don't match")
+
+	fmt.Printf("%s: %s", expectedKey, value)
 }
 
 // 1st branch (input==1): inc + inc (expected nothing)

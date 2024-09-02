@@ -788,6 +788,14 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 			dag.Nodes[DagNodeId(nodeId)] = node
 			return nil
 		}
+	case Fail:
+		return fmt.Errorf("not implemented") // TODO: implement me!
+	case Succeed:
+		return fmt.Errorf("not implemented") // TODO: implement me!
+	case Pass:
+		return fmt.Errorf("not implemented") // TODO: implement me!
+	case Wait:
+		return fmt.Errorf("not implemented") // TODO: implement me!
 	}
 	var unmarshalTypeError *json.UnmarshalTypeError
 	if err != nil && !errors.As(err, &unmarshalTypeError) {
@@ -918,13 +926,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 			return BuildFromChoiceState(builder, choiceState, nextStateName, sm)
 		case asl.Succeed:
 			succeed := nextState.(*asl.SucceedState)
-			b, err := BuildFromSucceedState(builder, succeed, nextStateName)
-			if err != nil {
-				return nil, fmt.Errorf("failed building EndNode with reason Success from Succeed state: %v", err)
-			}
-			builder = b
-			nextState, nextStateName, isTerminal = findNextOrTerminate(succeed, sm)
-			break
+			return BuildFromSucceedState(builder, succeed, nextStateName)
 		case asl.Fail:
 			failState := nextState.(*asl.FailState)
 			return BuildFromFailState(builder, failState, nextStateName)

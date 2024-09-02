@@ -576,7 +576,7 @@ func TestVisitMultipleEnd(t *testing.T) {
 		AddChoiceNode(fc.NewEqCondition(1, 4), fc.NewEqCondition(1, 3), fc.NewDiffCondition(1, 4)).
 		NextBranch(fc.CreateSequenceDag(f)).
 		NextBranch(fc.CreateSequenceDag(f)).
-		NextBranch(fc.NewDagBuilder().BuildFailing("Fail", "Default case should never happen")).
+		NextBranch(fc.NewDagBuilder().AddFailNodeAndBuild("Fail", "Default case should never happen")).
 		EndChoiceAndBuild()
 	u.AssertNil(t, err)
 

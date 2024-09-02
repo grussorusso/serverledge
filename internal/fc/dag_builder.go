@@ -543,32 +543,44 @@ func (p *ParallelBroadcastBranchBuilder) HasNextBranch() bool {
 	return p.dagBuilder.branches > 0
 }
 
-// Build ends the single branch with an EndNode. If there is more than one branch, it panics!
-func (b *DagBuilder) Build() (*Dag, error) {
-	if b.dag.End != nil {
-		b.dag.End.Reason = Success
+func (b *DagBuilder) AddFailNodeAndBuild(errorName, errorMessage string) (*Dag, error) {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		return nil, fmt.Errorf("AddFailNodeAndBuild failed because of the following %d error(s) in dagBuilder\n%v", nErrors, b.errors)
 	}
-	switch b.prevNode.(type) {
-	case nil:
-		return &b.dag, nil
-	case *EndNode:
-		return &b.dag, nil
-	default:
-		err := b.dag.ChainToEndNode(b.prevNode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to chain to end node: %v", err)
-		}
+
+	failNode := NewFailNode(errorName, errorMessage)
+	failNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(failNode)
+	err := b.dag.chain(b.prevNode, failNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to chain the FailNode: %v", err)
 	}
-	return &b.dag, nil
+	b.prevNode = failNode
+	return b.Build()
 }
 
-func (b *DagBuilder) BuildFailing(error, cause string) (*Dag, error) {
-	if b.dag.End != nil {
-		b.dag.End.Reason = Failure
+func (b *DagBuilder) AddSucceedNodeAndBuild(message string) (*Dag, error) {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		return nil, fmt.Errorf("AddSucceedNodeAndBuild failed because of the following %d error(s) in dagBuilder\n%v", nErrors, b.errors)
 	}
-	if error != "" && cause != "" {
-		b.dag.End.Result[error] = cause
+
+	succeedNode := NewSucceedNode(message)
+	succeedNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(succeedNode)
+	err := b.dag.chain(b.prevNode, succeedNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to chain the SucceedNode: %v", err)
 	}
+	b.prevNode = succeedNode
+	return b.Build()
+}
+
+// Build ends the single branch with an EndNode. If there is more than one branch, it panics!
+func (b *DagBuilder) Build() (*Dag, error) {
 	switch b.prevNode.(type) {
 	case nil:
 		return &b.dag, nil

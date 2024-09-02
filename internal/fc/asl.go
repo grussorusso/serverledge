@@ -284,16 +284,18 @@ func BuildFromWaitState(builder *DagBuilder, w *asl.WaitState, name string) (*Da
 	return builder, nil
 }
 
-// BuildFromSucceedState is not fully compatible with serverledge, but it adds an EndNode
-func BuildFromSucceedState(builder *DagBuilder, s *asl.SucceedState, name string) (*DagBuilder, error) {
-	// TODO: implement me
-	return builder, nil
+// BuildFromSucceedState adds a SucceedNode and an EndNode. When executing, the EndNode Result map will have the key 'Message' and if the message as value.
+// If the message is "", it will have a generic success message.
+func BuildFromSucceedState(builder *DagBuilder, s *asl.SucceedState, name string) (*Dag, error) {
+	// 'Message' will be the key in the EndNode Result field
+	// 'Execution completed successfully' will be the value in the EndNode Result field
+	return builder.AddSucceedNodeAndBuild("Execution completed successfully")
 }
 
-// BuildFromFailState adds an EndNode with Reason = Failure and sets the Result with the Error as key and the Cause as value.
+// BuildFromFailState adds a FailNode and an EndNode. When executing, the EndNode Result map will have the FailNode Error as key and the FailNode Cause as value.
 // if error and cause are not specified, a GenericError key and a generic message will be set in the EndNode Result field.
 func BuildFromFailState(builder *DagBuilder, s *asl.FailState, name string) (*Dag, error) {
 	// Error or ErrorPath will be the key in the EndNode Result field
 	// Cause oe CausePath will be the string value in the EndNode Result field.
-	return builder.BuildFailing(s.GetError(), s.GetCause())
+	return builder.AddFailNodeAndBuild(s.GetError(), s.GetCause())
 }

@@ -81,12 +81,16 @@ func printStatus(s DagNodeStatus) string {
 type DagNodeType string
 
 const (
-	Start  DagNodeType = "StartNode"
-	End    DagNodeType = "EndNode"
-	Simple DagNodeType = "SimpleNode"
-	Choice DagNodeType = "ChoiceNode"
-	FanOut DagNodeType = "FanOutNode"
-	FanIn  DagNodeType = "FanInNode"
+	Start   DagNodeType = "StartNode"
+	End     DagNodeType = "EndNode"
+	Simple  DagNodeType = "SimpleNode"
+	Choice  DagNodeType = "ChoiceNode"
+	FanOut  DagNodeType = "FanOutNode"
+	FanIn   DagNodeType = "FanInNode"
+	Fail    DagNodeType = "FailNode"
+	Succeed DagNodeType = "SucceedNode"
+	Pass    DagNodeType = "PassNode"
+	Wait    DagNodeType = "WaitNode"
 )
 
 func parseType(dNode DagNode) DagNodeType {
@@ -103,7 +107,16 @@ func parseType(dNode DagNode) DagNodeType {
 		return FanOut
 	case *FanInNode:
 		return FanIn
+	case *FailNode:
+		return Fail
+	case *SucceedNode:
+		return Succeed
+	case *PassNode:
+		return Pass
+	case *WaitNode:
+		return Wait
 	}
+
 	panic("unreachable!")
 }
 func printType(t DagNodeType) string {
@@ -120,6 +133,14 @@ func printType(t DagNodeType) string {
 		return "FanOut"
 	case FanIn:
 		return "FanIn"
+	case Fail:
+		return "Fail"
+	case Succeed:
+		return "Succeed"
+	case Pass:
+		return "Pass"
+	case Wait:
+		return "Wait"
 	}
 	return ""
 }
