@@ -1,43 +1,30 @@
 package fc
 
 import (
+	"fmt"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
 )
 
 type SucceedNode struct {
-	Id       DagNodeId
-	NodeType DagNodeType
-	Message  string
+	Id         DagNodeId
+	NodeType   DagNodeType
+	InputPath  string
+	OutputPath string
+
+	/* (Serverledge specific) */
+
+	// OutputTo for a SucceedNode is used to send the output to the EndNode
+	OutputTo DagNodeId
+	BranchId int
 }
 
 func NewSucceedNode(message string) *SucceedNode {
-	succeeedNode := SucceedNode{
+	succeedNode := SucceedNode{
 		Id:       DagNodeId("succeed_" + shortuuid.New()),
 		NodeType: Succeed,
-		Message:  message,
 	}
-	return &succeeedNode
-}
-
-func (s *SucceedNode) Equals(cmp types.Comparable) bool {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *SucceedNode) String() string {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *SucceedNode) GetId() DagNodeId {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *SucceedNode) Name() string {
-	//TODO implement me
-	panic("implement me")
+	return &succeedNode
 }
 
 func (s *SucceedNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
@@ -45,42 +32,59 @@ func (s *SucceedNode) Exec(compRequest *CompositionRequest, params ...map[string
 	panic("implement me")
 }
 
+func (s *SucceedNode) Equals(cmp types.Comparable) bool {
+	s2, ok := cmp.(*SucceedNode)
+	if !ok {
+		return false
+	}
+	return s.Id == s2.Id && s.NodeType == s2.NodeType && s.InputPath == s2.InputPath && s.OutputPath == s2.OutputPath
+}
+
 func (s *SucceedNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
-	//TODO implement me
-	panic("implement me")
+	_, ok := dag.Nodes[dagNode].(*EndNode)
+	if !ok {
+		return fmt.Errorf("the SucceedNode can only be chained to an end node")
+	}
+	s.OutputTo = dagNode
+	return nil
 }
 
-func (s *SucceedNode) CheckInput(input map[string]interface{}) error {
-	//TODO implement me
-	panic("implement me")
-}
-
+// PrepareOutput can be used in a SucceedNode to modify the composition output representation
 func (s *SucceedNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
-	//TODO implement me
-	panic("implement me")
+	if s.OutputPath != "" {
+		return fmt.Errorf("OutputPath not currently implemented") // TODO: implement it
+	}
+	return nil
 }
 
 func (s *SucceedNode) GetNext() []DagNodeId {
-	//TODO implement me
-	panic("implement me")
+	return []DagNodeId{s.OutputTo}
 }
 
 func (s *SucceedNode) Width() int {
-	//TODO implement me
-	panic("implement me")
+	return 1
+}
+
+func (s *SucceedNode) Name() string {
+	return "Success"
+}
+
+func (s *SucceedNode) String() string {
+	return "[Succeed]"
 }
 
 func (s *SucceedNode) setBranchId(number int) {
-	//TODO implement me
-	panic("implement me")
+	s.BranchId = number
 }
 
 func (s *SucceedNode) GetBranchId() int {
-	//TODO implement me
-	panic("implement me")
+	return s.BranchId
+}
+
+func (s *SucceedNode) GetId() DagNodeId {
+	return s.Id
 }
 
 func (s *SucceedNode) GetNodeType() DagNodeType {
-	//TODO implement me
-	panic("implement me")
+	return s.NodeType
 }

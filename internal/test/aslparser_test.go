@@ -144,7 +144,7 @@ func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
 	incFn := fns[0]
 
 	// reads the file
-	body, err := os.ReadFile("asl/choice_numeq_fail.json")
+	body, err := os.ReadFile("asl/choice_numeq_succeed_fail.json")
 	utils.AssertNilMsg(t, err, "unable to read file")
 	// parse the ASL language
 	comp, err := fc.FromASL("choice", body)

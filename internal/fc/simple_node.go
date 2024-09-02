@@ -39,20 +39,6 @@ func NewSimpleNode(f string) *SimpleNode {
 	}
 }
 
-func (s *SimpleNode) Equals(cmp types.Comparable) bool {
-	switch cmp.(type) {
-	case *SimpleNode:
-		s2 := cmp.(*SimpleNode)
-		idOk := s.Id == s2.Id
-		// inputOk := s.InputFrom == s2.InputFrom
-		funcOk := s.Func == s2.Func
-		outputOk := s.OutputTo == s2.OutputTo
-		return idOk && funcOk && outputOk // && inputOk
-	default:
-		return false
-	}
-}
-
 func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
 	funct, ok := function.GetFunction(s.Func)
 	if !ok {
@@ -147,6 +133,20 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]
 	return m, nil
 }
 
+func (s *SimpleNode) Equals(cmp types.Comparable) bool {
+	switch cmp.(type) {
+	case *SimpleNode:
+		s2 := cmp.(*SimpleNode)
+		idOk := s.Id == s2.Id
+		// inputOk := s.InputFrom == s2.InputFrom
+		funcOk := s.Func == s2.Func
+		outputOk := s.OutputTo == s2.OutputTo
+		return idOk && funcOk && outputOk // && inputOk
+	default:
+		return false
+	}
+}
+
 // AddOutput connects the output of the SimpleNode to another DagNode
 func (s *SimpleNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
 	s.OutputTo = dagNode
@@ -174,6 +174,7 @@ func (s *SimpleNode) CheckInput(input map[string]interface{}) error {
 	return nil
 }
 
+// PrepareOutput is used to send the output to the following function and if needed can be used to modify the SimpleNode output representation, like OutputPath
 func (s *SimpleNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
 	funct, exists := function.GetFunction(s.Func) // we are getting the function from cache if not already downloaded
 	if !exists {

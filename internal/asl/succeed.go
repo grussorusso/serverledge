@@ -1,6 +1,9 @@
 package asl
 
-import "github.com/grussorusso/serverledge/internal/types"
+import (
+	"fmt"
+	"github.com/grussorusso/serverledge/internal/types"
+)
 
 type SucceedState struct {
 	Type       StateType // Necessary
@@ -9,8 +12,7 @@ type SucceedState struct {
 }
 
 func (s *SucceedState) Validate(stateNames []string) error {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (s *SucceedState) IsEndState() bool {
@@ -31,8 +33,9 @@ func NewEmptySucceed() *SucceedState {
 }
 
 func (s *SucceedState) ParseFrom(jsonData []byte) (State, error) {
-	//TODO implement me
-	panic("implement me")
+	s.InputPath = JsonExtractRefPathOrDefault(jsonData, "InputPath", "")
+	s.OutputPath = JsonExtractRefPathOrDefault(jsonData, "OutputPath", "")
+	return s, nil
 }
 
 func (s *SucceedState) GetType() StateType {
@@ -40,5 +43,15 @@ func (s *SucceedState) GetType() StateType {
 }
 
 func (s *SucceedState) String() string {
-	return "Succeed"
+	str := fmt.Sprint("{",
+		"\n\t\t\tType: ", s.Type,
+		"\n")
+	if s.InputPath != "" {
+		str += fmt.Sprintf("\t\t\tError: %s\n", s.InputPath)
+	}
+	if s.OutputPath != "" {
+		str += fmt.Sprintf("\t\t\tErrorPath: %s\n", s.OutputPath)
+	}
+	str += "\t\t}"
+	return str
 }

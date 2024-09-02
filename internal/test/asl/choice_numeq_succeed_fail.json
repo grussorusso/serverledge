@@ -18,7 +18,7 @@
         {
           "Variable": "input",
           "NumericEquals": 2,
-          "Next": "SecondMatchState"
+          "Next": "SucceedState"
         }
       ],
       "Default": "DefaultState"
@@ -31,11 +31,8 @@
       "Next": "NextState"
     },
 
-    "SecondMatchState": {
-      "Comment": "Lang=Python",
-      "Type": "Task",
-      "Resource": "double",
-      "Next": "NextState"
+    "SucceedState": {
+      "Type": "Succeed"
     },
 
     "DefaultState": {
