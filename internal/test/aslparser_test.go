@@ -167,8 +167,6 @@ func TestParsingChoiceFunctionDagWithDefaultFail(t *testing.T) {
 	utils.AssertTrueMsg(t, isString, "value is not a string")
 	utils.AssertEqualsMsg(t, len(resultMap.Result), 1, "there is not exactly one result")
 	utils.AssertEqualsMsg(t, expectedValue, valueStr, "values don't match")
-
-	fmt.Printf("%s: %s", expectedKey, value)
 }
 
 // 1st branch (input==1): inc + inc (expected nothing)
