@@ -2,8 +2,10 @@ package fc
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
+	"time"
 )
 
 type SucceedNode struct {
@@ -13,7 +15,7 @@ type SucceedNode struct {
 	OutputPath string
 
 	/* (Serverledge specific) */
-
+	Message string
 	// OutputTo for a SucceedNode is used to send the output to the EndNode
 	OutputTo DagNodeId
 	BranchId int
@@ -23,13 +25,30 @@ func NewSucceedNode(message string) *SucceedNode {
 	succeedNode := SucceedNode{
 		Id:       DagNodeId("succeed_" + shortuuid.New()),
 		NodeType: Succeed,
+		Message:  message,
 	}
 	return &succeedNode
 }
 
 func (s *SucceedNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	t0 := time.Now()
+	var err error = nil
+	if len(params) != 1 {
+		return nil, fmt.Errorf("failed to get one input for succeed node: received %d inputs", len(params))
+	}
+	output := params[0]
+	respAndDuration := time.Now().Sub(t0).Seconds()
+	execReport := &function.ExecutionReport{
+		Result:         fmt.Sprintf("%v", output),
+		ResponseTime:   respAndDuration,
+		IsWarmStart:    true, // not in a container
+		InitTime:       0,
+		OffloadLatency: 0,
+		Duration:       respAndDuration,
+		SchedAction:    "",
+	}
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(s), execReport)
+	return output, err
 }
 
 func (s *SucceedNode) Equals(cmp types.Comparable) bool {
@@ -37,7 +56,17 @@ func (s *SucceedNode) Equals(cmp types.Comparable) bool {
 	if !ok {
 		return false
 	}
-	return s.Id == s2.Id && s.NodeType == s2.NodeType && s.InputPath == s2.InputPath && s.OutputPath == s2.OutputPath
+	return s.Id == s2.Id &&
+		s.NodeType == s2.NodeType &&
+		s.InputPath == s2.InputPath &&
+		s.OutputPath == s2.OutputPath &&
+		s.OutputTo == s2.OutputTo &&
+		s.BranchId == s2.BranchId &&
+		s.Message == s2.Message
+}
+
+func (s *SucceedNode) CheckInput(input map[string]interface{}) error {
+	return nil
 }
 
 func (s *SucceedNode) AddOutput(dag *Dag, dagNode DagNodeId) error {

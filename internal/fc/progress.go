@@ -93,6 +93,33 @@ const (
 	Wait    DagNodeType = "WaitNode"
 )
 
+func DagNodeFromType(nodeType DagNodeType) DagNode {
+	switch nodeType {
+	case Start:
+		return &StartNode{}
+	case End:
+		return &EndNode{}
+	case Simple:
+		return &SimpleNode{}
+	case Choice:
+		return &ChoiceNode{}
+	case FanOut:
+		return &FanOutNode{}
+	case FanIn:
+		return &FanInNode{}
+	case Fail:
+		return &FailNode{}
+	case Succeed:
+		return &SucceedNode{}
+	case Pass:
+		return &PassNode{}
+	case Wait:
+		return &WaitNode{}
+	default:
+		return &SimpleNode{}
+	}
+}
+
 func parseType(dNode DagNode) DagNodeType {
 	switch dNode.(type) {
 	case *StartNode:

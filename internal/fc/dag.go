@@ -547,6 +547,61 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	return true, nil
 }
 
+func (dag *Dag) executeSucceedNode(progress *Progress, succeedNode *SucceedNode, r *CompositionRequest) (bool, error) {
+	return commonExec(dag, progress, succeedNode, r)
+}
+
+func (dag *Dag) executeFailNode(progress *Progress, failNode *FailNode, r *CompositionRequest) (bool, error) {
+	return commonExec(dag, progress, failNode, r)
+}
+
+func commonExec(dag *Dag, progress *Progress, node DagNode, r *CompositionRequest) (bool, error) {
+	var pd *PartialData
+	nodeId := node.GetId()
+	requestId := ReqId(r.ReqId)
+	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+
+	if err != nil {
+		return false, fmt.Errorf("request %s - %s %s - %v", r.ReqId, node.GetNodeType(), node.GetId(), err)
+	}
+	err = node.CheckInput(partialData.Data)
+	if err != nil {
+		return false, err
+	}
+	// executing node
+	output, err := node.Exec(r, partialData.Data)
+	if err != nil {
+		return false, err
+	}
+
+	// Todo: uncomment when running TestInvokeFC_Concurrent to debug concurrency errors
+	// errDbg := Debug(r, string(node.Id), output)
+	// if errDbg != nil {
+	// 	return false, errDbg
+	// }
+
+	forNode := node.GetNext()[0]
+	pd = NewPartialData(requestId, forNode, nodeId, output)
+	errSend := node.PrepareOutput(dag, output)
+	if errSend != nil {
+		return false, fmt.Errorf("the node %s cannot send the output: %v", node.String(), errSend)
+	}
+
+	// saving partial data and updating progress
+	err = SavePartialData(pd, cache.Persist)
+	if err != nil {
+		return false, err
+	}
+	err = progress.CompleteNode(nodeId)
+	if err != nil {
+		return false, err
+	}
+	if node.GetNodeType() == Fail || node.GetNodeType() == Succeed {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequest) (bool, error) {
 	// r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "end"}
 	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
@@ -573,7 +628,7 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 		if err != nil {
 			return true, err
 		}
-	} else {
+	} else if len(nextNodes) == 1 {
 		n, ok := dag.Find(nextNodes[0])
 		if !ok {
 			return true, fmt.Errorf("failed to find node %s", n.GetId())
@@ -590,6 +645,10 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
 			shouldContinue, err = dag.executeFanOut(progress, node, r)
+		case *FailNode:
+			shouldContinue, err = dag.executeFailNode(progress, node, r)
+		case *SucceedNode:
+			shouldContinue, err = dag.executeSucceedNode(progress, node, r)
 		case *EndNode:
 			shouldContinue, err = dag.executeEnd(progress, node, r)
 		}
@@ -598,6 +657,8 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 			r.ExecReport.Progress = progress
 			return true, err
 		}
+	} else {
+		return false, fmt.Errorf("there aren't next nodes")
 	}
 
 	err = SaveProgress(progress, cache.Persist)
@@ -745,18 +806,14 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 		return fmt.Errorf("unknown nodeType: %v", tempNodeMap["NodeType"])
 	}
 	var err error
+
+	node := DagNodeFromType(DagNodeType(dagNodeType))
+
 	switch DagNodeType(dagNodeType) {
 	case Start:
 		node := &StartNode{}
 		err = json.Unmarshal(value, node)
 		if err == nil && node.Id != "" && node.Next != "" {
-			dag.Nodes[DagNodeId(nodeId)] = node
-			return nil
-		}
-	case End:
-		node := &EndNode{}
-		err = json.Unmarshal(value, node)
-		if err == nil && node.Id != "" {
 			dag.Nodes[DagNodeId(nodeId)] = node
 			return nil
 		}
@@ -774,28 +831,12 @@ func (dag *Dag) decodeNode(nodeId string, value json.RawMessage) error {
 			dag.Nodes[DagNodeId(nodeId)] = node
 			return nil
 		}
-	case FanOut:
-		node := &FanOutNode{}
+	default:
 		err = json.Unmarshal(value, node)
-		if err == nil && node.Id != "" {
+		if err == nil && node.GetId() != "" {
 			dag.Nodes[DagNodeId(nodeId)] = node
 			return nil
 		}
-	case FanIn:
-		node := &FanInNode{}
-		err = json.Unmarshal(value, node)
-		if err == nil && node.Id != "" {
-			dag.Nodes[DagNodeId(nodeId)] = node
-			return nil
-		}
-	case Fail:
-		return fmt.Errorf("not implemented") // TODO: implement me!
-	case Succeed:
-		return fmt.Errorf("not implemented") // TODO: implement me!
-	case Pass:
-		return fmt.Errorf("not implemented") // TODO: implement me!
-	case Wait:
-		return fmt.Errorf("not implemented") // TODO: implement me!
 	}
 	var unmarshalTypeError *json.UnmarshalTypeError
 	if err != nil && !errors.As(err, &unmarshalTypeError) {

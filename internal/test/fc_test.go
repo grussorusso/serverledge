@@ -669,3 +669,51 @@ func TestInvokeCompositionError(t *testing.T) {
 
 	request.ExecReport.Progress.Print()
 }
+
+func TestInvokeCompositionFailAndSucceed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	dag, errDag := fc.NewDagBuilder().
+		AddChoiceNode(
+			fc.NewEqParamCondition(fc.NewParam("value"), fc.NewValue(1)),
+			fc.NewConstCondition(true),
+		).
+		NextBranch(fc.NewDagBuilder().AddSucceedNodeAndBuild("everything ok")).
+		NextBranch(fc.NewDagBuilder().AddFailNodeAndBuild("FakeError", "This should be an error")).
+		EndChoiceAndBuild()
+	u.AssertNil(t, errDag)
+	fcomp := fc.NewFC("fail_succeed", *dag, []*function.Function{}, true)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	// First run: Success
+
+	// INVOKE - we call the function composition
+	params := make(map[string]interface{})
+	params["value"] = 1
+
+	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	resultMap, errInvoke1 := fcomp.Invoke(request)
+	u.AssertNilMsg(t, errInvoke1, "error while invoking the branch (succeed)")
+
+	result, err := resultMap.GetIntSingleResult()
+	u.AssertNilMsg(t, err, "Result not found")
+	u.AssertEquals(t, 1, result)
+
+	// Second run: Fail
+	params2 := make(map[string]interface{})
+	params2["value"] = 2
+
+	request2 := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params2)
+	resultMap2, errInvoke2 := fcomp.Invoke(request2)
+	u.AssertNilMsg(t, errInvoke2, "error while invoking the branch (fail)")
+
+	valueError, found := resultMap2.Result["FakeError"]
+	u.AssertTrueMsg(t, found, "FakeError not found")
+	causeStr, ok := valueError.(string)
+
+	u.AssertTrueMsg(t, ok, "cause value is not a string")
+	u.AssertEquals(t, "This should be an error", causeStr)
+}

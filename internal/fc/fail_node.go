@@ -2,8 +2,10 @@ package fc
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/types"
 	"github.com/lithammer/shortuuid"
+	"time"
 )
 
 type FailNode struct {
@@ -17,6 +19,11 @@ type FailNode struct {
 	// OutputTo for a SucceedNode is used to send the output to the EndNode
 	OutputTo DagNodeId
 	BranchId int
+}
+
+func (f *FailNode) PrepareOutput(dag *Dag, output map[string]interface{}) error {
+	output[f.Error] = f.Cause
+	return nil
 }
 
 func NewFailNode(error, cause string) *FailNode {
@@ -33,8 +40,24 @@ func NewFailNode(error, cause string) *FailNode {
 }
 
 func (f *FailNode) Exec(compRequest *CompositionRequest, params ...map[string]interface{}) (map[string]interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	t0 := time.Now()
+	output := make(map[string]interface{})
+	var err error = nil
+	if len(params) != 1 {
+		return nil, fmt.Errorf("failed to get one input for fail node: received %d inputs", len(params))
+	}
+	respAndDuration := time.Now().Sub(t0).Seconds()
+	execReport := &function.ExecutionReport{
+		Result:         fmt.Sprintf("%v", output),
+		ResponseTime:   respAndDuration,
+		IsWarmStart:    true, // not in a container
+		InitTime:       0,
+		OffloadLatency: 0,
+		Duration:       respAndDuration,
+		SchedAction:    "",
+	}
+	compRequest.ExecReport.Reports.Set(CreateExecutionReportId(f), execReport)
+	return output, err
 }
 
 func (f *FailNode) Equals(cmp types.Comparable) bool {
@@ -42,7 +65,16 @@ func (f *FailNode) Equals(cmp types.Comparable) bool {
 	if !ok {
 		return false
 	}
-	return f.Id == f2.Id && f.NodeType == f2.NodeType && f.Error == f2.Error && f.Cause == f2.Cause
+	return f.Id == f2.Id &&
+		f.NodeType == f2.NodeType &&
+		f.Error == f2.Error &&
+		f.Cause == f2.Cause &&
+		f.OutputTo == f2.OutputTo &&
+		f.BranchId == f2.BranchId
+}
+
+func (f *FailNode) CheckInput(input map[string]interface{}) error {
+	return nil
 }
 
 func (f *FailNode) AddOutput(dag *Dag, dagNode DagNodeId) error {
