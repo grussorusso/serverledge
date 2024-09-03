@@ -194,6 +194,78 @@ func TestBooleanEquals(t *testing.T) {
 	}
 }
 
+func TestTimestampEqualsSmallerGreater(t *testing.T) {
+	//conditions := []string{
+	//	"eq",
+	//	"smaller",
+	//	"greater",
+	//	"smallerEq",
+	//	"greaterEq",
+	//	"diff",
+	//}
+	tests := []struct {
+		param1         *fc.ParamOrValue
+		param2         *fc.ParamOrValue
+		operation      string
+		expectedResult bool
+	}{
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "eq", true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "smaller", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "greater", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "smallerEq", true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "greaterEq", true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "diff", false},
+
+		// Timestamp 1 is earlier than Timestamp 2
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "eq", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "smaller", true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "greater", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "smallerEq", true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "greaterEq", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03T15:07:42Z"), "diff", true},
+
+		// Timestamp 1 is later than Timestamp 2
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "eq", false},
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "smaller", false},
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "greater", true},
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "smallerEq", false},
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "greaterEq", true},
+		{fc.NewValue("2024-09-03T15:07:42Z"), fc.NewValue("2024-09-03T14:07:42Z"), "diff", true},
+
+		// Invalid timestamp formats
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "eq", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "smaller", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "greater", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "smallerEq", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "greaterEq", false},
+		{fc.NewValue("2024-09-03T14:07:42Z"), fc.NewValue("2024-09-03 14:07:42"), "diff", true},
+	}
+
+	for i, test := range tests {
+		var cond fc.Condition
+		switch test.operation {
+		case "eq":
+			cond = fc.NewEqParamCondition(test.param1, test.param2)
+		case "smaller":
+			cond = fc.NewSmallerParamCondition(test.param1, test.param2)
+		case "greater":
+			cond = fc.NewGreaterParamCondition(test.param1, test.param2)
+		case "smallerEq":
+			cond = fc.NewOr(fc.NewSmallerParamCondition(test.param1, test.param2), fc.NewEqParamCondition(test.param1, test.param2))
+		case "greaterEq":
+			cond = fc.NewOr(fc.NewGreaterParamCondition(test.param1, test.param2), fc.NewEqParamCondition(test.param1, test.param2))
+		case "diff":
+			cond = fc.NewDiffParamCondition(test.param1, test.param2)
+		default:
+			utils.AssertFalseMsg(t, true, "fail: non existent operation")
+		}
+
+		ok, err := cond.Test(map[string]interface{}{})
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, test.expectedResult, ok, fmt.Sprintf("test %d: %v %s %v", i+1, test.param1.GetOperand(), test.operation, test.param2.GetOperand()))
+	}
+}
+
 func TestIsNullIsPresent(t *testing.T) {
 	tests := []struct {
 		value       interface{}

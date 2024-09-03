@@ -213,22 +213,29 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 	case "BooleanEqualsPath":
 		condition = NewEqParamCondition(param1, param2)
 	case "TimestampEquals":
+		condition = NewEqParamCondition(param1, param2)
 	case "TimestampEqualsPath":
+		condition = NewEqParamCondition(param1, param2)
 	case "TimestampLessThan":
+		condition = NewSmallerParamCondition(param1, param2)
 	case "TimestampLessThanPath":
+		condition = NewSmallerParamCondition(param1, param2)
 	case "TimestampGreaterThan":
+		condition = NewGreaterParamCondition(param1, param2)
 	case "TimestampGreaterThanPath":
+		condition = NewGreaterParamCondition(param1, param2)
 	case "TimestampLessThanEquals":
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "TimestampLessThanEqualsPath":
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "TimestampGreaterThanEquals":
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "TimestampGreaterThanEqualsPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "IsNull":
 		condition = NewIsNullParamCondition(param1)
-		break
 	case "IsPresent":
 		condition = NewIsPresentParamCondition(param1)
-		break
 	case "IsNumeric":
 		condition = NewIsNumericParamCondition(param1)
 	case "IsString":

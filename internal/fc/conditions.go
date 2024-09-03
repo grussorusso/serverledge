@@ -212,6 +212,22 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+		// Try to parse the first value as a timestamp
+		firstTimestamp, isTimestamp := parseRFC3339(ops[0])
+		if isTimestamp {
+			for i := 1; i < len(ops); i++ {
+				currentTimestamp, isCurrentTimestamp := parseRFC3339(ops[i])
+				if !isCurrentTimestamp {
+					return false, nil
+				}
+				if !firstTimestamp.Equal(currentTimestamp) {
+					return false, nil
+				}
+			}
+			return true, nil
+		}
+
 		for i := 0; i < len(ops)-1; i++ {
 			if ops[i] != ops[i+1] {
 				return false, nil
@@ -240,6 +256,18 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+		// Try parsing the inputs as timestamps first
+		time1, isTime1 := parseRFC3339(ops[0])
+		time2, isTime2 := parseRFC3339(ops[1])
+		if isTime1 && isTime2 {
+			return time1.After(time2), nil
+		}
+		// if only one of the parameters is a timestamp, we know the result is false
+		if isTime1 || isTime2 {
+			return false, nil
+		}
+
 		// try converting operands to float
 		f := function.Float{}
 		float1, err1 := f.Convert(ops[0])
@@ -273,6 +301,18 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+		// Try parsing the inputs as timestamps first
+		time1, isTime1 := parseRFC3339(ops[0])
+		time2, isTime2 := parseRFC3339(ops[1])
+		if isTime1 && isTime2 {
+			return time1.Before(time2), nil
+		}
+		// if only one of the parameters is a timestamp, we know the result is false
+		if isTime1 || isTime2 {
+			return false, nil
+		}
+
 		// try converting operands to float
 		f := function.Float{}
 		float1, err1 := f.Convert(ops[0])
@@ -764,4 +804,16 @@ func (rcb *RootConditionBuilder) Not(cond Condition) *ConditionBuilder {
 
 func (cb *ConditionBuilder) Build() Condition {
 	return cb.p.Root
+}
+
+func parseRFC3339(value interface{}) (time.Time, bool) {
+	str, ok := value.(string)
+	if !ok {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(time.RFC3339, str)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
 }
