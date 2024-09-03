@@ -166,3 +166,26 @@ func TestStringGreaterAndSmaller(t *testing.T) {
 	utils.AssertFalse(t, ok)
 
 }
+
+func TestStringMatches(t *testing.T) {
+	tests := []struct {
+		input   string
+		pattern string
+		match   bool
+	}{
+		{"foo23.log", "foo*.log", true},
+		{"zebra.log", "*.log", true},
+		{"foobar.zebra", "foo*.*", true},
+		{"test.log", "foo*.log", false},
+		{"foo.log", "*.txt", false},
+		{"foo.log", "*.txt", false},
+		{"fo*o.log", "fo\\\\*o.log", true},
+	}
+
+	for _, test := range tests {
+		cond := fc.NewStringMatchesParamCondition(fc.NewValue(test.input), fc.NewValue(test.pattern))
+		ok, err := cond.Test(map[string]interface{}{})
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, ok, test.match, fmt.Sprintf("expected %s to match %s", test.input, test.pattern))
+	}
+}

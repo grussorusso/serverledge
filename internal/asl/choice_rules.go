@@ -312,7 +312,7 @@ const (
 	StringLessThanEqualsPath       ComparisonOperatorKind = "StringLessThanEqualsPath"
 	StringGreaterThanEquals        ComparisonOperatorKind = "StringGreaterThanEquals"
 	StringGreaterThanEqualsPath    ComparisonOperatorKind = "StringGreaterThanEqualsPath"
-	StringMatches                  ComparisonOperatorKind = "StringMatches" // StringMatches The value MUST be a StringComparator which MAY contain one or more "*" characters. The expression yields true if the data value selected by the Variable Path matches the value, where "*" in the value matches zero or more characters. Thus, foo*.log matches foo23.log, *.log matches zebra.log, and foo*.* matches foobar.zebra. No characters other than "*" have any special meaning during matching.	NumericEquals                  ComparisonOperatorKind = "NumericEquals"
+	StringMatches                  ComparisonOperatorKind = "StringMatches" // uses the '*' operator to matches a string against another
 	NumericEquals                  ComparisonOperatorKind = "NumericEquals"
 	NumericEqualsPath              ComparisonOperatorKind = "NumericEqualsPath"
 	NumericLessThan                ComparisonOperatorKind = "NumericLessThan"

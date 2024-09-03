@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Predicate struct {
@@ -21,16 +23,17 @@ type Condition struct {
 type CondEnum string
 
 const (
-	And       CondEnum = "And"
-	Or        CondEnum = "Or"
-	Not       CondEnum = "Not"
-	Const     CondEnum = "Const"
-	Eq        CondEnum = "Eq"        // also works for strings
-	Diff      CondEnum = "Diff"      // also works for strings
-	Greater   CondEnum = "Greater"   // also works for strings
-	Smaller   CondEnum = "Smaller"   // also works for strings
-	Empty     CondEnum = "Empty"     // for collections
-	IsNumeric CondEnum = "IsNumeric" // for collections
+	And           CondEnum = "And"
+	Or            CondEnum = "Or"
+	Not           CondEnum = "Not"
+	Const         CondEnum = "Const"
+	Eq            CondEnum = "Eq"        // also works for strings
+	Diff          CondEnum = "Diff"      // also works for strings
+	Greater       CondEnum = "Greater"   // also works for strings
+	Smaller       CondEnum = "Smaller"   // also works for strings
+	Empty         CondEnum = "Empty"     // for collections
+	IsNumeric     CondEnum = "IsNumeric" // for collections
+	StringMatches CondEnum = "StringMatches"
 )
 
 func (p Predicate) Test(input map[string]interface{}) bool {
@@ -106,6 +109,8 @@ func (c Condition) String() string {
 		return "empty input"
 	case IsNumeric:
 		return fmt.Sprintf("IsNumeric(%v)", c.Op[0])
+	case StringMatches:
+		return fmt.Sprintf("StringMatches(%s,%s)", c.Op[0], c.Op[1])
 	default:
 		return ""
 	}
@@ -301,6 +306,48 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		return isNumeric(ops[0]), nil
+	case StringMatches:
+		ops, err := c.findInputs(input)
+		inputString, okString := ops[0].(string)
+		if !okString {
+			return false, fmt.Errorf("condition StringMatches: first operand (string to match) is not a string")
+		}
+		pattern, okPattern := ops[1].(string)
+		if !okPattern {
+			return false, fmt.Errorf("condition StringMatches: second operand (pattern) is not a string")
+		}
+
+		// Replace \\* with a placeholder to treat it as a literal *
+		pattern = strings.ReplaceAll(pattern, "\\\\*", "\x00")
+
+		// Replace \\\\ with a placeholder to treat it as a literal \
+		pattern = strings.ReplaceAll(pattern, "\\\\\\\\", "\x01")
+
+		// Check for unescaped single backslashes
+		if strings.Contains(pattern, "\\") {
+			return false, fmt.Errorf("runtime error: open escape sequence found")
+		}
+
+		// Escape special regex characters in the pattern except for "*"
+		escapedPattern := regexp.QuoteMeta(pattern)
+
+		// Replace placeholder \x00 back to literal * in the escaped pattern
+		escapedPattern = strings.ReplaceAll(escapedPattern, "\x00", "\\*")
+
+		// Replace placeholder \x01 back to literal \ in the escaped pattern
+		escapedPattern = strings.ReplaceAll(escapedPattern, "\x01", "\\\\")
+
+		// Replace "*" with ".*" to match zero or more characters
+		regexPattern := strings.ReplaceAll(escapedPattern, "\\*", ".*")
+
+		// Compile the regex pattern
+		re, err := regexp.Compile("^" + regexPattern + "$")
+		if err != nil {
+			return false, err
+		}
+
+		// Check if the input matches the regex pattern
+		return re.MatchString(inputString), nil
 	default:
 		return false, fmt.Errorf("invalid operation condition %s", c.Type)
 	}
@@ -542,6 +589,14 @@ func NewIsNumericParamCondition(param1 *ParamOrValue) Condition {
 		Type: IsNumeric,
 		Find: []bool{param1.IsParam},
 		Op:   []interface{}{param1.GetOperand()},
+	}
+}
+
+func NewStringMatchesParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
+	return Condition{
+		Type: StringMatches,
+		Find: []bool{param1.IsParam, param2.IsParam},
+		Op:   []interface{}{param1.GetOperand(), param2.GetOperand()},
 	}
 }
 
