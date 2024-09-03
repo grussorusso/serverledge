@@ -146,12 +146,12 @@ func buildBooleanExpr(b *asl.BooleanExpression) (Condition, error) {
 }
 
 func buildTestExpr(t *asl.TestExpression) (Condition, error) {
-	var param, val *ParamOrValue
+	var param1, param2 *ParamOrValue
 	// the Variable could be a parameter or a value, like "true", 1, etc.
 	if asl.IsReferencePath(t.Variable) {
-		param = NewParam(asl.RemoveDollar(t.Variable))
+		param1 = NewParam(asl.RemoveDollar(t.Variable))
 	} else {
-		param = NewValue(t.Variable)
+		param1 = NewValue(t.Variable)
 	}
 	// The operand could be a constant or another parameter
 	operand := t.ComparisonOperator.Operand
@@ -160,56 +160,58 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 		if !ok {
 			return NewConstCondition(false), fmt.Errorf("invalid comparison operator operand: it should have been a string")
 		}
-		val = NewParam(asl.RemoveDollar(operandPath))
+		param2 = NewParam(asl.RemoveDollar(operandPath))
 	} else {
-		val = NewValue(operand)
+		param2 = NewValue(operand)
 	}
 	var condition Condition
 	switch t.ComparisonOperator.Kind {
 	case "StringEquals":
-		condition = NewEqParamCondition(param, val)
-		break
+		condition = NewEqParamCondition(param1, param2)
 	case "StringEqualsPath":
+		condition = NewEqParamCondition(param1, param2)
 	case "StringLessThan":
+		condition = NewSmallerParamCondition(param1, param2)
 	case "StringLessThanPath":
+		condition = NewSmallerParamCondition(param1, param2)
 	case "StringGreaterThan":
+		condition = NewGreaterParamCondition(param1, param2)
 	case "StringGreaterThanPath":
+		condition = NewGreaterParamCondition(param1, param2)
 	case "StringLessThanEquals":
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "StringLessThanEqualsPath":
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "StringGreaterThanEquals":
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "StringGreaterThanEqualsPath":
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "StringMatches":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewStringMatchesParamCondition(param1, param2)
 	case "NumericEquals":
-		condition = NewEqParamCondition(param, val)
-		break
+		condition = NewEqParamCondition(param1, param2)
 	case "NumericEqualsPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewEqParamCondition(param1, param2)
 	case "NumericLessThan":
-		condition = NewSmallerParamCondition(param, val)
-		break
+		condition = NewSmallerParamCondition(param1, param2)
 	case "NumericLessThanPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewSmallerParamCondition(param1, param2)
 	case "NumericGreaterThan":
-		condition = NewGreaterParamCondition(param, val)
-		break
+		condition = NewGreaterParamCondition(param1, param2)
 	case "NumericGreaterThanPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewGreaterParamCondition(param1, param2)
 	case "NumericLessThanEquals":
-		condition = NewOr(NewSmallerParamCondition(param, val), NewEqParamCondition(param, val))
-		break
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "NumericLessThanEqualsPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewOr(NewSmallerParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "NumericGreaterThanEquals":
-		condition = NewOr(NewGreaterParamCondition(param, val), NewEqParamCondition(param, val))
-		break
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "NumericGreaterThanEqualsPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewOr(NewGreaterParamCondition(param1, param2), NewEqParamCondition(param1, param2))
 	case "BooleanEquals":
-		condition = NewEqCondition(param, true)
-		break
+		condition = NewEqParamCondition(param1, param2)
 	case "BooleanEqualsPath":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewEqParamCondition(param1, param2)
 	case "TimestampEquals":
 	case "TimestampEqualsPath":
 	case "TimestampLessThan":
@@ -222,34 +224,19 @@ func buildTestExpr(t *asl.TestExpression) (Condition, error) {
 	case "TimestampGreaterThanEqualsPath":
 		return NewConstCondition(false), fmt.Errorf("not implemented")
 	case "IsNull":
-		condition = NewEqCondition(param, NewValue(nil))
+		condition = NewIsNullParamCondition(param1)
 		break
 	case "IsPresent":
-		condition = NewNot(NewEqCondition(param, NewValue(nil)))
+		condition = NewIsPresentParamCondition(param1)
 		break
 	case "IsNumeric":
-		valBool, err := function.Bool{}.Convert(val.value)
-		if err != nil {
-			return NewConstCondition(false), fmt.Errorf("IsNumeric requires a boolean constant to be evaluated with, but it was given %v", val)
-		}
-		if valBool == true {
-			condition = NewIsNumericParamCondition(param)
-		} else {
-			condition = NewNot(NewIsNumericParamCondition(param))
-		}
-
-		break
+		condition = NewIsNumericParamCondition(param1)
 	case "IsString":
-		// condition = NewIsStringCondition(param, val)
-		break
+		condition = NewIsStringParamCondition(param1)
 	case "IsBoolean":
-		convertedParam, err := function.Bool{}.Convert(param)
-		if err != nil {
-			return NewConstCondition(false), fmt.Errorf("test IsBoolean: failed to convert param to bool")
-		}
-		condition = NewOr(NewEqCondition(convertedParam, true), NewEqCondition(convertedParam, false))
+		condition = NewIsBooleanParamCondition(param1)
 	case "IsTimestamp":
-		return NewConstCondition(false), fmt.Errorf("not implemented")
+		condition = NewIsTimestampParamCondition(param1)
 	}
 	return condition, nil
 }
