@@ -121,49 +121,28 @@ func TestIsNumeric(t *testing.T) {
 }
 
 func TestStringGreaterAndSmaller(t *testing.T) {
-	// apple is not greater than banana
-	isGreater := fc.NewGreaterCondition("apple", "banana")
-	ok, err := isGreater.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
+	tests := []struct {
+		firstString    interface{}
+		secondString   string
+		firstIsGreater bool
+		firstIsSmaller bool
+	}{
+		{"apple", "banana", false, true},
+		{"banana", "apple", true, false},
+		{"banana", "banana", false, false},
+		{nil, "apple", false, false},
+	}
 
-	// banana is greater than apple
-	isGreater = fc.NewGreaterCondition("banana", "apple")
-	ok, err = isGreater.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertTrue(t, ok)
-
-	// apple is smaller than banana
-	isSmaller := fc.NewSmallerCondition("apple", "banana")
-	ok, err = isSmaller.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertTrue(t, ok)
-
-	// banana is not smaller than apple
-	isSmaller = fc.NewSmallerCondition("banana", "apple")
-	ok, err = isSmaller.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
-
-	/* Corner cases */
-
-	// banana is not greater than banana
-	isGreater = fc.NewGreaterCondition("banana", "banana")
-	ok, err = isGreater.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
-
-	// banana is not greater than banana
-	isSmaller = fc.NewSmallerCondition("banana", "banana")
-	ok, err = isSmaller.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
-
-	// nil is not smaller than banana
-	isSmaller = fc.NewSmallerCondition(nil, "banana")
-	ok, err = isSmaller.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
+	for i, test := range tests {
+		isGreater := fc.NewGreaterCondition(test.firstString, test.secondString)
+		isSmaller := fc.NewSmallerCondition(test.firstString, test.secondString)
+		ok, err := isGreater.Test(map[string]interface{}{})
+		ok2, err2 := isSmaller.Test(map[string]interface{}{})
+		utils.AssertNil(t, err)
+		utils.AssertNil(t, err2)
+		utils.AssertEqualsMsg(t, test.firstIsGreater, ok, fmt.Sprintf("test %d:  when comparing %v > %v", i+1, test.firstString, test.secondString))
+		utils.AssertEqualsMsg(t, test.firstIsSmaller, ok2, fmt.Sprintf("test %d: when comparing %v < %v", i+1, test.firstString, test.secondString))
+	}
 
 }
 
