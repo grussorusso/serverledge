@@ -119,6 +119,8 @@ func (c Condition) String() string {
 		return fmt.Sprintf("IsNumeric(%v)", c.Op[0])
 	case IsString:
 		return fmt.Sprintf("IsString(%v)", c.Op[0])
+	case IsBoolean:
+		return fmt.Sprintf("IsBoolean(%v)", c.Op[0])
 	case StringMatches:
 		return fmt.Sprintf("StringMatches(%s,%s)", c.Op[0], c.Op[1])
 	default:
@@ -334,6 +336,13 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		_, ok := ops[0].(string)
+		return ok, nil
+	case IsBoolean:
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		_, ok := ops[0].(bool)
 		return ok, nil
 	case StringMatches:
 		ops, err := c.findInputs(input)
@@ -664,6 +673,14 @@ func NewIsNumericParamCondition(param1 *ParamOrValue) Condition {
 func NewIsStringParamCondition(param1 *ParamOrValue) Condition {
 	return Condition{
 		Type: IsString,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
+	}
+}
+
+func NewIsBooleanParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsBoolean,
 		Find: []bool{param1.IsParam},
 		Op:   []interface{}{param1.GetOperand()},
 	}

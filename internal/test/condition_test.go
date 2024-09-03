@@ -232,13 +232,15 @@ func TestIsNullIsPresent(t *testing.T) {
 
 func TestIsString(t *testing.T) {
 	tests := []struct {
-		parameter      string
+		paramOrValue   *fc.ParamOrValue
 		shouldBeString bool
 	}{
-		{"name", true},
-		{"age", false},
-		{"isStudent", false},
-		{"nonExistent", false},
+		{fc.NewValue("name"), true},
+		{fc.NewValue(false), false},
+		{fc.NewParam("name"), true},
+		{fc.NewParam("age"), false},
+		{fc.NewParam("isStudent"), false},
+		{fc.NewParam("nonExistent"), false},
 	}
 	testMap := make(map[string]interface{})
 	testMap["name"] = "John"
@@ -246,9 +248,34 @@ func TestIsString(t *testing.T) {
 	testMap["isStudent"] = false
 
 	for i, test := range tests {
-		cond := fc.NewIsStringParamCondition(fc.NewParam(test.parameter))
+		cond := fc.NewIsStringParamCondition(test.paramOrValue)
 		ok, err := cond.Test(testMap)
 		utils.AssertNil(t, err)
-		utils.AssertEqualsMsg(t, ok, test.shouldBeString, fmt.Sprintf("test %d: expected IsString(%v) to be %v", i+1, test.parameter, test.shouldBeString))
+		utils.AssertEqualsMsg(t, ok, test.shouldBeString, fmt.Sprintf("test %d: expected IsString(%v) to be %v", i+1, test.paramOrValue, test.shouldBeString))
+	}
+}
+
+func TestIsBoolean(t *testing.T) {
+	tests := []struct {
+		paramOrValue *fc.ParamOrValue
+		shouldBeBool bool
+	}{
+		{fc.NewValue(true), true},
+		{fc.NewValue(false), true},
+		{fc.NewValue("true"), false},
+		{fc.NewValue("false"), false},
+		{fc.NewValue(nil), false},
+		{fc.NewParam("isStudent"), true},
+		{fc.NewParam("notBoolean"), false},
+	}
+	testMap := make(map[string]interface{})
+	testMap["notBoolean"] = "true"
+	testMap["isStudent"] = false
+
+	for i, test := range tests {
+		cond := fc.NewIsBooleanParamCondition(test.paramOrValue)
+		ok, err := cond.Test(testMap)
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, ok, test.shouldBeBool, fmt.Sprintf("test %d: expected IsBool(%v) to be %v", i+1, test.paramOrValue, test.shouldBeBool))
 	}
 }
