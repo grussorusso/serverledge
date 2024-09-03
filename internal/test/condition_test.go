@@ -189,3 +189,28 @@ func TestStringMatches(t *testing.T) {
 		utils.AssertEqualsMsg(t, ok, test.match, fmt.Sprintf("expected %s to match %s", test.input, test.pattern))
 	}
 }
+
+func TestBooleanEquals(t *testing.T) {
+	tests := []struct {
+		firstBoolean  interface{}
+		secondBoolean interface{}
+		equals        bool
+	}{
+		{true, true, true},
+		{false, false, true},
+		{"true", "true", true},
+		{"true", true, false},
+		{false, "false", false},
+		{"true", 1, false},
+		{false, 0, false},
+		{"maybe", false, false},
+		{2, true, false},
+	}
+
+	for i, test := range tests {
+		cond := fc.NewEqParamCondition(fc.NewValue(test.firstBoolean), fc.NewValue(test.secondBoolean))
+		ok, err := cond.Test(map[string]interface{}{})
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, ok, test.equals, fmt.Sprintf("test %d: expected %v to match %v", i+1, test.firstBoolean, test.secondBoolean))
+	}
+}

@@ -42,7 +42,7 @@ func getShellExt() string {
 
 var IntegrationTest bool
 
-func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
+func testStartServerledge(isInCloud bool, outboundIp string) (*registration.Registry, *echo.Echo) {
 	//setting up cache parameters
 	api.CacheSetup()
 	schedulingPolicy := &scheduling.DefaultLocalPolicy{}
@@ -60,7 +60,7 @@ func testStartServerledge(isInCloud bool) (*registration.Registry, *echo.Echo) {
 		log.Fatal(err)
 	}
 
-	ip := config.GetString(config.API_IP, u.GetIpAddress().String())
+	ip := config.GetString(config.API_IP, outboundIp)
 	url := fmt.Sprintf("http://%s:%d", ip, PORT)
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
@@ -95,11 +95,15 @@ func TestMain(m *testing.M) {
 	_, Experiment = os.LookupEnv("EXPERIMENT")
 	// Parsing the test flags. Needed to ensure that the -short flag is parsed, so testing.Short() returns a nonNil bool
 	flag.Parse()
+	outboundIp, err := u.GetOutboundIp()
+	if err != nil || outboundIp == nil {
+		log.Fatalf("test cannot be executed without internet connection")
+	}
 	IntegrationTest = !testing.Short()
+
 	// spin up container with serverledge infrastructure
 	if IntegrationTest {
-
-		registry, echoServer, ok := setupServerledge()
+		registry, echoServer, ok := setupServerledge(outboundIp.String())
 		if ok != nil {
 			fmt.Printf("failed to initialize serverledgde: %v\n", ok)
 			os.Exit(int(codes.Internal))
@@ -140,9 +144,9 @@ func startReliably(startScript string, stopScript string, msg string) error {
 }
 
 // run the bash script to initialize serverledge
-func setupServerledge() (*registration.Registry, *echo.Echo, error) {
+func setupServerledge(outboundIp string) (*registration.Registry, *echo.Echo, error) {
 	err1 := startReliably("../../scripts/start-etcd"+getShellExt(), "../../scripts/stop-etcd"+getShellExt(), "ETCD")
-	registry, echoServer := testStartServerledge(false)
+	registry, echoServer := testStartServerledge(false, outboundIp)
 	return registry, echoServer, u.ReturnNonNilErr(err1)
 }
 

@@ -123,7 +123,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ip := config.GetString(config.API_IP, utils.GetIpAddress().String())
+	address, err := utils.GetOutboundIp()
+	if err != nil {
+		log.Fatalf("failed to get ip address: %v", err)
+	}
+	ip := config.GetString(config.API_IP, address.String())
 	url := fmt.Sprintf("http://%s:%d", ip, config.GetInt(config.API_PORT, 1323))
 	myKey, err := registry.RegisterToEtcd(url)
 	if err != nil {
