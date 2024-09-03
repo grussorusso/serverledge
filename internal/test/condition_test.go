@@ -11,7 +11,7 @@ import (
 var predicate1 = fc.Predicate{Root: fc.Condition{Type: fc.And, Find: []bool{false, false}, Sub: []fc.Condition{{Type: fc.Eq, Op: []interface{}{2, 2}, Find: []bool{false, false}}, {Type: fc.Greater, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
 var predicate2 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Find: []bool{false, false}, Sub: []fc.Condition{{Type: fc.Const, Op: []interface{}{true}, Find: []bool{false}}, {Type: fc.Smaller, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
 var predicate3 = fc.Predicate{Root: fc.Condition{Type: fc.Or, Find: []bool{false, false}, Sub: []fc.Condition{predicate1.Root, {Type: fc.Smaller, Op: []interface{}{4, 2}, Find: []bool{false, false}}}}}
-var predicate4 = fc.Predicate{Root: fc.Condition{Type: fc.Not, Find: []bool{false}, Sub: []fc.Condition{{Type: fc.Empty, Op: []interface{}{1, 2, 3, 4}, Find: []bool{false}}}}}
+var predicate4 = fc.Predicate{Root: fc.Condition{Type: fc.Not, Find: []bool{false}, Sub: []fc.Condition{{Type: fc.IsEmpty, Op: []interface{}{1, 2, 3, 4}, Find: []bool{false}}}}}
 
 func TestPredicateMarshal(t *testing.T) {
 
@@ -56,7 +56,7 @@ func TestPrintPredicate(t *testing.T) {
 	predicate3.Print()
 
 	str4 := predicate4.LogicString()
-	utils.AssertEquals(t, "!(empty input)", str4)
+	utils.AssertEquals(t, "!(IsEmpty(1))", str4)
 	predicate4.Print()
 }
 
@@ -213,4 +213,40 @@ func TestBooleanEquals(t *testing.T) {
 		utils.AssertNil(t, err)
 		utils.AssertEqualsMsg(t, ok, test.equals, fmt.Sprintf("test %d: expected %v to match %v", i+1, test.firstBoolean, test.secondBoolean))
 	}
+}
+
+func TestIsNullIsPresent(t *testing.T) {
+	tests := []struct {
+		value       interface{}
+		shouldBeNil bool
+	}{
+		{nil, true},
+		{"null", true},
+		{"", false},
+		{[]byte{}, false},
+		{0, false},
+		{false, false},
+	}
+
+	for i, test := range tests {
+		cond := fc.NewIsNullParamCondition(fc.NewValue(test.value))
+		ok, err := cond.Test(map[string]interface{}{})
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, test.shouldBeNil, ok, fmt.Sprintf("test %d: expected IsNull(%v) to be %v", i+1, test.value, test.shouldBeNil))
+
+		cond2 := fc.NewIsPresentParamCondition(fc.NewValue(test.value))
+		ok2, err2 := cond2.Test(map[string]interface{}{})
+		utils.AssertNil(t, err2)
+		utils.AssertEqualsMsg(t, !test.shouldBeNil, ok2, fmt.Sprintf("test %d: expected IsNull(%v) to be %v", i+1, test.value, !test.shouldBeNil))
+	}
+
+	cond := fc.NewIsNullParamCondition(fc.NewParam("non-existent"))
+	ok, err := cond.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertTrue(t, ok)
+
+	cond2 := fc.NewIsPresentParamCondition(fc.NewParam("non-existent"))
+	ok2, err2 := cond2.Test(map[string]interface{}{})
+	utils.AssertNil(t, err2)
+	utils.AssertFalse(t, ok2)
 }

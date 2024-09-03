@@ -27,12 +27,17 @@ const (
 	Or            CondEnum = "Or"
 	Not           CondEnum = "Not"
 	Const         CondEnum = "Const"
-	Eq            CondEnum = "Eq"        // also works for strings
-	Diff          CondEnum = "Diff"      // also works for strings
-	Greater       CondEnum = "Greater"   // also works for strings
-	Smaller       CondEnum = "Smaller"   // also works for strings
-	Empty         CondEnum = "Empty"     // for collections
+	Eq            CondEnum = "Eq"      // also works for strings
+	Diff          CondEnum = "Diff"    // also works for strings
+	Greater       CondEnum = "Greater" // also works for strings
+	Smaller       CondEnum = "Smaller" // also works for strings
+	IsEmpty       CondEnum = "IsEmpty" // for collections
+	IsNull        CondEnum = "IsNull"  // returns true for the value nil or the string "null"
+	IsPresent     CondEnum = "IsPresent"
 	IsNumeric     CondEnum = "IsNumeric" // for collections
+	IsString      CondEnum = "IsString"
+	IsBoolean     CondEnum = "IsBoolean"
+	IsTimestamp   CondEnum = "IsTimestamp"
 	StringMatches CondEnum = "StringMatches"
 )
 
@@ -105,8 +110,12 @@ func (c Condition) String() string {
 			return "? < ?"
 		}
 		return fmt.Sprintf("%v < %v", c.Op[0], c.Op[1])
-	case Empty:
-		return "empty input"
+	case IsEmpty:
+		return fmt.Sprintf("IsEmpty(%v)", c.Op[0])
+	case IsNull:
+		return fmt.Sprintf("IsNull(%v)", c.Op[0])
+	case IsPresent:
+		return fmt.Sprintf("IsPresent(%v)", c.Op[0])
 	case IsNumeric:
 		return fmt.Sprintf("IsNumeric(%v)", c.Op[0])
 	case StringMatches:
@@ -283,7 +292,7 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			fmt.Printf("condition Smaller: second operand '%v' cannot be converted to string\n", c.Op[1])
 			return false, nil
 		}
-	case Empty:
+	case IsEmpty:
 		ops, err := c.findInputs(input)
 		if err != nil {
 			return false, err
@@ -293,6 +302,20 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			return false, err
 		}
 		return len(slice) == 0, nil
+	case IsNull:
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		op1 := ops[0]
+		return op1 == "null" || op1 == nil, nil
+	case IsPresent:
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		op1 := ops[0]
+		return !(op1 == "null" || op1 == nil), nil
 	case IsNumeric:
 		isNumeric := func(s interface{}) bool {
 			_, err := function.Int{}.Convert(s)
@@ -608,9 +631,25 @@ func NewSmallerParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condit
 
 func NewEmptyCondition(collection []interface{}) Condition {
 	return Condition{
-		Type: Empty,
+		Type: IsEmpty,
 		Op:   collection,
 		Find: make([]bool, 1), // all false,
+	}
+}
+
+func NewIsNullParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsNull,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
+	}
+}
+
+func NewIsPresentParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsPresent,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
 	}
 }
 
