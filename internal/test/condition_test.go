@@ -119,3 +119,50 @@ func TestIsNumeric(t *testing.T) {
 	utils.AssertNil(t, err)
 	utils.AssertFalse(t, ok)
 }
+
+func TestStringGreaterAndSmaller(t *testing.T) {
+	// apple is not greater than banana
+	isGreater := fc.NewGreaterCondition("apple", "banana")
+	ok, err := isGreater.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+	// banana is greater than apple
+	isGreater = fc.NewGreaterCondition("banana", "apple")
+	ok, err = isGreater.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertTrue(t, ok)
+
+	// apple is smaller than banana
+	isSmaller := fc.NewSmallerCondition("apple", "banana")
+	ok, err = isSmaller.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertTrue(t, ok)
+
+	// banana is not smaller than apple
+	isSmaller = fc.NewSmallerCondition("banana", "apple")
+	ok, err = isSmaller.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+	/* Corner cases */
+
+	// banana is not greater than banana
+	isGreater = fc.NewGreaterCondition("banana", "banana")
+	ok, err = isGreater.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+	// banana is not greater than banana
+	isSmaller = fc.NewSmallerCondition("banana", "banana")
+	ok, err = isSmaller.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+	// nil is not smaller than banana
+	isSmaller = fc.NewSmallerCondition(nil, "banana")
+	ok, err = isSmaller.Test(map[string]interface{}{})
+	utils.AssertNil(t, err)
+	utils.AssertFalse(t, ok)
+
+}

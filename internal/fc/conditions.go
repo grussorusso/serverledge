@@ -27,8 +27,8 @@ const (
 	Const     CondEnum = "Const"
 	Eq        CondEnum = "Eq"        // also works for strings
 	Diff      CondEnum = "Diff"      // also works for strings
-	Greater   CondEnum = "Greater"   // TODO: make it work for strings
-	Smaller   CondEnum = "Smaller"   // TODO: make it work for strings
+	Greater   CondEnum = "Greater"   // also works for strings
+	Smaller   CondEnum = "Smaller"   // also works for strings
 	Empty     CondEnum = "Empty"     // for collections
 	IsNumeric CondEnum = "IsNumeric" // for collections
 )
@@ -115,6 +115,9 @@ func (p Predicate) Print() {
 	fmt.Println(p.LogicString())
 }
 
+// findInputs retrieves all the values from the operands.
+// If it is a Parameter, finds it in the Op slice and then appends its value to the returned slice.
+// If it is a Value, directly adds it to the returned slice
 func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, error) {
 	ops := make([]interface{}, 0)
 	if input == nil {
@@ -213,42 +216,62 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		if len(c.Op) != 2 {
 			return false, fmt.Errorf("you need exactly two numbers to check which is greater")
 		}
-		f := function.Float{}
 		ops, err := c.findInputs(input)
 		if err != nil {
 			return false, err
 		}
+		// try converting operands to float
+		f := function.Float{}
 		float1, err1 := f.Convert(ops[0])
-		if err1 != nil {
-			fmt.Printf("condition Greater: first operand '%v' cannot be converted to float64\n", c.Op[0])
-			return false, nil
-		}
 		float2, err2 := f.Convert(ops[1])
-		if err2 != nil {
-			fmt.Printf("condition Greater: second operand '%v' cannot be converted to float64\n", c.Op[1])
+		if err1 == nil && err2 == nil {
+			return float1 > float2, nil
+		}
+		// try converting operands to string
+		t := function.Text{}
+		string1, err3 := t.Convert(ops[0])
+		string2, err4 := t.Convert(ops[1])
+		if err3 == nil && err4 == nil {
+			// golang check strings with lexicographic order with the > operator
+			return string1 > string2, nil
+		}
+		if err3 != nil {
+			fmt.Printf("condition Greater: first operand '%v' cannot be converted to string\n", c.Op[0])
+			return false, nil
+		} else {
+			fmt.Printf("condition Greater: second operand '%v' cannot be converted to string\n", c.Op[1])
 			return false, nil
 		}
-		return float1 > float2, nil // TODO: make it work for strings (a string is greater than another string it comes alphabetically after than the other)
 	case Smaller:
 		if len(c.Op) != 2 {
 			return false, fmt.Errorf("you need exactly two numbers to check which is greater")
 		}
-		f := function.Float{}
 		ops, err := c.findInputs(input)
 		if err != nil {
 			return false, err
 		}
+		// try converting operands to float
+		f := function.Float{}
 		float1, err1 := f.Convert(ops[0])
-		if err1 != nil {
-			fmt.Printf("condition Smaller: first operand '%v' cannot be converted to float64\n", c.Op[0])
-			return false, nil
-		}
 		float2, err2 := f.Convert(ops[1])
-		if err2 != nil {
-			fmt.Printf("condition Smaller: second operand '%v' cannot be converted to float64\n", c.Op[1])
+		if err1 == nil && err2 == nil {
+			return float1 < float2, nil
+		}
+		// try converting operands to string
+		t := function.Text{}
+		string1, err3 := t.Convert(ops[0])
+		string2, err4 := t.Convert(ops[1])
+		if err3 == nil && err4 == nil {
+			// golang check strings with lexicographic order with the > operator
+			return string1 < string2, nil
+		}
+		if err3 != nil {
+			fmt.Printf("condition Smaller: first operand '%v' cannot be converted to string\n", c.Op[0])
+			return false, nil
+		} else {
+			fmt.Printf("condition Smaller: second operand '%v' cannot be converted to string\n", c.Op[1])
 			return false, nil
 		}
-		return float1 < float2, nil // TODO: make it work for strings (a string is smaller than another string it comes alphabetically before than the other)
 	case Empty:
 		ops, err := c.findInputs(input)
 		if err != nil {
@@ -447,11 +470,11 @@ func NewDiffParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition
 }
 
 func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
-	b := function.Float{}
+	b := function.Text{}
 	err := b.TypeCheck(val1)
 	err2 := b.TypeCheck(val2)
 	if err != nil || err2 != nil {
-		fmt.Printf("cannot convert values to float: %v, %v\n", val1, val2)
+		fmt.Printf("cannot convert values to string: %v, %v\n", val1, val2)
 		return NewConstCondition(false)
 	}
 	return Condition{
@@ -477,11 +500,11 @@ func NewGreaterParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condit
 }
 
 func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
-	b := function.Float{}
+	b := function.Text{}
 	err := b.TypeCheck(val1)
 	err2 := b.TypeCheck(val2)
 	if err != nil || err2 != nil {
-		fmt.Printf("cannot convert values to float: %v, %v\n", val1, val2)
+		fmt.Printf("cannot convert values to string: %v, %v\n", val1, val2)
 		return NewConstCondition(false)
 	}
 	return Condition{
