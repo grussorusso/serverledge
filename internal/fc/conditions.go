@@ -6,6 +6,7 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Predicate struct {
@@ -121,6 +122,8 @@ func (c Condition) String() string {
 		return fmt.Sprintf("IsString(%v)", c.Op[0])
 	case IsBoolean:
 		return fmt.Sprintf("IsBoolean(%v)", c.Op[0])
+	case IsTimestamp:
+		return fmt.Sprintf("IsTimestamp(%v)", c.Op[0])
 	case StringMatches:
 		return fmt.Sprintf("StringMatches(%s,%s)", c.Op[0], c.Op[1])
 	default:
@@ -344,6 +347,20 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		}
 		_, ok := ops[0].(bool)
 		return ok, nil
+	case IsTimestamp:
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		maybeTimestamp, ok := ops[0].(string)
+		if !ok {
+			return false, nil
+		}
+		_, errTimestamp := time.Parse(time.RFC3339, maybeTimestamp)
+		if errTimestamp != nil {
+			return false, nil
+		}
+		return true, nil
 	case StringMatches:
 		ops, err := c.findInputs(input)
 		inputString, okString := ops[0].(string)
@@ -681,6 +698,14 @@ func NewIsStringParamCondition(param1 *ParamOrValue) Condition {
 func NewIsBooleanParamCondition(param1 *ParamOrValue) Condition {
 	return Condition{
 		Type: IsBoolean,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
+	}
+}
+
+func NewIsTimestampParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsTimestamp,
 		Find: []bool{param1.IsParam},
 		Op:   []interface{}{param1.GetOperand()},
 	}

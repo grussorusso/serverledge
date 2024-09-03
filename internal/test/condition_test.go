@@ -279,3 +279,29 @@ func TestIsBoolean(t *testing.T) {
 		utils.AssertEqualsMsg(t, ok, test.shouldBeBool, fmt.Sprintf("test %d: expected IsBool(%v) to be %v", i+1, test.paramOrValue, test.shouldBeBool))
 	}
 }
+
+func TestIsTimestamp(t *testing.T) {
+	tests := []struct {
+		paramOrValue      *fc.ParamOrValue
+		shouldBeTimestamp bool
+	}{
+		{fc.NewParam("timestamp"), true},
+		{fc.NewValue("2024-09-03T14:07:42Z"), true},
+		{fc.NewParam("not_a_timestamp"), false},
+		{fc.NewParam("not_a_timestamp2"), false},
+		{fc.NewParam("invalid_timestamp"), false},
+		{fc.NewParam("not-existent-field"), false},
+	}
+	testMap := make(map[string]interface{})
+	testMap["timestamp"] = "2024-09-03T14:07:42Z"
+	testMap["invalid_timestamp"] = "2024-09-03 14:07:42"
+	testMap["not_a_timestamp"] = "random_string"
+	testMap["not_a_timestamp2"] = 123
+
+	for i, test := range tests {
+		cond := fc.NewIsTimestampParamCondition(test.paramOrValue)
+		ok, err := cond.Test(testMap)
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, ok, test.shouldBeTimestamp, fmt.Sprintf("test %d: expected IsTimestamp(%v) to be %v", i+1, test.paramOrValue.GetOperand(), test.shouldBeTimestamp))
+	}
+}
