@@ -5,7 +5,6 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/utils"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -118,6 +117,8 @@ func (c Condition) String() string {
 		return fmt.Sprintf("IsPresent(%v)", c.Op[0])
 	case IsNumeric:
 		return fmt.Sprintf("IsNumeric(%v)", c.Op[0])
+	case IsString:
+		return fmt.Sprintf("IsString(%v)", c.Op[0])
 	case StringMatches:
 		return fmt.Sprintf("StringMatches(%s,%s)", c.Op[0], c.Op[1])
 	default:
@@ -317,24 +318,23 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		op1 := ops[0]
 		return !(op1 == "null" || op1 == nil), nil
 	case IsNumeric:
-		isNumeric := func(s interface{}) bool {
-			_, err := function.Int{}.Convert(s)
-			if err == nil {
-				return true
-			}
-			numericStringMaybe, ok := s.(string)
-			if !ok {
-				return false
-			}
-			_, err = strconv.ParseFloat(numericStringMaybe, 64)
-			return err == nil
-		}
-
 		ops, err := c.findInputs(input)
 		if err != nil {
 			return false, err
 		}
-		return isNumeric(ops[0]), nil
+		switch ops[0].(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+			return true, nil
+		default:
+			return false, nil
+		}
+	case IsString:
+		ops, err := c.findInputs(input)
+		if err != nil {
+			return false, err
+		}
+		_, ok := ops[0].(string)
+		return ok, nil
 	case StringMatches:
 		ops, err := c.findInputs(input)
 		inputString, okString := ops[0].(string)
@@ -656,6 +656,14 @@ func NewIsPresentParamCondition(param1 *ParamOrValue) Condition {
 func NewIsNumericParamCondition(param1 *ParamOrValue) Condition {
 	return Condition{
 		Type: IsNumeric,
+		Find: []bool{param1.IsParam},
+		Op:   []interface{}{param1.GetOperand()},
+	}
+}
+
+func NewIsStringParamCondition(param1 *ParamOrValue) Condition {
+	return Condition{
+		Type: IsString,
 		Find: []bool{param1.IsParam},
 		Op:   []interface{}{param1.GetOperand()},
 	}

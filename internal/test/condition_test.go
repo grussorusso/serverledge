@@ -93,31 +93,31 @@ func TestBuilder(t *testing.T) {
 }
 
 func TestIsNumeric(t *testing.T) {
-	isNumeric := fc.NewIsNumericParamCondition(fc.NewValue("123"))
-	ok, err := isNumeric.Test(map[string]interface{}{})
-	utils.AssertNil(t, err)
-	utils.AssertTrue(t, ok)
 
-	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
+	tests := []struct {
+		parameter       string
+		shouldBeNumeric bool
+	}{
+		{"name", false},
+		{"age", true},
+		{"height", true},
+		{"phone", false},
+		{"isStudent", false},
+		{"nonExistent", false},
+	}
 	testMap := make(map[string]interface{})
-	testMap["foo"] = "123"
-	ok, err = isNumeric.Test(testMap)
-	utils.AssertNil(t, err)
-	utils.AssertTrue(t, ok)
+	testMap["name"] = "John"
+	testMap["age"] = 33
+	testMap["height"] = 173.3
+	testMap["phone"] = "3348176718"
+	testMap["isStudent"] = false
 
-	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
-	testMap = make(map[string]interface{})
-	testMap["foo"] = "bar"
-	ok, err = isNumeric.Test(testMap)
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
-
-	isNumeric = fc.NewIsNumericParamCondition(fc.NewParam("foo"))
-	testMap = make(map[string]interface{})
-	ok, err = isNumeric.Test(testMap)
-	// foo is not specified, so ok should be false. No errors should be expected
-	utils.AssertNil(t, err)
-	utils.AssertFalse(t, ok)
+	for i, test := range tests {
+		cond := fc.NewIsNumericParamCondition(fc.NewParam(test.parameter))
+		ok, err := cond.Test(testMap)
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, test.shouldBeNumeric, ok, fmt.Sprintf("test %d: expected IsString(%v) to be %v", i+1, test.parameter, test.shouldBeNumeric))
+	}
 }
 
 func TestStringGreaterAndSmaller(t *testing.T) {
@@ -249,4 +249,27 @@ func TestIsNullIsPresent(t *testing.T) {
 	ok2, err2 := cond2.Test(map[string]interface{}{})
 	utils.AssertNil(t, err2)
 	utils.AssertFalse(t, ok2)
+}
+
+func TestIsString(t *testing.T) {
+	tests := []struct {
+		parameter      string
+		shouldBeString bool
+	}{
+		{"name", true},
+		{"age", false},
+		{"isStudent", false},
+		{"nonExistent", false},
+	}
+	testMap := make(map[string]interface{})
+	testMap["name"] = "John"
+	testMap["age"] = 33
+	testMap["isStudent"] = false
+
+	for i, test := range tests {
+		cond := fc.NewIsStringParamCondition(fc.NewParam(test.parameter))
+		ok, err := cond.Test(testMap)
+		utils.AssertNil(t, err)
+		utils.AssertEqualsMsg(t, ok, test.shouldBeString, fmt.Sprintf("test %d: expected IsString(%v) to be %v", i+1, test.parameter, test.shouldBeString))
+	}
 }
