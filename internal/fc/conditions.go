@@ -237,6 +237,9 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		string1, err3 := t.Convert(ops[0])
 		string2, err4 := t.Convert(ops[1])
 		if err3 == nil && err4 == nil {
+			if string1 == "" || string2 == "" {
+				return false, nil
+			}
 			// golang check strings with lexicographic order with the > operator
 			return string1 > string2, nil
 		}
@@ -268,6 +271,9 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 		string2, err4 := t.Convert(ops[1])
 		if err3 == nil && err4 == nil {
 			// golang check strings with lexicographic order with the > operator
+			if string1 == "" || string2 == "" {
+				return false, nil
+			}
 			return string1 < string2, nil
 		}
 		if err3 != nil {
@@ -517,18 +523,30 @@ func NewDiffParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition
 }
 
 func NewGreaterCondition(val1 interface{}, val2 interface{}) Condition {
+	f := function.Float{}
+	err1 := f.TypeCheck(val1)
+	err2 := f.TypeCheck(val2)
+	if err1 == nil && err2 == nil {
+		return Condition{
+			Type: Greater,
+			Op:   []interface{}{val1, val2},
+			Find: make([]bool, 2), // all false
+		}
+	}
+	// let's try with strings
 	b := function.Text{}
-	err := b.TypeCheck(val1)
-	err2 := b.TypeCheck(val2)
-	if err != nil || err2 != nil {
-		fmt.Printf("cannot convert values to string: %v, %v\n", val1, val2)
-		return NewConstCondition(false)
+	err3 := b.TypeCheck(val1)
+	err4 := b.TypeCheck(val2)
+	if err3 == nil || err4 == nil {
+		return Condition{
+			Type: Greater,
+			Op:   []interface{}{val1, val2},
+			Find: make([]bool, 2), // all false
+		}
+
 	}
-	return Condition{
-		Type: Greater,
-		Op:   []interface{}{val1, val2},
-		Find: make([]bool, 2), // all false
-	}
+	fmt.Printf("cannot convert values neighter to float nor to string: %v, %v\n", val1, val2)
+	return NewConstCondition(false)
 }
 
 func NewGreaterParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
@@ -547,18 +565,30 @@ func NewGreaterParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condit
 }
 
 func NewSmallerCondition(val1 interface{}, val2 interface{}) Condition {
+	f := function.Float{}
+	err1 := f.TypeCheck(val1)
+	err2 := f.TypeCheck(val2)
+	if err1 == nil && err2 == nil {
+		return Condition{
+			Type: Smaller,
+			Op:   []interface{}{val1, val2},
+			Find: make([]bool, 2), // all false
+		}
+	}
+	// let's try with strings
 	b := function.Text{}
-	err := b.TypeCheck(val1)
-	err2 := b.TypeCheck(val2)
-	if err != nil || err2 != nil {
-		fmt.Printf("cannot convert values to string: %v, %v\n", val1, val2)
-		return NewConstCondition(false)
+	err3 := b.TypeCheck(val1)
+	err4 := b.TypeCheck(val2)
+	if err3 == nil || err4 == nil {
+		return Condition{
+			Type: Smaller,
+			Op:   []interface{}{val1, val2},
+			Find: make([]bool, 2), // all false
+		}
+
 	}
-	return Condition{
-		Type: Smaller,
-		Op:   []interface{}{val1, val2},
-		Find: make([]bool, 2), // all false
-	}
+	fmt.Printf("cannot convert values neighter to float nor to string: %v, %v\n", val1, val2)
+	return NewConstCondition(false)
 }
 
 func NewSmallerParamCondition(param1 *ParamOrValue, param2 *ParamOrValue) Condition {
