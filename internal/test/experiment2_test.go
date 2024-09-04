@@ -67,7 +67,8 @@ func createComplexComposition(t *testing.T) (*fc.FunctionComposition, error) {
 			Build()).
 		EndChoiceAndBuild()
 
-	composition := fc.NewFC("complex", *dag, []*function.Function{fnWordCount, fnSummarize, fnGrep}, true)
-	createCompositionApiTest(t, &composition, "127.0.0.1", 1323)
-	return &composition, nil
+	composition, err := fc.NewFC("complex", *dag, []*function.Function{fnWordCount, fnSummarize, fnGrep}, true)
+	utils.AssertNil(t, err)
+	createCompositionApiTest(t, composition, "127.0.0.1", 1323)
+	return composition, nil
 }

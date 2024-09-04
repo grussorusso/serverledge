@@ -29,8 +29,7 @@ func FromASL(name string, aslSrc []byte) (*FunctionComposition, error) {
 		functions = append(functions, funcObj)
 	}
 
-	comp := NewFC(stateMachine.Name, *dag, functions, true)
-	return &comp, nil
+	return NewFC(stateMachine.Name, *dag, functions, true)
 }
 
 /* ============== Build from ASL States =================== */

@@ -389,9 +389,9 @@ func extractNodeInfo(dag *Dag, node DagNode, group int, infos []*DagNodeInfo) []
 			}
 		}
 		return infos
-	case *SimpleNode:
-		simpleNode, _ := dag.Find(n.GetNext()[0])
-		toAdd := extractNodeInfo(dag, simpleNode, group, infos)
+	case *SimpleNode, *PassNode, *WaitNode, *SucceedNode, *FailNode:
+		dagNode, _ := dag.Find(n.GetNext()[0])
+		toAdd := extractNodeInfo(dag, dagNode, group, infos)
 		for _, add := range toAdd {
 			if !isNodeInfoPresent(add.Id, infos) {
 				infos = append(infos, add)

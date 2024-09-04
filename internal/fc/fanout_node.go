@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+// TODO: when a branch has a fail node, all other branches should terminate immediately and the FanOut, FanIn and all nodes in the branches should be considered failed
 // FanOutNode is a DagNode that receives one input and sends multiple result, produced in parallel
 type FanOutNode struct {
 	Id       DagNodeId

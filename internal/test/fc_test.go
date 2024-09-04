@@ -22,7 +22,8 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 	u.AssertNilMsg(t, err, "failed to initialize function")
 	dag, err := fc.CreateSequenceDag(fn, fn, fn)
 	u.AssertNil(t, err)
-	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
+	composition, err := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
+	u.AssertNil(t, err)
 
 	marshaledFunc, errMarshal := json.Marshal(composition)
 	u.AssertNilMsg(t, errMarshal, "failed to marshal composition")
@@ -30,7 +31,7 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 	errUnmarshal := json.Unmarshal(marshaledFunc, &retrieved)
 	u.AssertNilMsg(t, errUnmarshal, "failed composition unmarshal")
 
-	u.AssertTrueMsg(t, retrieved.Equals(&composition), fmt.Sprintf("retrieved composition is not equal to initial composition. Retrieved : %s, Expected %s ", retrieved.String(), composition.String()))
+	u.AssertTrueMsg(t, retrieved.Equals(composition), fmt.Sprintf("retrieved composition is not equal to initial composition. Retrieved : %s, Expected %s ", retrieved.String(), composition.String()))
 }
 
 func TestUnmarshalFunctionCompositionResult(t *testing.T) {
@@ -69,7 +70,8 @@ func TestComposeFC(t *testing.T) {
 	dag, err := fc.CreateSequenceDag(fArr...)
 	u.AssertNil(t, err)
 
-	fcomp := fc.NewFC(fcName, *dag, fArr, true)
+	fcomp, err := fc.NewFC(fcName, *dag, fArr, true)
+	u.AssertNil(t, err)
 	err2 := fcomp.SaveToEtcd()
 
 	u.AssertNil(t, err2)
@@ -112,7 +114,8 @@ func TestInvokeFC(t *testing.T) {
 	u.AssertNil(t, err)
 	dag, errDag := fc.CreateSequenceDag(fArr...)
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC(fcName, *dag, fArr, true)
+	fcomp, err := fc.NewFC(fcName, *dag, fArr, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -120,7 +123,7 @@ func TestInvokeFC(t *testing.T) {
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = 0
 
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
@@ -168,7 +171,8 @@ func TestInvokeChoiceFC(t *testing.T) {
 		EndChoiceAndBuild()
 
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incJs, incPy, doublePy}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{incJs, incPy, doublePy}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -179,7 +183,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = input
 
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 	// checking the result, should be input + 1
@@ -221,14 +225,15 @@ func TestInvokeFC_DifferentFunctions(t *testing.T) {
 
 	u.AssertNil(t, errDag)
 
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{fDouble, fInc}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 2
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	if err2 != nil {
 		log.Printf("%v\n", err2)
@@ -274,14 +279,15 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	u.AssertNil(t, errDag)
 	dag.Print()
 
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 1
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 
@@ -316,7 +322,8 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 	dag, errDag := builder.Build()
 	u.AssertNil(t, errDag)
 
-	fcomp := fc.NewFC(fcName, *dag, fArr, true)
+	fcomp, err := fc.NewFC(fcName, *dag, fArr, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -339,7 +346,7 @@ func TestInvokeFC_Concurrent(t *testing.T) {
 			params := make(map[string]interface{})
 			params[f.Signature.GetInputs()[0].Name] = i
 
-			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d", i), &fcomp, params)
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d", i), fcomp, params)
 			// wait until all goroutines are ready
 			<-start
 			fmt.Printf("goroutine %d started invoking\n", i)
@@ -411,28 +418,28 @@ func TestInvokeFC_Complex_Concurrent(t *testing.T) {
 		// INVOKE - we call the function composition concurrently m times
 		go func(i int, resultChan chan interface{}, errChan chan error, start chan int) {
 			params := make(map[string]interface{})
-			go_name := ""
-			out_name := ""
+			goName := ""
+			outName := ""
 			if i%3 == 0 { // word_count
 				params["InputText"] = "Word counting is a useful technique for analyzing text data. It helps in various natural language processing tasks. In this example, we are testing the wordCount function in JavaScript. It should accurately count the number of words in this text. Counting words can be a fundamental step in text analysis."
 				params["Task"] = true
-				go_name = "word_count"
-				out_name = "NumberOfWords"
+				goName = "word_count"
+				outName = "NumberOfWords"
 			} else if i%3 == 1 { // summarize
 				params["InputText"] = "The Solar System consists of the Sun and all the celestial objects bound to it by gravity, including the eight major planets and their moons, asteroids, comets, and more. The Sun is a star located at the center of the Solar System. It provides light, heat, and energy, making life possible on Earth.\n\nThe eight major planets in our Solar System are Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune. Each planet has unique characteristics, and some have moons of their own. For example, Earth has one natural satellite, the Moon.\n\nAsteroids are rocky objects that orbit the Sun, mainly found in the asteroid belt between the orbits of Mars and Jupiter. Comets are icy bodies that develop tails when they approach the Sun.\n\nStudying the Solar System provides insights into the formation and evolution of celestial bodies, as well as the potential for extraterrestrial life. Scientists use various tools and telescopes to explore and learn more about the mysteries of our Solar System.\n"
 				params["Task"] = false
-				go_name = "summarize"
-				out_name = "Summary"
+				goName = "summarize"
+				outName = "Summary"
 			} else { // 2 parallel grep
 				params["InputText"] = []string{
 					"This is an example text for testing the grep function.\nYou can use the grep function to search for specific words or patterns in text.\nThe function is a powerful tool for text processing.\n",
 					"It allows you to filter and extract lines that match a given pattern.\nYou can customize the pattern using regular expressions.\nFeel free to test the grep function with different patterns and texts.",
 				}
-				go_name = "grep"
-				out_name = "Rows"
+				goName = "grep"
+				outName = "Rows"
 			}
 
-			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d_branch_%s", i, go_name), fcomp, params)
+			request := fc.NewCompositionRequest(fmt.Sprintf("goroutine_%d_branch_%s", i, goName), fcomp, params)
 			// wait until all goroutines are ready
 			<-start
 			fmt.Printf("goroutine %d started invoking\n", i)
@@ -440,8 +447,8 @@ func TestInvokeFC_Complex_Concurrent(t *testing.T) {
 			resultMap, err2 := fcomp.Invoke(request)
 			errChan <- err2
 			// return result
-			output := resultMap.Result[out_name]
-			fmt.Printf("goroutine %d branch %s - result %s: %v\n", i, go_name, out_name, output)
+			output := resultMap.Result[outName]
+			fmt.Printf("goroutine %d branch %s - result %s: %v\n", i, goName, outName, output)
 			resultChan <- output
 		}(i, resultChan, errChan, start)
 	}
@@ -498,14 +505,15 @@ func TestInvokeFC_DifferentBranches(t *testing.T) {
 	u.AssertNil(t, errDag)
 	dag.Print()
 
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{f}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{f}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[f.Signature.GetInputs()[0].Name] = 1
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2) // we should check that is a timeout error
 
@@ -544,14 +552,15 @@ func TestInvokeFC_ScatterFanOut(t *testing.T) {
 	u.AssertNil(t, errDag)
 	dag.Print()
 
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{fDouble}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
 	// INVOKE - we call the function composition
 	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = []int{1, 2, 3}
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 
@@ -608,7 +617,8 @@ func TestInvokeSieveChoice(t *testing.T) {
 		EndChoiceAndBuild()
 
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{isPrimePy, sieveJs, incPy}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{isPrimePy, sieveJs, incPy}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -616,7 +626,7 @@ func TestInvokeSieveChoice(t *testing.T) {
 	params := make(map[string]interface{})
 	params[isPrimePy.Signature.GetInputs()[0].Name] = input
 
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
 	u.AssertNil(t, err2)
 
@@ -655,7 +665,8 @@ func TestInvokeCompositionError(t *testing.T) {
 		NextBranch(fc.CreateSequenceDag(incPy)).
 		EndChoiceAndBuild()
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC(fcName, *dag, []*function.Function{incPy}, true)
+	fcomp, err := fc.NewFC(fcName, *dag, []*function.Function{incPy}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -663,7 +674,7 @@ func TestInvokeCompositionError(t *testing.T) {
 	params := make(map[string]interface{})
 	params[incPy.Signature.GetInputs()[0].Name] = 1
 
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	_, err2 := fcomp.Invoke(request)
 	u.AssertNonNil(t, err2)
 
@@ -684,7 +695,8 @@ func TestInvokeCompositionFailAndSucceed(t *testing.T) {
 		NextBranch(fc.NewDagBuilder().AddFailNodeAndBuild("FakeError", "This should be an error")).
 		EndChoiceAndBuild()
 	u.AssertNil(t, errDag)
-	fcomp := fc.NewFC("fail_succeed", *dag, []*function.Function{}, true)
+	fcomp, err := fc.NewFC("fail_succeed", *dag, []*function.Function{}, true)
+	u.AssertNil(t, err)
 	err1 := fcomp.SaveToEtcd()
 	u.AssertNil(t, err1)
 
@@ -694,7 +706,7 @@ func TestInvokeCompositionFailAndSucceed(t *testing.T) {
 	params := make(map[string]interface{})
 	params["value"] = 1
 
-	request := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params)
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, errInvoke1 := fcomp.Invoke(request)
 	u.AssertNilMsg(t, errInvoke1, "error while invoking the branch (succeed)")
 
@@ -706,7 +718,7 @@ func TestInvokeCompositionFailAndSucceed(t *testing.T) {
 	params2 := make(map[string]interface{})
 	params2["value"] = 2
 
-	request2 := fc.NewCompositionRequest(shortuuid.New(), &fcomp, params2)
+	request2 := fc.NewCompositionRequest(shortuuid.New(), fcomp, params2)
 	resultMap2, errInvoke2 := fcomp.Invoke(request2)
 	u.AssertNilMsg(t, errInvoke2, "error while invoking the branch (fail)")
 
@@ -716,4 +728,85 @@ func TestInvokeCompositionFailAndSucceed(t *testing.T) {
 
 	u.AssertTrueMsg(t, ok, "cause value is not a string")
 	u.AssertEquals(t, "This should be an error", causeStr)
+}
+
+func TestInvokeCompositionPassDoNothing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	incPy, errDp := InitializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
+	dag, errDag := fc.NewDagBuilder().
+		AddSimpleNode(incPy).
+		AddPassNode(""). // this should not do nothing
+		AddSimpleNode(incPy).
+		Build()
+	u.AssertNil(t, errDag)
+
+	fcomp, err := fc.NewFC("pass_do_nothing", *dag, []*function.Function{incPy}, true)
+	u.AssertNil(t, err)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	params := make(map[string]interface{})
+	params["input"] = 1
+
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
+	resultMap, errInvoke1 := fcomp.Invoke(request)
+	u.AssertNilMsg(t, errInvoke1, "error while invoking the composition with pass node")
+
+	result, err := resultMap.GetIntSingleResult()
+	u.AssertNilMsg(t, err, "Result not found")
+	u.AssertEquals(t, 3, result)
+}
+
+func TestInvokeCompositionWait(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	incPy, errDp := InitializePyFunction("inc", "handler", function.NewSignature().
+		AddInput("input", function.Int{}).
+		AddOutput("result", function.Int{}).Build())
+	u.AssertNil(t, errDp)
+	dag, errDag := fc.NewDagBuilder().
+		AddSimpleNode(incPy).
+		AddWaitNode(2). // this should not do nothing
+		AddSimpleNode(incPy).
+		Build()
+	u.AssertNil(t, errDag)
+
+	fcomp, err := fc.NewFC("pass_do_nothing", *dag, []*function.Function{incPy}, true)
+	u.AssertNil(t, err)
+	err1 := fcomp.SaveToEtcd()
+	u.AssertNil(t, err1)
+
+	params := make(map[string]interface{})
+	params["input"] = 1
+
+	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
+	resultMap, errInvoke1 := fcomp.Invoke(request)
+	u.AssertNilMsg(t, errInvoke1, "error while invoking the composition with pass node")
+
+	result, err := resultMap.GetIntSingleResult()
+	u.AssertNilMsg(t, err, "Result not found")
+	u.AssertEquals(t, 3, result)
+
+	// find wait node
+	var waitNode *fc.WaitNode = nil
+	ok := false
+	for _, nodeInDag := range dag.Nodes {
+		waitNode, ok = nodeInDag.(*fc.WaitNode)
+		if ok {
+			break
+		}
+	}
+	u.AssertTrueMsg(t, ok, "failed to find wait node")
+
+	respTime, ok := resultMap.Reports.Get(fc.CreateExecutionReportId(waitNode))
+	u.AssertTrueMsg(t, ok, "failed to find execution report for wait node")
+	u.AssertTrueMsg(t, respTime.Duration > 2.0, fmt.Sprintf("wait node has waited the wrong amount of time %f, expected at least 2.0 seconds", respTime.Duration))
 }

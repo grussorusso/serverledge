@@ -37,8 +37,10 @@ func CreateNoopCompositionSequence(t *testing.T, fcName string, host string, por
 	}
 
 	dag, err := fc.CreateSequenceDag(fArr...)
-	composition := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
-	createCompositionApiTest(t, &composition, host, port)
+	utils.AssertNil(t, err)
+	composition, err := fc.NewFC(fcName, *dag, []*function.Function{fn}, true)
+	utils.AssertNil(t, err)
+	createCompositionApiTest(t, composition, host, port)
 
-	return &composition, nil
+	return composition, nil
 }

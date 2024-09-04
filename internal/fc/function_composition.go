@@ -32,7 +32,7 @@ func CreateExecutionReportId(dagNode DagNode) ExecutionReportId {
 type CompositionExecutionReport struct {
 	Result       map[string]interface{}
 	Reports      *hashmap.Map[ExecutionReportId, *function.ExecutionReport]
-	ResponseTime float64   // time waited by the user to get the output of the entire composition
+	ResponseTime float64   // time waited by the user to get the output of the entire composition (in seconds)
 	Progress     *Progress `json:"-"` // skipped in Json marshaling
 }
 
@@ -68,7 +68,7 @@ func (cer *CompositionExecutionReport) GetAllResults() string {
 }
 
 // NewFC instantiates a new FunctionComposition with a name and a corresponding dag. The functions parameter can contain duplicate functions (with the same name)
-func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDeletion bool) FunctionComposition {
+func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDeletion bool) (*FunctionComposition, error) {
 	functionMap := make(map[string]*function.Function)
 	if functions != nil {
 		for _, f := range functions {
@@ -77,12 +77,21 @@ func NewFC(name string, dag Dag, functions []*function.Function, removeFnOnDelet
 		}
 	}
 
-	return FunctionComposition{
+	// if not all unique functions are present inside the functions array, we return an error
+	definedFunctions := dag.GetUniqueDagFunctions()
+	for _, f := range definedFunctions {
+		_, ok2 := functionMap[f]
+		if !ok2 {
+			return nil, fmt.Errorf("the function %s is not included in the FunctionComposition functions parameter, but it must be registered to Serverledge", f)
+		}
+	}
+
+	return &FunctionComposition{
 		Name:               name,
 		Functions:          functionMap,
 		Workflow:           dag,
 		RemoveFnOnDeletion: removeFnOnDeletion,
-	}
+	}, nil
 }
 
 func (fc *FunctionComposition) getEtcdKey() string {

@@ -97,7 +97,7 @@ func VisitDag(dag *Dag, nodeId DagNodeId, nodes []DagNode, excludeEnd bool) []Da
 			}
 		}
 		return nodes
-	case *SimpleNode:
+	case *SimpleNode, *PassNode, *WaitNode, *SucceedNode, *FailNode:
 		toAdd := VisitDag(dag, n.GetNext()[0], nodes, excludeEnd)
 		for _, add := range toAdd {
 			if !isDagNodePresent(add, nodes) {
@@ -645,10 +645,14 @@ func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
 			shouldContinue, err = dag.executeStart(progress, node, r)
 		case *FanOutNode:
 			shouldContinue, err = dag.executeFanOut(progress, node, r)
+		case *PassNode:
+			shouldContinue, err = commonExec(dag, progress, node, r)
+		case *WaitNode:
+			shouldContinue, err = commonExec(dag, progress, node, r)
 		case *FailNode:
-			shouldContinue, err = dag.executeFailNode(progress, node, r)
+			shouldContinue, err = dag.executeFailNode(progress, node, r) // TODO: use commonExec
 		case *SucceedNode:
-			shouldContinue, err = dag.executeSucceedNode(progress, node, r)
+			shouldContinue, err = dag.executeSucceedNode(progress, node, r) // TODO: use commonExec
 		case *EndNode:
 			shouldContinue, err = dag.executeEnd(progress, node, r)
 		}
@@ -726,22 +730,7 @@ func (dag *Dag) MarshalJSON() ([]byte, error) {
 
 	// Marshal the interface and store it as concrete node value in the map
 	for nodeId, node := range dag.Nodes {
-		switch concreteNode := node.(type) {
-		case *StartNode:
-			nodes[nodeId] = concreteNode
-		case *EndNode:
-			nodes[nodeId] = concreteNode
-		case *SimpleNode:
-			nodes[nodeId] = concreteNode
-		case *ChoiceNode:
-			nodes[nodeId] = concreteNode
-		case *FanOutNode:
-			nodes[nodeId] = concreteNode
-		case *FanInNode:
-			nodes[nodeId] = concreteNode
-		default:
-			return nil, fmt.Errorf("unsupported Simpatica type")
-		}
+		nodes[nodeId] = node
 	}
 	data["Nodes"] = nodes
 

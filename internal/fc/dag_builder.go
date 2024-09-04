@@ -579,6 +579,73 @@ func (b *DagBuilder) AddSucceedNodeAndBuild(message string) (*Dag, error) {
 	return b.Build()
 }
 
+func (b *DagBuilder) AddPassNode(result string) *DagBuilder {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		fmt.Printf("AddSimpleNode skipped, because of %d error(s) in dagBuilder\n", nErrors)
+		return b
+	}
+
+	passNode := NewPassNode(result)
+	passNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(passNode)
+	err := b.dag.chain(b.prevNode, passNode)
+	if err != nil {
+		b.appendError(err)
+		return b
+	}
+
+	b.prevNode = passNode
+	return b
+}
+
+func (b *DagBuilder) AddWaitNode(seconds int) *DagBuilder {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		fmt.Printf("AddSimpleNode skipped, because of %d error(s) in dagBuilder\n", nErrors)
+		return b
+	}
+
+	passNode := NewWaitNode(seconds)
+	passNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(passNode)
+	err := b.dag.chain(b.prevNode, passNode)
+	if err != nil {
+		b.appendError(err)
+		return b
+	}
+
+	b.prevNode = passNode
+	return b
+}
+
+func (b *DagBuilder) AddWaitNodeWithTimestamp(timestampRFC3339 string) *DagBuilder {
+	nErrors := len(b.errors)
+	if nErrors > 0 {
+		fmt.Printf("AddSimpleNode skipped, because of %d error(s) in dagBuilder\n", nErrors)
+		return b
+	}
+	timestamp, ok := parseRFC3339(timestampRFC3339)
+	if !ok {
+		b.appendError(fmt.Errorf("failed to parse timestamp RFC3339 from string %s", timestampRFC3339))
+		return b
+	}
+	passNode := NewWaitNodeFromTimestamp(timestamp)
+	passNode.setBranchId(b.BranchNumber)
+
+	b.dag.addNode(passNode)
+	err := b.dag.chain(b.prevNode, passNode)
+	if err != nil {
+		b.appendError(err)
+		return b
+	}
+
+	b.prevNode = passNode
+	return b
+}
+
 // Build ends the single branch with an EndNode. If there is more than one branch, it panics!
 func (b *DagBuilder) Build() (*Dag, error) {
 	switch b.prevNode.(type) {
