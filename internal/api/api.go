@@ -74,10 +74,12 @@ func InvokeFunction(c echo.Context) error {
 	r.Ctx = context.WithValue(context.Background(), "ReqId", reqId)
 
 	// Tracing
-	_, span := telemetry.DefaultTracer.Start(r.Ctx, "invocation")
-	span.SetAttributes(attribute.String("function", r.Fun.Name))
-	//span.AddEvent("Acquiring lock")
-	defer span.End()
+	if telemetry.DefaultTracer != nil {
+		ctx, span := telemetry.DefaultTracer.Start(r.Ctx, "invocation")
+		r.Ctx = ctx
+		span.SetAttributes(attribute.String("function", r.Fun.Name))
+		defer span.End()
+	}
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)

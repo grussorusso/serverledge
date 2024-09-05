@@ -10,6 +10,8 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/grussorusso/serverledge/internal/telemetry"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grussorusso/serverledge/internal/config"
 
@@ -84,12 +86,20 @@ func SubmitRequest(r *function.Request) error {
 		decisionChannel: make(chan schedDecision, 1)}
 	requests <- &schedRequest
 
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Scheduling start")
+	}
+
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
 		return fmt.Errorf("could not schedule the request")
 	}
 	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Scheduling complete")
+	}
 
 	var err error
 	if schedDecision.action == DROP {
@@ -143,6 +153,9 @@ func SubmitAsyncRequest(r *function.Request) {
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Container init start")
+	}
 	newContainer, err := node.NewContainer(r.Fun)
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return false
@@ -150,6 +163,9 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 		log.Printf("Cold start failed: %v\n", err)
 		return false
 	} else {
+		if telemetry.DefaultTracer != nil {
+			trace.SpanFromContext(r.Ctx).AddEvent("Container initialized")
+		}
 		execLocally(r, newContainer, false)
 		return true
 	}
