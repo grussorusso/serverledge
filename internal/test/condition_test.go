@@ -194,6 +194,33 @@ func TestBooleanEquals(t *testing.T) {
 	}
 }
 
+func TestNumberEquals(t *testing.T) {
+	// all these numbers should be equals between them
+	numbers := []interface{}{
+		1,
+		int8(1),
+		int16(1),
+		int32(1),
+		int64(1),
+		uint8(1),
+		uint16(1),
+		uint32(1),
+		uint64(1),
+		float32(1),
+		float64(1),
+	}
+	i := 0
+	for _, num1 := range numbers {
+		for _, num2 := range numbers {
+			i++
+			cond := fc.NewEqParamCondition(fc.NewValue(num1), fc.NewValue(num2))
+			ok, err := cond.Test(map[string]interface{}{})
+			utils.AssertNil(t, err)
+			utils.AssertTrueMsg(t, ok, fmt.Sprintf("test %d: expected %T to match %T", i, num1, num2))
+		}
+	}
+}
+
 func TestTimestampEqualsSmallerGreater(t *testing.T) {
 	//conditions := []string{
 	//	"eq",

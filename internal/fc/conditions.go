@@ -227,6 +227,19 @@ func (c Condition) Test(input map[string]interface{}) (bool, error) {
 			}
 			return true, nil
 		}
+		firstNum, isNumeric := parseFloat(ops[0])
+		if isNumeric {
+			for i := 1; i < len(ops); i++ {
+				secondNum, isNumeric2 := parseFloat(ops[i])
+				if !isNumeric2 {
+					return false, nil
+				}
+				if firstNum != secondNum {
+					return false, nil
+				}
+			}
+			return true, nil
+		}
 
 		for i := 0; i < len(ops)-1; i++ {
 			if ops[i] != ops[i+1] {
@@ -804,6 +817,37 @@ func (rcb *RootConditionBuilder) Not(cond Condition) *ConditionBuilder {
 
 func (cb *ConditionBuilder) Build() Condition {
 	return cb.p.Root
+}
+
+func parseFloat(num interface{}) (float64, bool) {
+	switch n := num.(type) {
+	case int:
+		return float64(n), true
+	case int8:
+		return float64(n), true
+	case int16:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	case float32:
+		return float64(n), true
+	case float64:
+		return n, true
+	default:
+		return 0.0, false
+	}
 }
 
 func parseRFC3339(value interface{}) (time.Time, bool) {
