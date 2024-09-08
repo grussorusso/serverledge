@@ -418,9 +418,9 @@ func (cer *CompositionExecutionReport) UnmarshalJSON(data []byte) error {
 }
 
 func (cer *CompositionExecutionReport) String() string {
-	str := "{"
-	str += fmt.Sprintf("\n\t'ResponseTime': %f,", cer.ResponseTime)
-	str += "\n\t'Reports': ["
+	str := "["
+	str += fmt.Sprintf("\n\tResponseTime: %f,", cer.ResponseTime)
+	str += "\n\tReports: ["
 	if cer.Reports.Len() > 0 {
 		j := 0
 		cer.Reports.Range(func(id ExecutionReportId, report *function.ExecutionReport) bool {

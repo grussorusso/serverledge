@@ -36,13 +36,7 @@ func TestMarshalingFunctionComposition(t *testing.T) {
 }
 
 func TestUnmarshalFunctionCompositionResult(t *testing.T) {
-	composition := "{\n\t\"Reports\": {\n\t\t\"End_9TUZZdXNwgroNYp4akDKQ6\": {\n\t\t\t\"Result\": \"end\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_JyzhDkLuBzUVSmPEUiEWVm\": {\n\t\t\t\"Result\": \"3\",\n\t\t\t\"ResponseTime\": 0.00283594,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000029114,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002802751,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_c7A3CSJ9efgnW2uCvgWt3Y\": {\n\t\t\t\"Result\": \"4\",\n\t\t\t\"ResponseTime\": 0.002977264,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000020023,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002953664,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_z4Jp4LXWFoPnEFFNhJQ64j\": {\n\t\t\t\"Result\": \"2\",\n\t\t\t\"ResponseTime\": 15.901950313,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 12.705640725,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 3.196273017,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Start_wxrH86t6zc2T2menLrUgYm\": {\n\t\t\t\"Result\": \"start\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t}\n\t},\n\t\"ResponseTime\": 0,\n\t\"Result\": {\n\t\t\"result\": 4\n\t}\n}"
-	var retrieved fc.CompositionExecutionReport
-	errUnmarshal := json.Unmarshal([]byte(composition), &retrieved)
-	fmt.Println(retrieved.String())
-	u.AssertNilMsg(t, errUnmarshal, "failed to unmarshal composition result")
-	u.AssertNonNilMsg(t, retrieved.Result, "the unmarshalled composition result should not have been nil")
-	u.AssertNonNilMsg(t, retrieved.Reports, "the unmarshalled composition result should not have been nil")
+	// composition := "{\n\t\"Reports\": {\n\t\t\"End_9TUZZdXNwgroNYp4akDKQ6\": {\n\t\t\t\"Result\": \"end\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_JyzhDkLuBzUVSmPEUiEWVm\": {\n\t\t\t\"Result\": \"3\",\n\t\t\t\"ResponseTime\": 0.00283594,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000029114,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002802751,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_c7A3CSJ9efgnW2uCvgWt3Y\": {\n\t\t\t\"Result\": \"4\",\n\t\t\t\"ResponseTime\": 0.002977264,\n\t\t\t\"IsWarmStart\": true,\n\t\t\t\"InitTime\": 0.000020023,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0.002953664,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Simple_z4Jp4LXWFoPnEFFNhJQ64j\": {\n\t\t\t\"Result\": \"2\",\n\t\t\t\"ResponseTime\": 15.901950313,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 12.705640725,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 3.196273017,\n\t\t\t\"SchedAction\": \"\"\n\t\t},\n\t\t\"Start_wxrH86t6zc2T2menLrUgYm\": {\n\t\t\t\"Result\": \"start\",\n\t\t\t\"ResponseTime\": 0,\n\t\t\t\"IsWarmStart\": false,\n\t\t\t\"InitTime\": 0,\n\t\t\t\"OffloadLatency\": 0,\n\t\t\t\"Duration\": 0,\n\t\t\t\"SchedAction\": \"\"\n\t\t}\n\t},\n\t\"ResponseTime\": 0,\n\t\"Result\": {\n\t\t\"result\": 4\n\t}\n}"
 
 	resultMap := make(map[string]interface{})
 	resultMap["result"] = 4.
@@ -54,14 +48,24 @@ func TestUnmarshalFunctionCompositionResult(t *testing.T) {
 	reportsMap.Set("Start_wxrH86t6zc2T2menLrUgYm", &function.ExecutionReport{ResponseTime: 0.000000, IsWarmStart: false, InitTime: 0.000000, OffloadLatency: 0.000000, Duration: 0.000000, SchedAction: "", Output: "", Result: "start"})
 	reportsMap.Set("Simple_z4Jp4LXWFoPnEFFNhJQ64j", &function.ExecutionReport{ResponseTime: 15.901950313, IsWarmStart: false, InitTime: 12.705640725, OffloadLatency: 0.000000, Duration: 3.196273017, SchedAction: "", Output: "", Result: "2"})
 
-	expected := fc.CompositionExecutionReport{
+	expected := &fc.CompositionExecutionReport{
 		Result:       resultMap,
 		Reports:      reportsMap,
 		ResponseTime: 0.000000,
 		// Progress is not checked
 	}
 
-	u.AssertTrueMsg(t, retrieved.Equals(&expected), fmt.Sprintf("execution report differs first: %s\n second: %s", retrieved.String(), expected.String()))
+	marshal, errMarshal := json.Marshal(expected)
+	u.AssertNil(t, errMarshal)
+
+	var retrieved fc.CompositionExecutionReport
+	errUnmarshal := json.Unmarshal(marshal, &retrieved)
+
+	u.AssertNilMsg(t, errUnmarshal, "failed to unmarshal composition result")
+	u.AssertNonNilMsg(t, retrieved.Result, "the unmarshalled composition result should not have been nil")
+	u.AssertNonNilMsg(t, retrieved.Reports, "the unmarshalled composition result should not have been nil")
+
+	u.AssertTrueMsg(t, retrieved.Equals(expected), fmt.Sprintf("execution report differs first: %v\n second: %v", retrieved, expected))
 }
 
 // TestComposeFC checks the CREATE, GET and DELETE functionality of the Function Composition

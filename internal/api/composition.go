@@ -246,10 +246,16 @@ func InvokeFunctionComposition(e echo.Context) error {
 		}
 		return e.JSON(http.StatusInternalServerError, v)
 	} else {
+		reports := make(map[string]*function.ExecutionReport)
+		fcReq.ExecReport.Reports.Range(func(id fc.ExecutionReportId, report *function.ExecutionReport) bool {
+			reports[string(id)] = report
+			return true
+		})
+
 		return e.JSON(http.StatusOK, fc.CompositionResponse{
 			Success:      true,
 			Result:       fcReq.ExecReport.Result,
-			Reports:      fcReq.ExecReport.String(),
+			Reports:      reports,
 			ResponseTime: fcReq.ExecReport.ResponseTime,
 		})
 	}
