@@ -28,7 +28,7 @@ type ExecutionReport struct {
 	Result         string
 	ResponseTime   float64 // time waited by the user to get the output: completion time - arrival time (offload + cold start + execution time)
 	IsWarmStart    bool
-	InitTime       float64 // time spent sleeping before initializing container
+	InitTime       float64 // time spent for initializing container
 	OffloadLatency float64 // time spent offloading the request
 	Duration       float64 // execution (service) time
 	SchedAction    string

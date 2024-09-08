@@ -246,6 +246,11 @@ func InvokeFunctionComposition(e echo.Context) error {
 		}
 		return e.JSON(http.StatusInternalServerError, v)
 	} else {
-		return e.JSON(http.StatusOK, fc.CompositionResponse{Success: true, CompositionExecutionReport: fcReq.ExecReport})
+		return e.JSON(http.StatusOK, fc.CompositionResponse{
+			Success:      true,
+			Result:       fcReq.ExecReport.Result,
+			Reports:      fcReq.ExecReport.String(),
+			ResponseTime: fcReq.ExecReport.ResponseTime,
+		})
 	}
 }

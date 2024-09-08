@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/grussorusso/serverledge/internal/fc"
 	"github.com/grussorusso/serverledge/internal/function"
@@ -274,6 +275,10 @@ func TestAsyncInvokeComposition(t *testing.T) {
 		errUnmarshalExecResult := json.Unmarshal([]byte(pollResult), &compExecReport)
 
 		if errUnmarshalExecResult != nil {
+			var unmarshalError *json.UnmarshalTypeError
+			if errors.As(errUnmarshalExecResult, &unmarshalError) {
+				utils.AssertFalseMsg(t, true, errUnmarshalExecResult.Error())
+			}
 			i++
 			fmt.Printf("Attempt %d - Result not available - retrying after 200 ms: %v\n", i, errUnmarshalExecResult)
 			time.Sleep(200 * time.Millisecond)

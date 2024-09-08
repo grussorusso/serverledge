@@ -22,8 +22,14 @@ func SubmitAsyncCompositionRequest(fcReq *fc.CompositionRequest) {
 	executionReport, errInvoke := fcReq.Fc.Invoke(fcReq)
 	if errInvoke != nil {
 		PublishAsyncCompositionResponse(fcReq.ReqId, fc.CompositionResponse{Success: false})
+		return
 	}
-	PublishAsyncCompositionResponse(fcReq.ReqId, fc.CompositionResponse{Success: true, CompositionExecutionReport: executionReport})
+	PublishAsyncCompositionResponse(fcReq.ReqId, fc.CompositionResponse{
+		Success:      true,
+		Result:       fcReq.ExecReport.Result,
+		Reports:      fcReq.ExecReport.String(),
+		ResponseTime: fcReq.ExecReport.ResponseTime,
+	})
 	fcReq.ExecReport = executionReport
 	fcReq.ExecReport.ResponseTime = time.Now().Sub(fcReq.Arrival).Seconds()
 }
