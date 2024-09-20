@@ -42,11 +42,10 @@ func (fp *ContainerPool) getWarmContainer() (container.ContainerID, bool) {
 		return "", false
 	}
 
-	fp.ready.Remove(elem)
-	contID := elem.Value.(warmContainer).contID
-	fp.putBusyContainer(contID)
+	wc := fp.ready.Remove(elem).(warmContainer)
+	fp.putBusyContainer(wc.contID)
 
-	return contID, true
+	return wc.contID, true
 }
 
 func (fp *ContainerPool) putBusyContainer(contID container.ContainerID) {
@@ -127,12 +126,13 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	log.Printf("Using warm %s for %s. Now: %v", contID, f, Resources)
 	return contID, nil
 }
 
 // ReleaseContainer puts a container in the ready pool for a function.
 func ReleaseContainer(contID container.ContainerID, f *function.Function) {
+	log.Printf("I have to remove: %s for %s\n", contID, f)
 	// setup Expiration as time duration from now
 	d := time.Duration(config.GetInt(config.CONTAINER_EXPIRATION_TIME, 600)) * time.Second
 	expTime := time.Now().Add(d).UnixNano()
@@ -143,13 +143,25 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	fp := getFunctionPool(f)
 
 	// we must update the busy list by removing this element
+	log.Printf("I have to remove: %s for %s\n", contID, f)
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
+		log.Printf("I have: %v\n", elem.Value)
+		elem = elem.Next()
+	}
+
+	var removed container.ContainerID = ""
+	elem = fp.busy.Front()
+	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(container.ContainerID) == contID {
-			fp.busy.Remove(elem) // delete the element from the busy list
+			removed = fp.busy.Remove(elem).(container.ContainerID) // delete the element from the busy list
+			log.Printf("Removed: %v\n", removed)
 			break
 		}
 		elem = elem.Next()
+	}
+	if removed == "" {
+		panic("nothing was removed")
 	}
 
 	fp.putReadyContainer(contID, expTime)

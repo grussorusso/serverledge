@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/container"
@@ -12,7 +13,7 @@ const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
 func Execute(contID container.ContainerID, r *scheduledRequest) error {
-	//log.Printf("[%s] Executing on container: %v", r, contID)
+	log.Printf("[%s] Executing on container: %v", r.Fun, contID)
 
 	var req executor.InvocationRequest
 	if r.Fun.Runtime == container.CUSTOM_RUNTIME {
@@ -36,13 +37,13 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	response, invocationWait, err := container.Execute(contID, &req)
 	if err != nil {
 		// notify scheduler
-		completions <- &completion{scheduledRequest: r, contID: contID}
+		completions <- &completion{fun: r.Fun, contID: contID}
 		return fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
 		// notify scheduler
-		completions <- &completion{scheduledRequest: r, contID: contID}
+		completions <- &completion{fun: r.Fun, contID: contID}
 		return fmt.Errorf("Function execution failed")
 	}
 
@@ -56,7 +57,7 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	r.ExecReport.InitTime += invocationWait.Seconds()
 
 	// notify scheduler
-	completions <- &completion{scheduledRequest: r, contID: contID}
+	completions <- &completion{fun: r.Fun, contID: contID, duration: r.ExecReport.Duration}
 
 	return nil
 }

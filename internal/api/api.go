@@ -56,7 +56,8 @@ func InvokeFunction(c echo.Context) error {
 
 	r := requestsPool.Get().(*function.Request)
 	defer requestsPool.Put(r)
-	r.Fun = fun
+	r.Fun = &fun
+	f0 := r.Fun.Name
 	r.Params = invocationRequest.Params
 	r.Arrival = time.Now()
 	r.Class = function.ServiceClass(invocationRequest.QoSClass)
@@ -75,6 +76,11 @@ func InvokeFunction(c echo.Context) error {
 	}
 
 	err = scheduling.SubmitRequest(r)
+
+	f1 := r.Fun.Name
+	if f0 != f1 {
+		panic("assert")
+	}
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
@@ -223,7 +229,7 @@ func PrewarmFunction(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Function unknown")
 	}
 
-	count, err := node.PrewarmInstances(fun, req.Instances, req.ForceImagePull)
+	count, err := node.PrewarmInstances(&fun, req.Instances, req.ForceImagePull)
 
 	if err != nil && !errors.Is(err, node.OutOfResourcesErr) {
 		log.Printf("Failed prewarming: %v\n", err)

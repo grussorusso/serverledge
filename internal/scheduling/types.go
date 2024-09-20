@@ -13,8 +13,9 @@ type scheduledRequest struct {
 }
 
 type completion struct {
-	*scheduledRequest
-	contID container.ContainerID
+	fun      *function.Function
+	contID   container.ContainerID
+	duration float64
 }
 
 // schedDecision wraps a action made by the scheduler.

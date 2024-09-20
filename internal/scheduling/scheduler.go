@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -63,15 +62,16 @@ func Run(p Policy) {
 		case r = <-requests:
 			go p.OnArrival(r)
 		case c = <-completions:
-			node.ReleaseContainer(c.contID, c.Fun)
-			p.OnCompletion(c.scheduledRequest)
+			log.Printf("Completed %s on %s\n", c.fun, c.contID)
+			node.ReleaseContainer(c.contID, c.fun)
+			//p.OnCompletion(c.scheduledRequest) // TODO: restore!
 
-			if metrics.Enabled {
-				metrics.AddCompletedInvocation(c.Fun.Name)
-				if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
-				}
-			}
+			//if metrics.Enabled {
+			//	metrics.AddCompletedInvocation(c.fun.Name)
+			//	if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+			//		metrics.AddFunctionDurationValue(c.fun.Name, c.ExecReport.Duration)
+			//	}
+			//}
 		}
 	}
 

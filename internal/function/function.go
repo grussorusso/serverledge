@@ -31,14 +31,14 @@ func getEtcdKey(funcName string) string {
 }
 
 // GetFunction retrieves a Function given its name.
-func GetFunction(name string) (*Function, bool) {
+func GetFunction(name string) (Function, bool) {
 
 	val, found := getFromCache(name)
 	if !found {
 		// cache miss
 		f, response := getFromEtcd(name)
 		if !response {
-			return nil, false
+			return Function{}, false
 		}
 		//insert a new element to the cache
 		cache.GetCacheInstance().Set(name, f, cache.DefaultExp)
@@ -53,37 +53,35 @@ func (f *Function) String() string {
 	return f.Name
 }
 
-func getFromCache(name string) (*Function, bool) {
+func getFromCache(name string) (Function, bool) {
 	localCache := cache.GetCacheInstance()
 	f, found := localCache.Get(name)
 	if !found {
-		return nil, false
+		return Function{}, false
 	}
 	//cache hit
-	//return a safe copy of the function previously obtained
-	function := *f.(*Function)
-	return &function, true
+	return f.(Function), true
 
 }
 
-func getFromEtcd(name string) (*Function, bool) {
+func getFromEtcd(name string) (Function, bool) {
 	cli, err := utils.GetEtcdClient()
 	if err != nil {
-		return nil, false
+		return Function{}, false
 	}
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	getResponse, err := cli.Get(ctx, getEtcdKey(name))
 	if err != nil || len(getResponse.Kvs) < 1 {
-		return nil, false
+		return Function{}, false
 	}
 
 	var f Function
 	err = json.Unmarshal(getResponse.Kvs[0].Value, &f)
 	if err != nil {
-		return nil, false
+		return f, false
 	}
 
-	return &f, true
+	return f, true
 }
 
 func (f *Function) SaveToEtcd() error {
@@ -103,7 +101,7 @@ func (f *Function) SaveToEtcd() error {
 	}
 
 	// Add the function to the local cache
-	cache.GetCacheInstance().Set(f.Name, f, cache.DefaultExp)
+	cache.GetCacheInstance().Set(f.Name, *f, cache.DefaultExp)
 
 	return nil
 }
