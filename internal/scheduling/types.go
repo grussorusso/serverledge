@@ -12,8 +12,8 @@ type scheduledRequest struct {
 	priority        float64
 }
 
-type completion struct {
-	*scheduledRequest
+type completionNotification struct {
+	fun    *function.Function
 	contID container.ContainerID
 }
 

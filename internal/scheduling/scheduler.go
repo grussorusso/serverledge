@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/grussorusso/serverledge/internal/metrics"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -18,16 +17,15 @@ import (
 )
 
 var requests chan *scheduledRequest
-var completions chan *completion
+var completions chan *completionNotification
 
 var remoteServerUrl string
-var executionLogEnabled bool
 
 var offloadingClient *http.Client
 
 func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
-	completions = make(chan *completion, 500)
+	completions = make(chan *completionNotification, 500)
 
 	// initialize Resources resources
 	availableCores := runtime.NumCPU()
@@ -57,21 +55,22 @@ func Run(p Policy) {
 	log.Println("Scheduler started.")
 
 	var r *scheduledRequest
-	var c *completion
+	var c *completionNotification
 	for {
 		select {
 		case r = <-requests:
 			go p.OnArrival(r)
 		case c = <-completions:
-			node.ReleaseContainer(c.contID, c.Fun)
-			p.OnCompletion(c.scheduledRequest)
+			node.ReleaseContainer(c.contID, c.fun)
+			//p.OnCompletion(c.scheduledRequest) // TODO: restore
 
-			if metrics.Enabled {
-				metrics.AddCompletedInvocation(c.Fun.Name)
-				if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-					metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
-				}
-			}
+			// TODO: restore
+			//if metrics.Enabled {
+			//	metrics.AddCompletedInvocation(c.Fun.Name)
+			//	if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
+			//		metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
+			//	}
+			//}
 		}
 	}
 
