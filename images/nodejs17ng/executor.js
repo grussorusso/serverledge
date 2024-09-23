@@ -22,6 +22,7 @@ http.createServer(async (request, response) => {
 			var handler = reqbody["Handler"]	
 			var handler_dir = reqbody["HandlerDir"]
 			var params = reqbody["Params"]
+			var return_output = reqbody["ReturnOutput"]
 
 			var context = {}
 			if (process.env.CONTEXT !== "undefined") {
@@ -35,7 +36,11 @@ http.createServer(async (request, response) => {
 			resp = {}
 			resp["Result"] = JSON.stringify(result);
 			resp["Success"] = true
-			resp["Output"] = "Output capture not supported for this runtime yet."
+			if (return_output === true) {
+				resp["Output"] = "Output capture not supported for this runtime yet."
+			} else {
+				resp["Output"] = ""
+			}
 
 
 			response.writeHead(200, { 'Content-Type': contentType });
