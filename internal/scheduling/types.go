@@ -9,12 +9,12 @@ import (
 type scheduledRequest struct {
 	*function.Request
 	decisionChannel chan schedDecision
-	priority        float64
 }
 
-type completion struct {
-	*scheduledRequest
-	contID container.ContainerID
+type completionNotification struct {
+	fun             *function.Function
+	contID          container.ContainerID
+	executionReport *function.ExecutionReport
 }
 
 // schedDecision wraps a action made by the scheduler.
@@ -24,22 +24,13 @@ type schedDecision struct {
 	action     action
 	contID     container.ContainerID
 	remoteHost string
+	useWarm    bool
 }
 
 type action int64
 
 const (
-	DROP                  action = 0
-	EXEC_LOCAL                   = 1
-	EXEC_REMOTE                  = 2
-	BEST_EFFORT_EXECUTION        = 3
-)
-
-type schedulingDecision int64
-
-const (
-	SCHED_DROP   schedulingDecision = 0
-	SCHED_REMOTE                    = 1
-	SCHED_LOCAL                     = 2
-	SCHED_BASIC                     = 3
+	DROP        action = 0
+	EXEC_LOCAL         = 1
+	EXEC_REMOTE        = 2
 )

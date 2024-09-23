@@ -42,11 +42,10 @@ func (fp *ContainerPool) getWarmContainer() (container.ContainerID, bool) {
 		return "", false
 	}
 
-	fp.ready.Remove(elem)
-	contID := elem.Value.(warmContainer).contID
-	fp.putBusyContainer(contID)
+	wc := fp.ready.Remove(elem).(warmContainer)
+	fp.putBusyContainer(wc.contID)
 
-	return contID, true
+	return wc.contID, true
 }
 
 func (fp *ContainerPool) putBusyContainer(contID container.ContainerID) {
@@ -127,7 +126,7 @@ func AcquireWarmContainer(f *function.Function) (container.ContainerID, error) {
 		return "", OutOfResourcesErr
 	}
 
-	//log.Printf("Acquired resources for warm container. Now: %v", Resources)
+	//log.Printf("Using warm %s for %s. Now: %v", contID, f, Resources)
 	return contID, nil
 }
 
@@ -143,13 +142,17 @@ func ReleaseContainer(contID container.ContainerID, f *function.Function) {
 	fp := getFunctionPool(f)
 
 	// we must update the busy list by removing this element
+	var removed container.ContainerID
 	elem := fp.busy.Front()
 	for ok := elem != nil; ok; ok = elem != nil {
 		if elem.Value.(container.ContainerID) == contID {
-			fp.busy.Remove(elem) // delete the element from the busy list
+			removed = fp.busy.Remove(elem).(container.ContainerID)
 			break
 		}
 		elem = elem.Next()
+	}
+	if removed != contID {
+		panic("Failed to release container")
 	}
 
 	fp.putReadyContainer(contID, expTime)

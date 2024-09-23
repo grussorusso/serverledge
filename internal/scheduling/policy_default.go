@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"errors"
+	"github.com/grussorusso/serverledge/internal/function"
 	"log"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -22,7 +23,7 @@ func (p *DefaultLocalPolicy) Init() {
 	}
 }
 
-func (p *DefaultLocalPolicy) OnCompletion(_ *scheduledRequest) {
+func (p *DefaultLocalPolicy) OnCompletion(_ *function.Function, _ *function.ExecutionReport) {
 	if p.queue == nil {
 		return
 	}

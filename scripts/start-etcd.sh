@@ -1,4 +1,6 @@
 #!/bin/sh
+docker ps 2>&1 > /dev/null || sudo systemctl start docker
+
 docker run -d --rm --name Etcd-server \
     --publish 2379:2379 \
     --publish 2380:2380 \

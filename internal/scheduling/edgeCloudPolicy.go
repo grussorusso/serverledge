@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 )
 
@@ -10,7 +11,7 @@ type CloudEdgePolicy struct{}
 func (p *CloudEdgePolicy) Init() {
 }
 
-func (p *CloudEdgePolicy) OnCompletion(_ *scheduledRequest) {
+func (p *CloudEdgePolicy) OnCompletion(_ *function.Function, _ *function.ExecutionReport) {
 
 }
 

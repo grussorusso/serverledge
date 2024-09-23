@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"github.com/grussorusso/serverledge/internal/function"
 	"log"
 
 	"github.com/grussorusso/serverledge/internal/node"
@@ -12,7 +13,7 @@ type EdgePolicy struct{}
 func (p *EdgePolicy) Init() {
 }
 
-func (p *EdgePolicy) OnCompletion(_ *scheduledRequest) {
+func (p *EdgePolicy) OnCompletion(_ *function.Function, _ *function.ExecutionReport) {
 
 }
 

@@ -1,11 +1,13 @@
 package scheduling
 
+import "github.com/grussorusso/serverledge/internal/function"
+
 type CloudOnlyPolicy struct{}
 
 func (p *CloudOnlyPolicy) Init() {
 }
 
-func (p *CloudOnlyPolicy) OnCompletion(_ *scheduledRequest) {
+func (p *CloudOnlyPolicy) OnCompletion(_ *function.Function, _ *function.ExecutionReport) {
 
 }
 

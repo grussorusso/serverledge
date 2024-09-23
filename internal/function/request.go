@@ -7,11 +7,10 @@ import (
 
 // Request represents a single function invocation.
 type Request struct {
-	ReqId      string
-	Fun        *Function
-	Params     map[string]interface{}
-	Arrival    time.Time
-	ExecReport ExecutionReport
+	ReqId   string
+	Fun     *Function
+	Params  map[string]interface{}
+	Arrival time.Time
 	RequestQoS
 	CanDoOffloading bool
 	Async           bool
