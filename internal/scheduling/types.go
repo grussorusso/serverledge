@@ -9,7 +9,6 @@ import (
 type scheduledRequest struct {
 	*function.Request
 	decisionChannel chan schedDecision
-	priority        float64
 }
 
 type completionNotification struct {
