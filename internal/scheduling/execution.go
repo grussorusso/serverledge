@@ -38,13 +38,13 @@ func Execute(contID container.ContainerID, r *scheduledRequest, isWarm bool) (fu
 	response, invocationWait, err := container.Execute(contID, &req)
 	if err != nil {
 		// notify scheduler
-		completions <- &completionNotification{fun: r.Fun, contID: contID}
+		completions <- &completionNotification{fun: r.Fun, contID: contID, executionReport: nil}
 		return function.ExecutionReport{}, fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
 		// notify scheduler
-		completions <- &completionNotification{fun: r.Fun, contID: contID}
+		completions <- &completionNotification{fun: r.Fun, contID: contID, executionReport: nil}
 		return function.ExecutionReport{}, fmt.Errorf("Function execution failed")
 	}
 

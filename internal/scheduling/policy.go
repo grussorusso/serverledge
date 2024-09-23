@@ -1,7 +1,9 @@
 package scheduling
 
+import "github.com/grussorusso/serverledge/internal/function"
+
 type Policy interface {
 	Init()
-	OnCompletion(request *scheduledRequest)
+	OnCompletion(fun *function.Function, executionReport *function.ExecutionReport)
 	OnArrival(request *scheduledRequest)
 }

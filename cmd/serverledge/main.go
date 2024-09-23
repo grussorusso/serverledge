@@ -157,8 +157,6 @@ func createSchedulingPolicy() scheduling.Policy {
 		return &scheduling.CloudEdgePolicy{}
 	} else if policyConf == "edgeonly" {
 		return &scheduling.EdgePolicy{}
-	} else if policyConf == "custom1" {
-		return &scheduling.Custom1Policy{}
 	} else {
 		return &scheduling.DefaultLocalPolicy{}
 	}

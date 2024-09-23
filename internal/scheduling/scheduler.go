@@ -3,6 +3,7 @@ package scheduling
 import (
 	"errors"
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/metrics"
 	"log"
 	"net/http"
 	"runtime"
@@ -27,7 +28,7 @@ func Run(p Policy) {
 	requests = make(chan *scheduledRequest, 500)
 	completions = make(chan *completionNotification, 500)
 
-	// initialize Resources resources
+	// initialize Resources
 	availableCores := runtime.NumCPU()
 	node.Resources.AvailableMemMB = int64(config.GetInt(config.POOL_MEMORY_MB, 1024))
 	node.Resources.AvailableCPUs = config.GetFloat(config.POOL_CPUS, float64(availableCores))
@@ -62,15 +63,14 @@ func Run(p Policy) {
 			go p.OnArrival(r)
 		case c = <-completions:
 			node.ReleaseContainer(c.contID, c.fun)
-			//p.OnCompletion(c.scheduledRequest) // TODO: restore
+			p.OnCompletion(c.fun, c.executionReport)
 
-			// TODO: restore
-			//if metrics.Enabled {
-			//	metrics.AddCompletedInvocation(c.Fun.Name)
-			//	if c.ExecReport.SchedAction != SCHED_ACTION_OFFLOAD {
-			//		metrics.AddFunctionDurationValue(c.Fun.Name, c.ExecReport.Duration)
-			//	}
-			//}
+			if metrics.Enabled && c.executionReport != nil {
+				metrics.AddCompletedInvocation(c.fun.Name)
+				if c.executionReport.SchedAction != SCHED_ACTION_OFFLOAD {
+					metrics.AddFunctionDurationValue(c.fun.Name, c.executionReport.Duration)
+				}
+			}
 		}
 	}
 
