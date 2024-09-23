@@ -77,7 +77,7 @@ func Run(p Policy) {
 }
 
 // SubmitRequest submits a newly arrived request for scheduling and execution
-func SubmitRequest(r *function.Request) error {
+func SubmitRequest(r *function.Request) (function.ExecutionReport, error) {
 	schedRequest := scheduledRequest{
 		Request:         r,
 		decisionChannel: make(chan schedDecision, 1)}
@@ -86,27 +86,19 @@ func SubmitRequest(r *function.Request) error {
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		return fmt.Errorf("could not schedule the request")
+		return function.ExecutionReport{}, fmt.Errorf("could not schedule the request")
 	}
 	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
 
-	var err error
 	if schedDecision.action == DROP {
 		//log.Printf("[%s] Dropping request", r)
-		return node.OutOfResourcesErr
+		return function.ExecutionReport{}, node.OutOfResourcesErr
 	} else if schedDecision.action == EXEC_REMOTE {
 		//log.Printf("Offloading request")
-		err = Offload(r, schedDecision.remoteHost)
-		if err != nil {
-			return err
-		}
+		return Offload(r, schedDecision.remoteHost)
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
-		if err != nil {
-			return err
-		}
+		return Execute(schedDecision.contID, &schedRequest, schedDecision.useWarm)
 	}
-	return nil
 }
 
 // SubmitAsyncRequest submits a newly arrived async request for scheduling and execution
@@ -133,11 +125,11 @@ func SubmitAsyncRequest(r *function.Request) {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
 	} else {
-		err = Execute(schedDecision.contID, &schedRequest)
+		report, err := Execute(schedDecision.contID, &schedRequest, schedDecision.useWarm)
 		if err != nil {
 			publishAsyncResponse(r.ReqId, function.Response{Success: false})
 		}
-		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: report})
 	}
 }
 
@@ -159,11 +151,7 @@ func dropRequest(r *scheduledRequest) {
 }
 
 func execLocally(r *scheduledRequest, c container.ContainerID, warmStart bool) {
-	initTime := time.Now().Sub(r.Arrival).Seconds()
-	r.ExecReport.InitTime = initTime
-	r.ExecReport.IsWarmStart = warmStart
-
-	decision := schedDecision{action: EXEC_LOCAL, contID: c}
+	decision := schedDecision{action: EXEC_LOCAL, contID: c, useWarm: warmStart}
 	r.decisionChannel <- decision
 }
 

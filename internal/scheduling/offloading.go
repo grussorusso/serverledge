@@ -37,13 +37,13 @@ func pickEdgeNodeForOffloading(r *scheduledRequest) (url string) {
 	return ""
 }
 
-func Offload(r *function.Request, serverUrl string) error {
+func Offload(r *function.Request, serverUrl string) (function.ExecutionReport, error) {
 	// Prepare request
 	request := client.InvocationRequest{Params: r.Params, QoSClass: int64(r.Class), QoSMaxRespT: r.MaxRespT}
 	invocationBody, err := json.Marshal(request)
 	if err != nil {
 		log.Print(err)
-		return err
+		return function.ExecutionReport{}, err
 	}
 	sendingTime := time.Now() // used to compute latency later on
 	resp, err := offloadingClient.Post(serverUrl+"/invoke/"+r.Fun.Name, "application/json",
@@ -51,13 +51,13 @@ func Offload(r *function.Request, serverUrl string) error {
 
 	if err != nil {
 		log.Print(err)
-		return err
+		return function.ExecutionReport{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusTooManyRequests {
-			return node.OutOfResourcesErr
+			return function.ExecutionReport{}, node.OutOfResourcesErr
 		}
-		return fmt.Errorf("Remote returned: %v", resp.StatusCode)
+		return function.ExecutionReport{}, fmt.Errorf("Remote returned: %v", resp.StatusCode)
 	}
 
 	var response function.Response
@@ -69,18 +69,19 @@ func Offload(r *function.Request, serverUrl string) error {
 	}(resp.Body)
 	body, _ := io.ReadAll(resp.Body)
 	if err = json.Unmarshal(body, &response); err != nil {
-		return err
+		return function.ExecutionReport{}, err
 	}
-	r.ExecReport = response.ExecutionReport
 	now := time.Now()
-	response.ExecutionReport.ResponseTime = now.Sub(r.Arrival).Seconds()
+
+	execReport := &response.ExecutionReport
+	execReport.ResponseTime = now.Sub(r.Arrival).Seconds()
 
 	// TODO: check how this is used in the QoSAware policy
 	// It was originially computed as "report.Arrival - sendingTime"
-	r.ExecReport.OffloadLatency = now.Sub(sendingTime).Seconds() - r.ExecReport.Duration - r.ExecReport.InitTime
-	r.ExecReport.SchedAction = SCHED_ACTION_OFFLOAD
+	execReport.OffloadLatency = now.Sub(sendingTime).Seconds() - execReport.Duration - execReport.InitTime
+	execReport.SchedAction = SCHED_ACTION_OFFLOAD
 
-	return nil
+	return response.ExecutionReport, nil
 }
 
 func OffloadAsync(r *function.Request, serverUrl string) error {

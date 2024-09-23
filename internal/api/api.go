@@ -65,16 +65,13 @@ func InvokeFunction(c echo.Context) error {
 	r.Async = invocationRequest.Async
 	r.ReturnOutput = invocationRequest.ReturnOutput
 	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
-	// init fields if possibly not overwritten later
-	r.ExecReport.SchedAction = ""
-	r.ExecReport.OffloadLatency = 0.0
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
 		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
 	}
 
-	err = scheduling.SubmitRequest(r)
+	executionReport, err := scheduling.SubmitRequest(r)
 
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return c.String(http.StatusTooManyRequests, "")
@@ -82,7 +79,7 @@ func InvokeFunction(c echo.Context) error {
 		log.Printf("Invocation failed: %v\n", err)
 		return c.String(http.StatusInternalServerError, "")
 	} else {
-		return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: r.ExecReport})
+		return c.JSON(http.StatusOK, function.Response{Success: true, ExecutionReport: executionReport})
 	}
 }
 

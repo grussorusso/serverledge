@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"fmt"
+	"github.com/grussorusso/serverledge/internal/function"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/container"
@@ -11,7 +12,7 @@ import (
 const HANDLER_DIR = "/app"
 
 // Execute serves a request on the specified container.
-func Execute(contID container.ContainerID, r *scheduledRequest) error {
+func Execute(contID container.ContainerID, r *scheduledRequest, isWarm bool) (function.ExecutionReport, error) {
 	//log.Printf("[%s] Executing on container: %v", r.Fun, contID)
 
 	var req executor.InvocationRequest
@@ -32,31 +33,33 @@ func Execute(contID container.ContainerID, r *scheduledRequest) error {
 	}
 
 	t0 := time.Now()
+	initTime := t0.Sub(r.Arrival).Seconds()
 
 	response, invocationWait, err := container.Execute(contID, &req)
 	if err != nil {
 		// notify scheduler
 		completions <- &completionNotification{fun: r.Fun, contID: contID}
-		return fmt.Errorf("[%s] Execution failed: %v", r, err)
+		return function.ExecutionReport{}, fmt.Errorf("[%s] Execution failed: %v", r, err)
 	}
 
 	if !response.Success {
 		// notify scheduler
 		completions <- &completionNotification{fun: r.Fun, contID: contID}
-		return fmt.Errorf("Function execution failed")
+		return function.ExecutionReport{}, fmt.Errorf("Function execution failed")
 	}
 
-	r.ExecReport.Result = response.Result
-	r.ExecReport.Output = response.Output
-	r.ExecReport.Duration = time.Now().Sub(t0).Seconds() - invocationWait.Seconds()
-	r.ExecReport.ResponseTime = time.Now().Sub(r.Arrival).Seconds()
+	report := function.ExecutionReport{Result: response.Result,
+		Output:       response.Output,
+		IsWarmStart:  isWarm,
+		Duration:     time.Now().Sub(t0).Seconds() - invocationWait.Seconds(),
+		ResponseTime: time.Now().Sub(t0).Seconds() - invocationWait.Seconds()}
 
 	// initializing containers may require invocation retries, adding
 	// latency
-	r.ExecReport.InitTime += invocationWait.Seconds()
+	report.InitTime = initTime + invocationWait.Seconds()
 
 	// notify scheduler
-	completions <- &completionNotification{fun: r.Fun, contID: contID}
+	completions <- &completionNotification{fun: r.Fun, contID: contID, executionReport: &report}
 
-	return nil
+	return report, nil
 }
