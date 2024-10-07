@@ -1,13 +1,14 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
 
 // Request represents a single function invocation.
 type Request struct {
-	ReqId   string
+	Ctx     context.Context
 	Fun     *Function
 	Params  map[string]interface{}
 	Arrival time.Time
@@ -42,8 +43,12 @@ type AsyncResponse struct {
 	ReqId string
 }
 
+func (r *Request) Id() string {
+	return r.Ctx.Value("ReqId").(string)
+}
+
 func (r *Request) String() string {
-	return fmt.Sprintf("[%s] Rq-%s", r.Fun.Name, r.ReqId)
+	return fmt.Sprintf("[%s] Rq-%s", r.Fun.Name, r.Id())
 }
 
 type ServiceClass int64

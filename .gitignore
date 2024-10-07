@@ -3,3 +3,5 @@ bin/
 .run/
 __pycache__*
 images/*/executor
+*.backup
+default.etcd

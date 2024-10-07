@@ -3,13 +3,16 @@ package scheduling
 import (
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/internal/metrics"
 	"log"
 	"net/http"
 	"runtime"
 	"time"
 
+	"github.com/grussorusso/serverledge/internal/metrics"
+
 	"github.com/grussorusso/serverledge/internal/node"
+	"github.com/grussorusso/serverledge/internal/telemetry"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grussorusso/serverledge/internal/config"
 
@@ -83,12 +86,20 @@ func SubmitRequest(r *function.Request) (function.ExecutionReport, error) {
 		decisionChannel: make(chan schedDecision, 1)}
 	requests <- &schedRequest
 
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Scheduling start")
+	}
+
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
 		return function.ExecutionReport{}, fmt.Errorf("could not schedule the request")
 	}
 	//log.Printf("[%s] Scheduling decision: %v", r, schedDecision)
+
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Scheduling complete")
+	}
 
 	if schedDecision.action == DROP {
 		//log.Printf("[%s] Dropping request", r)
@@ -111,29 +122,32 @@ func SubmitAsyncRequest(r *function.Request) {
 	// wait on channel for scheduling action
 	schedDecision, ok := <-schedRequest.decisionChannel
 	if !ok {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		publishAsyncResponse(r.Id(), function.Response{Success: false})
 		return
 	}
 
 	var err error
 	if schedDecision.action == DROP {
-		publishAsyncResponse(r.ReqId, function.Response{Success: false})
+		publishAsyncResponse(r.Id(), function.Response{Success: false})
 	} else if schedDecision.action == EXEC_REMOTE {
 		//log.Printf("Offloading request")
 		err = OffloadAsync(r, schedDecision.remoteHost)
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			publishAsyncResponse(r.Id(), function.Response{Success: false})
 		}
 	} else {
 		report, err := Execute(schedDecision.contID, &schedRequest, schedDecision.useWarm)
 		if err != nil {
-			publishAsyncResponse(r.ReqId, function.Response{Success: false})
+			publishAsyncResponse(r.Id(), function.Response{Success: false})
 		}
-		publishAsyncResponse(r.ReqId, function.Response{Success: true, ExecutionReport: report})
+		publishAsyncResponse(r.Id(), function.Response{Success: true, ExecutionReport: report})
 	}
 }
 
 func handleColdStart(r *scheduledRequest) (isSuccess bool) {
+	if telemetry.DefaultTracer != nil {
+		trace.SpanFromContext(r.Ctx).AddEvent("Container init start")
+	}
 	newContainer, err := node.NewContainer(r.Fun)
 	if errors.Is(err, node.OutOfResourcesErr) {
 		return false
@@ -141,6 +155,9 @@ func handleColdStart(r *scheduledRequest) (isSuccess bool) {
 		log.Printf("Cold start failed: %v\n", err)
 		return false
 	} else {
+		if telemetry.DefaultTracer != nil {
+			trace.SpanFromContext(r.Ctx).AddEvent("Container initialized")
+		}
 		execLocally(r, newContainer, false)
 		return true
 	}

@@ -17,7 +17,9 @@ import (
 	"github.com/grussorusso/serverledge/internal/function"
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/internal/telemetry"
 	"github.com/grussorusso/serverledge/utils"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grussorusso/serverledge/internal/scheduling"
 	"github.com/labstack/echo/v4"
@@ -64,11 +66,21 @@ func InvokeFunction(c echo.Context) error {
 	r.CanDoOffloading = invocationRequest.CanDoOffloading
 	r.Async = invocationRequest.Async
 	r.ReturnOutput = invocationRequest.ReturnOutput
-	r.ReqId = fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
+
+	reqId := fmt.Sprintf("%s-%s%d", fun, node.NodeIdentifier[len(node.NodeIdentifier)-5:], r.Arrival.Nanosecond())
+	r.Ctx = context.WithValue(context.Background(), "ReqId", reqId)
+
+	// Tracing
+	if telemetry.DefaultTracer != nil {
+		ctx, span := telemetry.DefaultTracer.Start(r.Ctx, "invocation")
+		r.Ctx = ctx
+		span.SetAttributes(attribute.String("function", r.Fun.Name))
+		defer span.End()
+	}
 
 	if r.Async {
 		go scheduling.SubmitAsyncRequest(r)
-		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.ReqId})
+		return c.JSON(http.StatusOK, function.AsyncResponse{ReqId: r.Id()})
 	}
 
 	executionReport, err := scheduling.SubmitRequest(r)
