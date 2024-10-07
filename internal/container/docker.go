@@ -50,6 +50,11 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		Tty:   false,
 	}, &container.HostConfig{Resources: contResources}, nil, nil, "")
 
+	if err != nil {
+		log.Printf("Could not create the container: %v\n", err)
+		return "", err
+	}
+
 	id := resp.ID
 
 	r, err := cf.cli.ContainerInspect(cf.ctx, id)
