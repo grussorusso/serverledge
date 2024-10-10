@@ -81,6 +81,7 @@ func Execute(contID ContainerID, req *executor.InvocationRequest) (*executor.Inv
 
 	d := json.NewDecoder(resp.Body)
 	response := &executor.InvocationResult{}
+
 	err = d.Decode(response)
 	if err != nil {
 		return nil, waitDuration, fmt.Errorf("Parsing executor response failed: %v", err)

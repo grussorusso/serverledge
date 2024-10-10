@@ -11,6 +11,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/api"
 	"github.com/grussorusso/serverledge/internal/fc"
+	"github.com/labstack/gommon/log"
 
 	"github.com/grussorusso/serverledge/internal/client"
 	"github.com/grussorusso/serverledge/internal/config"
@@ -106,6 +107,7 @@ var paramsFile string
 var asyncInvocation bool
 var verbose bool
 var returnOutput bool
+var rmFnOnDeletion bool
 
 func Init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
@@ -155,6 +157,7 @@ func Init() {
 	rootCmd.AddCommand(compCreateCmd)
 	compCreateCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function")
 	compCreateCmd.Flags().StringVarP(&jsonSrc, "src", "s", "", "source Amazon States Language file  that defines the function composition")
+	compCreateCmd.Flags().BoolVarP(&rmFnOnDeletion, "deletion", "d", false, "flag to delete also functions associated with the FC")
 
 	rootCmd.AddCommand(compDeleteCmd)
 	compDeleteCmd.Flags().StringVarP(&compName, "function-composition", "f", "", "name of the function composition")
@@ -254,7 +257,10 @@ func buildSignature() (*function.Signature, error) {
 			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid input specification: %s", str)
 			}
-			dataType := function.StringToDataType(tokens[1])
+			dataType, err := function.StringToDataType(tokens[1])
+			if err != nil {
+				return nil, fmt.Errorf("\ninvalid signature input specification '%s': valid types are Int, Text, Float, Bool, Array[Int], Array[Text], Array[Float] or Array[Bool]", tokens[1])
+			}
 			sb = sb.AddInput(tokens[0], dataType)
 		}
 	}
@@ -264,7 +270,10 @@ func buildSignature() (*function.Signature, error) {
 			if len(tokens) < 2 {
 				return nil, fmt.Errorf("invalid output specification: %s", str)
 			}
-			dataType := function.StringToDataType(tokens[1])
+			dataType, err := function.StringToDataType(tokens[1])
+			if err != nil {
+				return nil, fmt.Errorf("\ninvalid signature input specification '%s'. Available types are Int, Text, Float, Bool, ArrayInt, ArrayText, ArrayFloat, ArrayBool, ArrayArrayInt, ArrayArrayFloat", tokens[1])
+			}
 			sb = sb.AddOutput(tokens[0], dataType)
 		}
 	}
@@ -294,20 +303,29 @@ func create(cmd *cobra.Command, args []string) {
 		encoded = ""
 	}
 
-	// Signature: we only configure one if at least one input or output has been specified
+	// When signature is specified we build it from the input. Otherwise we defined an EMPTY signature (accepts and returns nothing)
 	var sig *function.Signature = nil
 	if (inputs != nil && len(inputs) > 0) || (outputs != nil && len(outputs) > 0) {
 		s, err := buildSignature()
 		if err != nil {
-			cmd.Help()
+			errHelp := cmd.Help()
+			if errHelp != nil {
+				log.Errorf("failed to call cmd.Help: %v\n", errHelp)
+				return
+			}
 			os.Exit(4)
 		}
 		sig = s
 		fmt.Printf("Parsed signature: %v\n", s)
+	} else {
+		sig = function.NewSignature().Build()
 	}
 
-	request := function.Function{Name: funcName, Handler: handler,
-		Runtime: runtime, MemoryMB: memory,
+	request := function.Function{
+		Name:            funcName,
+		Handler:         handler,
+		Runtime:         runtime,
+		MemoryMB:        memory,
 		CPUDemand:       cpuDemand,
 		TarFunctionCode: encoded,
 		CustomImage:     customImage,
@@ -329,6 +347,11 @@ func create(cmd *cobra.Command, args []string) {
 }
 
 func ReadSourcesAsTar(srcPath string) ([]byte, error) {
+	// if we are on Windows, inverts the slash
+	if IsWindows() {
+		srcPath = strings.Replace(srcPath, "/", "\\", -1)
+	}
+
 	fileInfo, err := os.Stat(srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("Missing source file")
@@ -337,17 +360,24 @@ func ReadSourcesAsTar(srcPath string) ([]byte, error) {
 	var tarFileName string
 
 	if fileInfo.IsDir() || !strings.HasSuffix(srcPath, ".tar") {
-		file, err := os.CreateTemp("/tmp", "serverledgesource")
+		// Creates a temporary dir (cross platform)
+		file, err := os.CreateTemp("", "serverledgesource")
 		if err != nil {
 			return nil, err
 		}
-		defer func(name string) {
-			err := os.Remove(name)
+		defer func(file *os.File) {
+			name := file.Name()
+			err := file.Close()
 			if err != nil {
-				fmt.Printf("Error while trying to remove file '%s'\n", name)
+				fmt.Printf("Error while closing file '%s': %v", name, err)
 				os.Exit(1)
 			}
-		}(file.Name())
+			err = os.Remove(name)
+			if err != nil {
+				fmt.Printf("Error while trying to remove file '%s': %v", name, err)
+				os.Exit(1)
+			}
+		}(file)
 
 		err = utils.Tar(srcPath, file)
 		if err != nil {
@@ -492,7 +522,10 @@ func createComposition(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 	encoded := base64.StdEncoding.EncodeToString(src)
-	request := client.CompositionCreationFromASLRequest{Name: compName, ASLSrc: encoded}
+	request := client.CompositionCreationFromASLRequest{
+		Name:               compName,
+		RmFnOnDeletionFlag: rmFnOnDeletion,
+		ASLSrc:             encoded}
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
@@ -556,4 +589,8 @@ func pollFunctionComposition(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 	utils.PrintJsonResponse(resp.Body)
+}
+
+func IsWindows() bool {
+	return os.PathSeparator == '\\' && os.PathListSeparator == ';'
 }

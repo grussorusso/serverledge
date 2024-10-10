@@ -203,7 +203,13 @@ func GetServerStatus(c echo.Context) error {
 	node.Resources.RLock()
 	defer node.Resources.RUnlock()
 	portNumber := config.GetInt("api.port", 1323)
-	url := fmt.Sprintf("http://%s:%d", utils.GetIpAddress().String(), portNumber)
+
+	address, err := utils.GetOutboundIp()
+	if err != nil {
+		return c.String(http.StatusServiceUnavailable, err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d", address.String(), portNumber)
 	response := registration.StatusInformation{
 		Url:                     url,
 		AvailableWarmContainers: node.WarmStatus(),
