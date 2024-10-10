@@ -909,6 +909,7 @@ func DagBuildingLoop(sm *asl.StateMachine, nextState asl.State, nextStateName st
 
 		switch nextState.GetType() {
 		case asl.Task:
+
 			taskState := nextState.(*asl.TaskState)
 			b, err := BuildFromTaskState(builder, taskState, nextStateName)
 			if err != nil {
@@ -981,6 +982,7 @@ func findNextOrTerminate(state asl.CanEnd, sm *asl.StateMachine) (asl.State, str
 	isTerminal := state.IsEndState()
 	var nextState asl.State = nil
 	var nextStateName string = ""
+
 	if !isTerminal {
 		nextName, ok := state.(asl.HasNext).GetNext()
 		if !ok {
