@@ -202,6 +202,7 @@ func InvokeFunctionComposition(e echo.Context) error {
 	fcReq := compositionRequestsPool.Get().(*fc.CompositionRequest) // A pointer *function.CompositionRequest will be created if does not exists, otherwise removed from the pool
 	defer compositionRequestsPool.Put(fcReq)                        // at the end of the function, the function.CompositionRequest is added to the pool.
 	fcReq.Fc = funComp
+	fmt.Println("FCINV PARAMS: ", fcInvocationRequest.Params)
 	fcReq.Params = fcInvocationRequest.Params
 	fcReq.Arrival = time.Now()
 

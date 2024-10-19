@@ -58,6 +58,8 @@ func (s *SimpleNode) Exec(compRequest *CompositionRequest, params ...map[string]
 	}
 	// the rest of the code is similar to a single function execution
 	now := time.Now()
+	fmt.Println("PARAMS: ", params)
+	fmt.Println("PARAMS[0]: ", params[0])
 	requestId := fmt.Sprintf("%s-%s%d", s.Func, node.NodeIdentifier[len(node.NodeIdentifier)-5:], now.Nanosecond())
 	s.inputMutex.Lock()
 	r := &function.Request{

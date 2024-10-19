@@ -713,6 +713,15 @@ func CreateBroadcastDag(dagger func() (*Dag, error), fanOutDegree int) (*Dag, er
 		Build()
 }
 
+func CreateAdHOCBroadcastDag(dagger func() (*Dag, error), fanOutDegree int, funct *function.Function) (*Dag, error) {
+	return NewDagBuilder().
+		AddBroadcastFanOutNode(fanOutDegree).
+		ForEachParallelBranch(dagger).
+		AddFanInNode(AddNewMapEntry).
+		AddSimpleNode(funct).
+		Build()
+}
+
 // CreateBroadcastMultiFunctionDag if successful, returns a dag with one fan out node, each branch chained with a different dag that run in parallel, and a fan in node.
 // The number of branch is defined as the number of dagger functions.
 func CreateBroadcastMultiFunctionDag(dagger ...func() (*Dag, error)) (*Dag, error) {

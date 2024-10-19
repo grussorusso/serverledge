@@ -220,34 +220,36 @@ func (dag *Dag) Print() string {
 	return result
 }
 
-func (dag *Dag) executeStart(progress *Progress, node *StartNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeStart(progress *Progress, data map[string]interface{}, node *StartNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
+
 	err := progress.CompleteNode(node.GetId())
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	//r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "start"}
 	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "start"})
-	return true, nil
+	return data, true, nil
 }
 
-func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeSimple(progress *Progress, data map[string]interface{}, simpleNode *SimpleNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := simpleNode.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	//partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
 	//partialData, err := RetrieveSinglePartialData(requestId, nodeId, true)
+	//if err != nil {
+	//	return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
+	//}
+
+	err := simpleNode.CheckInput(data)
 	if err != nil {
-		return false, fmt.Errorf("request %s - simple node %s - %v", r.ReqId, simpleNode.Id, err)
-	}
-	err = simpleNode.CheckInput(partialData.Data)
-	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	// executing node
-	output, err := simpleNode.Exec(r, partialData.Data)
+	output, err := simpleNode.Exec(r, data)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 
 	// Todo: uncomment when running TestInvokeFC_Concurrent to debug concurrency errors
@@ -261,90 +263,94 @@ func (dag *Dag) executeSimple(progress *Progress, simpleNode *SimpleNode, r *Com
 	pd = NewPartialData(requestId, forNode, nodeId, output)
 	errSend := simpleNode.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.String(), errSend)
+		return output, false, fmt.Errorf("the node %s cannot send the output: %v", simpleNode.String(), errSend)
 	}
 
 	// saving partial data and updating progress
 	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 
-	return true, nil
+	return output, true, nil
 }
 
-func (dag *Dag) executeChoice(progress *Progress, choice *ChoiceNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeChoice(progress *Progress, data map[string]interface{}, choice *ChoiceNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	// retrieving input
 	var pd *PartialData
 	nodeId := choice.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	//partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	//if err != nil {
+	//	return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
+	//}
+	err := choice.CheckInput(data)
 	if err != nil {
-		return false, fmt.Errorf("request %s - choice node %s - %v", r.ReqId, choice.Id, err)
-	}
-	err = choice.CheckInput(partialData.Data)
-	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	// executing node
-	output, err := choice.Exec(r, partialData.Data)
+	output, err := choice.Exec(r, data)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	pd = NewPartialData(requestId, choice.GetNext()[0], nodeId, output)
 	errSend := choice.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", choice.String(), errSend)
+		return output, false, fmt.Errorf("the node %s cannot send the output: %v", choice.String(), errSend)
 	}
 
 	// for choice node, we skip all branch that will not be executed
 	nodesToSkip := choice.GetNodesToSkip(dag)
 	errSkip := progress.SkipAll(nodesToSkip)
 	if errSkip != nil {
-		return false, errSkip
+		return output, false, errSkip
 	}
 
 	// saving partial data and updating progress
 	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 
-	return true, nil
+	return output, true, nil
 }
 
-func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeFanOut(progress *Progress, data map[string]interface{}, fanOut *FanOutNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	// retrieving input
 	var pd *PartialData
+	outputMap := make(map[string]interface{})
 	nodeId := fanOut.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
-	if err != nil {
-		return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
-	}
-	// err = fanOut.CheckInput(partialData.Data)
-	// if err != nil {
+	//partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	//if err != nil {
+	//	return false, fmt.Errorf("request %s - fanOut node %s - %v", r.ReqId, nodeId, err)
+	//}
+
+	//err = fanOut.CheckInput(partialData.Data)
+	//if err != nil {
 	//	return false, err
 	//}
 	// executing node
-	output, err := fanOut.Exec(r, partialData.Data)
+	fmt.Println("\n FAN OUT DATA: ", data)
+	output, err := fanOut.Exec(r, data)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	// sends output to each next node
 	errSend := fanOut.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.String(), errSend)
+		return output, false, fmt.Errorf("the node %s cannot send the output: %v", fanOut.String(), errSend)
 	}
 
+	fmt.Println("\n FAN OUT OUTPUT PREV FOR: ", output)
 	for i, nextNode := range fanOut.GetNext() {
 		//inputForNode := make(map[string]interface{})
 		//nextDagNode, found := dag.Find(nextNode)
@@ -361,7 +367,11 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 		//		}
 		//	}
 		if fanOut.Type == Broadcast {
+			fmt.Println("\n BR FAN OUT OUTPUT: ", output[fmt.Sprintf("%d", i)].(map[string]interface{}))
 			pd = NewPartialData(requestId, nextNode, nodeId, output[fmt.Sprintf("%d", i)].(map[string]interface{}))
+			outputMap[fmt.Sprintf("%s", nextNode)] = pd.Data
+			fmt.Println("\n BROADCAST OUTPUTMAP: ", outputMap, i)
+
 		} else if fanOut.Type == Scatter {
 			firstName := ""
 			for name := range output {
@@ -371,30 +381,32 @@ func (dag *Dag) executeFanOut(progress *Progress, fanOut *FanOutNode, r *Composi
 			inputForNode := make(map[string]interface{})
 			subMap, found := output[firstName].(map[string]interface{})
 			if !found {
-				return false, fmt.Errorf("cannot find parameter for nextNode %s", nextNode)
+				return nil, false, fmt.Errorf("cannot find parameter for nextNode %s", nextNode)
 			}
 			inputForNode[firstName] = subMap[fmt.Sprintf("%d", i)]
 			pd = NewPartialData(requestId, nextNode, nodeId, inputForNode)
+			outputMap[fmt.Sprintf("%s", nextNode)] = pd.Data
+			fmt.Println("\n SCATTERED OUTPUTMAP: ", outputMap, i)
 		} else {
-			return false, fmt.Errorf("invalid fanout type %d", fanOut.Type)
+			return nil, false, fmt.Errorf("invalid fanout type %d", fanOut.Type)
 		}
 		// saving partial data
 		err = SavePartialData(pd, cache.Persist)
 		if err != nil {
-			return false, err
+			return outputMap, false, err
 		}
-		//}
 	}
 	// and updating progress
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
-		return false, err
+		return outputMap, false, err
 	}
 
-	return true, nil
+	fmt.Println("\n FINAL OUTPUTMAP: ", outputMap)
+	return outputMap, true, nil
 }
 
-func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *CompositionRequest) error {
+func (dag *Dag) executeParallel(progress *Progress, data map[string]interface{}, nextNodes []DagNodeId, r *CompositionRequest) (map[string]interface{}, error) {
 	// preparing dag nodes and channels for parallel execution
 	parallelDagNodes := make([]DagNode, 0)
 	inputs := make([]map[string]interface{}, 0)
@@ -402,6 +414,8 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	errorChannels := make([]chan error, 0)
 	partialDatas := make([]*PartialData, 0)
 	requestId := ReqId(r.ReqId)
+	outputMap := make(map[string]interface{}, 0)
+
 	for _, nodeId := range nextNodes {
 		node, ok := dag.Find(nodeId)
 		if ok {
@@ -411,15 +425,16 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		}
 		// for simple node we also retrieve the partial data and receive input
 		if simple, isSimple := node.(*SimpleNode); isSimple {
-			partialData, err := RetrieveSinglePartialData(requestId, simple.Id, cache.Persist)
-			if err != nil {
-				return err
-			}
-			errInput := simple.CheckInput(partialData.Data)
+			//partialData, err := RetrieveSinglePartialData(requestId, simple.Id, cache.Persist)
+			//if err != nil {
+			//	return err
+			//}
+
+			errInput := simple.CheckInput(data[fmt.Sprintf("%s", nodeId)].(map[string]interface{}))
 			if errInput != nil {
-				return errInput
+				return nil, errInput
 			}
-			inputs = append(inputs, partialData.Data)
+			inputs = append(inputs, data[fmt.Sprintf("%s", nodeId)].(map[string]interface{}))
 		}
 	}
 	// executing all nodes in parallel
@@ -466,7 +481,7 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 	}
 	// returning errors
 	if len(parallelErrors) > 0 {
-		return fmt.Errorf("errors in parallel execution: %v", parallelErrors)
+		return nil, fmt.Errorf("errors in parallel execution: %v", parallelErrors)
 	}
 	// saving partial data
 	for i, output := range parallelOutputs {
@@ -476,17 +491,20 @@ func (dag *Dag) executeParallel(progress *Progress, nextNodes []DagNodeId, r *Co
 		pd.Data = output
 		err := SavePartialData(pd, cache.Persist)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		err = progress.CompleteNode(parallelDagNodes[i].GetId())
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		outputMap[fmt.Sprintf("%s", node.GetId())] = output
+
 	}
-	return nil
+	return outputMap, nil
 }
 
-func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeFanIn(progress *Progress, data map[string]interface{}, fanIn *FanInNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	nodeId := fanIn.GetId()
 	requestId := ReqId(r.ReqId)
 
@@ -503,77 +521,76 @@ func (dag *Dag) executeFanIn(progress *Progress, fanIn *FanInNode, r *Compositio
 	})
 
 	// retrieving input before timeout
-	var partialDatas []*PartialData
+	//var partialDatas []*PartialData
 	var err error
 	for !timerElapsed {
-		partialDatas, err = RetrievePartialData(requestId, nodeId, cache.Persist)
-		if err != nil {
-			return false, err
-		}
-		if len(partialDatas) == fanIn.FanInDegree {
+		//partialDatas, err = RetrievePartialData(requestId, nodeId, cache.Persist)
+		//if err != nil {
+		//	return nil, false, err
+		//}
+		if len(data) == fanIn.FanInDegree {
 			break
 		}
-		fmt.Printf("fanin waiting partial datas: %d/%d\n", len(partialDatas), fanIn.FanInDegree)
+		fmt.Printf("fanin waiting partial datas: %d/%d\n", len(data), fanIn.FanInDegree)
 		time.Sleep(fanIn.Timeout / 100)
 	}
 
 	fired := timer.Stop()
 	if !fired {
-		return false, fmt.Errorf("fan in timeout occurred")
+		return nil, false, fmt.Errorf("fan in timeout occurred")
 	}
 	faninInputs := make([]map[string]interface{}, 0)
-	for _, partialData := range partialDatas {
+	for _, partialDataMap := range data {
 		// err := fanIn.CheckInput(partialData.Data)
 		//if err != nil {
 		//	return false, err
 		//}
-		faninInputs = append(faninInputs, partialData.Data)
+		faninInputs = append(faninInputs, partialDataMap.(map[string]interface{}))
 	}
 
 	// merging input into one output
 	output, err := fanIn.Exec(r, faninInputs...)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	// saving merged outputs and updating progress
 	pd := NewPartialData(requestId, fanIn.GetNext()[0], nodeId, output)
 	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 
-	return true, nil
+	return output, true, nil
 }
 
-func (dag *Dag) executeSucceedNode(progress *Progress, succeedNode *SucceedNode, r *CompositionRequest) (bool, error) {
-	return commonExec(dag, progress, succeedNode, r)
+func (dag *Dag) executeSucceedNode(progress *Progress, data map[string]interface{}, succeedNode *SucceedNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
+	return commonExec(dag, progress, data, succeedNode, r)
 }
 
-func (dag *Dag) executeFailNode(progress *Progress, failNode *FailNode, r *CompositionRequest) (bool, error) {
-	return commonExec(dag, progress, failNode, r)
+func (dag *Dag) executeFailNode(progress *Progress, data map[string]interface{}, failNode *FailNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
+	return commonExec(dag, progress, data, failNode, r)
 }
 
-func commonExec(dag *Dag, progress *Progress, node DagNode, r *CompositionRequest) (bool, error) {
+func commonExec(dag *Dag, progress *Progress, data map[string]interface{}, node DagNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	var pd *PartialData
 	nodeId := node.GetId()
 	requestId := ReqId(r.ReqId)
-	partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
-
+	//partialData, err := RetrieveSinglePartialData(requestId, nodeId, cache.Persist)
+	//if err != nil {
+	//	return false, fmt.Errorf("request %s - %s %s - %v", r.ReqId, node.GetNodeType(), node.GetId(), err)
+	//}
+	err := node.CheckInput(data)
 	if err != nil {
-		return false, fmt.Errorf("request %s - %s %s - %v", r.ReqId, node.GetNodeType(), node.GetId(), err)
-	}
-	err = node.CheckInput(partialData.Data)
-	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	// executing node
-	output, err := node.Exec(r, partialData.Data)
+	output, err := node.Exec(r, data)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 
 	// Todo: uncomment when running TestInvokeFC_Concurrent to debug concurrency errors
@@ -586,92 +603,95 @@ func commonExec(dag *Dag, progress *Progress, node DagNode, r *CompositionReques
 	pd = NewPartialData(requestId, forNode, nodeId, output)
 	errSend := node.PrepareOutput(dag, output)
 	if errSend != nil {
-		return false, fmt.Errorf("the node %s cannot send the output: %v", node.String(), errSend)
+		return output, false, fmt.Errorf("the node %s cannot send the output: %v", node.String(), errSend)
 	}
 
 	// saving partial data and updating progress
 	err = SavePartialData(pd, cache.Persist)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	err = progress.CompleteNode(nodeId)
 	if err != nil {
-		return false, err
+		return output, false, err
 	}
 	if node.GetNodeType() == Fail || node.GetNodeType() == Succeed {
-		return false, nil
+		return output, false, nil
 	}
-	return true, nil
+	return output, true, nil
 }
 
-func (dag *Dag) executeEnd(progress *Progress, node *EndNode, r *CompositionRequest) (bool, error) {
+func (dag *Dag) executeEnd(progress *Progress, data map[string]interface{}, node *EndNode, r *CompositionRequest) (map[string]interface{}, bool, error) {
 	// r.ExecReport.Reports[CreateExecutionReportId(node)] = &function.ExecutionReport{Result: "end"}
 	r.ExecReport.Reports.Set(CreateExecutionReportId(node), &function.ExecutionReport{Result: "end"})
 	err := progress.CompleteNode(node.Id)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	return false, nil // false because we want to stop when reaching the end
+	return data, false, nil // false because we want to stop when reaching the end
 }
 
-func (dag *Dag) Execute(r *CompositionRequest) (bool, error) {
+func (dag *Dag) Execute(r *CompositionRequest, data map[string]interface{}) (map[string]interface{}, bool, error) {
+
+	var output map[string]interface{}
 	requestId := ReqId(r.ReqId)
 	progress, found := RetrieveProgress(requestId, cache.Persist)
 	if !found {
-		return false, fmt.Errorf("progress not found")
+		return nil, false, fmt.Errorf("progress not found")
 	}
 	nextNodes, err := progress.NextNodes()
 	if err != nil {
-		return false, fmt.Errorf("failed to get next nodes from progress: %v", err)
+		return nil, false, fmt.Errorf("failed to get next nodes from progress: %v", err)
 	}
 	shouldContinue := true
+
 	if len(nextNodes) > 1 {
-		err := dag.executeParallel(progress, nextNodes, r)
+		output, err = dag.executeParallel(progress, data, nextNodes, r)
 		if err != nil {
-			return true, err
+			return nil, true, err
 		}
 	} else if len(nextNodes) == 1 {
 		n, ok := dag.Find(nextNodes[0])
 		if !ok {
-			return true, fmt.Errorf("failed to find node %s", n.GetId())
+			return nil, true, fmt.Errorf("failed to find node %s", n.GetId())
 		}
 
 		switch node := n.(type) {
 		case *SimpleNode:
-			shouldContinue, err = dag.executeSimple(progress, node, r)
+			output, shouldContinue, err = dag.executeSimple(progress, data, node, r)
 		case *ChoiceNode:
-			shouldContinue, err = dag.executeChoice(progress, node, r)
+			output, shouldContinue, err = dag.executeChoice(progress, data, node, r)
 		case *FanInNode:
-			shouldContinue, err = dag.executeFanIn(progress, node, r)
+			output, shouldContinue, err = dag.executeFanIn(progress, data, node, r)
 		case *StartNode:
-			shouldContinue, err = dag.executeStart(progress, node, r)
+			output, shouldContinue, err = dag.executeStart(progress, data, node, r)
 		case *FanOutNode:
-			shouldContinue, err = dag.executeFanOut(progress, node, r)
-		case *PassNode:
-			shouldContinue, err = commonExec(dag, progress, node, r)
-		case *WaitNode:
-			shouldContinue, err = commonExec(dag, progress, node, r)
+			output, shouldContinue, err = dag.executeFanOut(progress, data, node, r)
+		//case *PassNode:
+		//	shouldContinue, err = commonExec(dag, progress, node, r)
+		//case *WaitNode:
+		//	shouldContinue, err = commonExec(dag, progress, node, r)
 		case *FailNode:
-			shouldContinue, err = dag.executeFailNode(progress, node, r) // TODO: use commonExec
+			output, shouldContinue, err = dag.executeFailNode(progress, data, node, r) // TODO: use commonExec
 		case *SucceedNode:
-			shouldContinue, err = dag.executeSucceedNode(progress, node, r) // TODO: use commonExec
+			output, shouldContinue, err = dag.executeSucceedNode(progress, data, node, r) // TODO: use commonExec
 		case *EndNode:
-			shouldContinue, err = dag.executeEnd(progress, node, r)
+			output, shouldContinue, err = dag.executeEnd(progress, data, node, r)
 		}
 		if err != nil {
 			_ = progress.FailNode(n.GetId())
 			r.ExecReport.Progress = progress
-			return true, err
+			return output, true, err
 		}
 	} else {
-		return false, fmt.Errorf("there aren't next nodes")
+		return nil, false, fmt.Errorf("there aren't next nodes")
 	}
 
 	err = SaveProgress(progress, cache.Persist)
 	if err != nil {
-		return true, err
+		return output, true, err
 	}
-	return shouldContinue, nil
+	return output, shouldContinue, nil
 }
 
 // GetUniqueDagFunctions returns a list with the function names used in the Dag. The returned function names are unique and in alphabetical order
