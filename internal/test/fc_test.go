@@ -173,7 +173,7 @@ func TestInvokeChoiceFC(t *testing.T) {
 	}
 	fcName := "test"
 	// CREATE - we create a test function composition
-	input := 1
+	input := 2
 	incJs, errJs := initializeExampleJSFunction()
 	u.AssertNil(t, errJs)
 	incPy, errPy := initializeExamplePyFunction()
@@ -308,7 +308,7 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	u.AssertNil(t, err1)
 
 	// INVOKE - we call the function composition
-	/*params := make(map[string]interface{})
+	params := make(map[string]interface{})
 	params[fDouble.Signature.GetInputs()[0].Name] = 1
 	request := fc.NewCompositionRequest(shortuuid.New(), fcomp, params)
 	resultMap, err2 := fcomp.Invoke(request)
@@ -320,7 +320,7 @@ func TestInvokeFC_BroadcastFanOut(t *testing.T) {
 	for _, res := range output {
 		u.AssertEquals(t, 2, res.(int))
 	}
-	*/
+
 	// cleaning up function composition and functions
 	//err3 := fcomp.Delete()
 	//u.AssertNil(t, err3)

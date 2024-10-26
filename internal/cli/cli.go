@@ -470,7 +470,6 @@ func invokeFunctionComposition(cmd *cobra.Command, args []string) {
 				return
 			}
 			paramsMap[tokens[0]] = strings.Join(tokens[1:], ":")
-			fmt.Println("PARAMSMAP: ", paramsMap)
 		}
 	}
 	if len(paramsFile) > 0 {

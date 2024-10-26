@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/grussorusso/serverledge/internal/fc"
@@ -8,63 +9,44 @@ import (
 	"github.com/grussorusso/serverledge/utils"
 )
 
+// create a sequence of varying length and run the experiment for 10 minutes
+
 func TestExperiment4(t *testing.T) {
-	/*if !Experiment {
-		t.Skip()
-	}*/
-	_, err := createParallelComposition(t)
-	utils.AssertNilMsg(t, err, "failed to create composition")
+	/*
+		if !Experiment {
+			t.Skip()
+		}*/
+	lengths := []int{1, 2, 4, 8, 16, 32}
+
+	for _, length := range lengths {
+		_, err := CreateIncCompositionSequence(t, fmt.Sprintf("sequence_inc_%d", length), "localhost", 1323, length)
+		utils.AssertNilMsg(t, err, "failed to create composition")
+
+	}
 
 	// err2 := comp.Delete()
 	// utils.AssertNilMsg(t, err2, "failed to delete composition and functions")
+
 }
 
-/*
- * This test will execute the following Dag:
- *		        Start
- *		          |
- *		        Choice
- * Task==1      Task==2     true
- *    |            |          |
- *   inc         double     Fan Out
- *    |            |        |     |
- *    |            |       inc   inc
- *    |            |        |     |
- *    |            |        Fan In
- *    |            |           |
- *    ------------End-----------
- */
-func createParallelComposition(t *testing.T) (*fc.FunctionComposition, error) {
-
-	fnInc, err := InitializePyFunction("inc", "handler", function.NewSignature().
+// TestCreateComposition tests the compose REST API that creates a new function composition
+func CreateIncCompositionSequence(t *testing.T, fcName string, host string, port int, length int) (*fc.FunctionComposition, error) {
+	fn, err := InitializePyFunction("inc", "handler", function.NewSignature().
 		AddInput("input", function.Int{}).
-		AddInput("Task", function.Int{}). // should be true
-		AddOutput("result", function.Int{}).
+		AddOutput("output", function.Int{}).
 		Build())
+	utils.AssertNilMsg(t, err, "failed to initialize function noop")
 
-	fnDouble, err := InitializePyFunction("double", "handler", function.NewSignature().
-		AddInput("input", function.Int{}).
-		AddInput("Task", function.Int{}). // should be false
-		AddOutput("result", function.Int{}).
-		Build())
+	fArr := make([]*function.Function, 0, length)
+	for i := 0; i < length; i++ {
+		fArr = append(fArr, fn)
+	}
 
-	dag, err := fc.NewDagBuilder().
-		AddChoiceNode(
-			fc.NewEqParamCondition(fc.NewParam("Task"), fc.NewValue(1)),
-			fc.NewEqParamCondition(fc.NewParam("Task"), fc.NewValue(2)),
-			fc.NewConstCondition(true),
-		).
-		NextBranch(fc.CreateSequenceDag(fnInc)).
-		NextBranch(fc.CreateSequenceDag(fnDouble)).
-		NextBranch(fc.NewDagBuilder().
-			AddScatterFanOutNode(2).
-			ForEachParallelBranch(fc.LambdaSequenceDag(fnInc)).
-			AddFanInNode(fc.AddToArrayEntry).
-			Build()).
-		EndChoiceAndBuild()
-
-	composition, err := fc.NewFC("complex", *dag, []*function.Function{fnInc, fnDouble}, true)
+	dag, err := fc.CreateSequenceDag(fArr...)
 	utils.AssertNil(t, err)
-	createCompositionApiTest(t, composition, "127.0.0.1", 1323)
+	composition, err := fc.NewFC(fcName, *dag, []*function.Function{fn}, false)
+	utils.AssertNil(t, err)
+	createCompositionApiTest(t, composition, host, port)
+
 	return composition, nil
 }
