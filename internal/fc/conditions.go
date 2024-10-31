@@ -185,6 +185,7 @@ func (c Condition) findInputs(input map[string]interface{}) ([]interface{}, bool
 				ops = append(ops, nil)
 			} else {
 				var value2 interface{}
+				/* handling of numeric strings */
 				_, err := value.(string)
 				if !err {
 					_, err := value.(int)
