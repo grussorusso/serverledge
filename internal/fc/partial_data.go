@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grussorusso/serverledge/utils"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"sync"
 	"time"
+
+	"github.com/grussorusso/serverledge/utils"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type PartialDataId string
@@ -77,10 +78,10 @@ func SavePartialData(pd *PartialData, saveAlsoOnEtcd bool) error {
 			return err
 		}
 	}
-	inCache := savePartialDataInCache(pd)
-	if !inCache {
-		return errors.New("failed to save partialData in cache")
-	}
+	//inCache := savePartialDataInCache(pd)
+	//if !inCache {
+	//	return errors.New("failed to save partialData in cache")
+	//}
 	return nil
 }
 
